@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统配置 · FitHub 管理后台</title>
+    <link rel="stylesheet" href="css/soft-ui.css">
+    <style>
+        /* —— 页面私有（共享部分见 soft-ui.css） —— */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4) var(--sp-5); }
+        .form-grid--full { grid-template-columns: 1fr; }
+        .form-label__hint {
+            font-weight: 400;
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-left: var(--sp-2);
+        }
+        .form-input--narrow { max-width: 200px; }
+        .form-help { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.5; }
+        .actions {
+            display: flex;
+            gap: var(--sp-3);
+            margin-top: var(--sp-5);
+            padding-top: var(--sp-4);
+            border-top: 1px solid rgba(163, 177, 198, 0.2);
+        }
+        /* 测试连接结果 */
+        .test-result {
+            padding: var(--sp-3) var(--sp-4);
+            border-radius: var(--r-md);
+            font-size: 13px;
+            margin-top: var(--sp-3);
+            background: var(--bg-1);
+            display: flex;
+            align-items: center;
+            gap: var(--sp-3);
+            min-height: 44px;
+            box-shadow: var(--shadow-in-sm);
+        }
+        .test-result--ok { background: var(--success-soft); color: var(--success); box-shadow: none; }
+        .test-result--err { background: var(--error-soft); color: var(--error); box-shadow: none; }
+        .test-result__latency {
+            margin-left: auto;
+            font-weight: 700;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        }
+        /* 预设芯片 */
+        .preset-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--sp-2);
+            margin-top: var(--sp-3);
+        }
+        .preset-chip {
+            padding: 8px 16px;
+            background: var(--bg-0);
+            border: none;
+            border-radius: var(--r-pill);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--t-base);
+            color: var(--text-muted);
+            box-shadow: var(--shadow-flat);
+        }
+        .preset-chip:hover {
+            color: var(--accent);
+            box-shadow: var(--shadow-out-sm);
+            transform: translateY(-1px);
+        }
+        /* 安全提示卡 */
+        .card--warn-soft { background: var(--warn-soft); border-left: 4px solid var(--warn); box-shadow: var(--shadow-out-sm); }
+        .card--warn-soft .card__title { color: var(--warn); }
+        .warn-list { font-size: 13px; color: var(--text); line-height: 1.8; margin-left: var(--sp-5); }
+        .warn-list li { margin-bottom: 4px; }
+    </style>
+    <script type="module" src="js/admin-layout.js"></script>
+</head>
+<body>
+    <aside class="sidebar" id="appSidebar"></aside>
+
+    <main class="main">
+        <div class="header">
+            <div class="header__title">系统配置</div>
+            <div class="header__user">
+                <span class="header__role" id="userRole">-</span>
+                <span id="userName">-</span>
+                <button class="header__btn" id="logoutBtn">退出登录</button>
+            </div>
+        </div>
+
+        <!-- LLM 配置卡片 -->
+        <div class="card">
+            <div class="card__title">
+                🤖 LLM 模型设置
+                <span class="badge">仅管理员</span>
+                <span class="badge badge--info" id="llmSource">配置来源：加载中…</span>
+            </div>
+            <p class="card__subtitle">
+                配置 C 端 AI 教练使用的语言大模型。支持任意 OpenAI 兼容协议（OpenAI、DeepSeek、通义千问、智谱、月之暗面等）。
+                <br>
+                api_key / api_base 留空时回退到 .env 中的 <code>LLM_API_KEY</code> / <code>LLM_API_BASE</code>。
+            </p>
+
+            <div id="alert" class="alert alert--hidden"></div>
+
+            <form id="llmForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">API Base URL <span class="form-label__hint">OpenAI 兼容</span></label>
+                        <input class="form-input" name="api_base" placeholder="https://api.openai.com/v1">
+                        <div class="form-help">示例：https://api.deepseek.com/v1</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">对话模型</label>
+                        <input class="form-input" name="model_chat" placeholder="gpt-4o-mini" list="modelChatList">
+                        <datalist id="modelChatList">
+                            <option value="gpt-4o-mini">
+                            <option value="gpt-4o">
+                            <option value="gpt-3.5-turbo">
+                            <option value="deepseek-chat">
+                            <option value="qwen-plus">
+                            <option value="qwen-turbo">
+                            <option value="glm-4">
+                            <option value="moonshot-v1-8k">
+                        </datalist>
+                    </div>
+
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label class="form-label">API Key <span class="form-label__hint">已脱敏，仅显示末尾 4 位</span></label>
+                        <input class="form-input" name="api_key" type="password" placeholder="sk-..." autocomplete="off">
+                        <div class="form-help">
+                            留空则保持原值不变；
+                            如使用脱敏值（••••XXXX）原样保存，原值不会被清空。
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">嵌入模型 <span class="form-label__hint">RAG 用</span></label>
+                        <input class="form-input" name="model_embed" placeholder="text-embedding-3-small">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">超时（秒）</label>
+                        <input class="form-input form-input--narrow" name="timeout" type="number" min="5" max="300">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">温度 <span class="form-label__hint">0=精确 2=发散</span></label>
+                        <input class="form-input form-input--narrow" name="temperature" type="number" step="0.05" min="0" max="2">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">最大 Token</label>
+                        <input class="form-input form-input--narrow" name="max_tokens" type="number" min="1" max="32000">
+                    </div>
+
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label class="form-label">系统提示词（System Prompt）</label>
+                        <textarea class="form-textarea" name="system_prompt" rows="3"></textarea>
+                        <div class="form-help">定义 AI 的人设、语气、回答风格</div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="button" class="btn btn--primary" id="btnSave">💾 保存配置</button>
+                    <button type="button" class="btn" id="btnTest">🔌 测试连接</button>
+                    <button type="button" class="btn btn--ghost" id="btnReload">↻ 重新加载</button>
+                </div>
+
+                <div id="testResult" class="test-result" style="display:none;"></div>
+            </form>
+        </div>
+
+        <!-- 快速预设 -->
+        <div class="card">
+            <div class="card__title">⚡ 快速预设</div>
+            <p class="card__subtitle">点击下方按钮可一键填入常见厂商的配置模板（仍需手动填入 API Key）</p>
+            <div class="preset-row">
+                <span class="preset-chip" data-preset="openai">OpenAI</span>
+                <span class="preset-chip" data-preset="deepseek">DeepSeek</span>
+                <span class="preset-chip" data-preset="qwen">通义千问</span>
+                <span class="preset-chip" data-preset="zhipu">智谱 GLM</span>
+                <span class="preset-chip" data-preset="moonshot">月之暗面</span>
+                <span class="preset-chip" data-preset="minimax">官方 minimax</span>
+            </div>
+        </div>
+
+        <!-- AI 限流 -->
+        <div class="card">
+            <div class="card__title">⚡ AI 调用限流</div>
+            <p class="card__subtitle">防止单个用户过度消耗 AI 配额。修改后立即生效。</p>
+
+            <div class="form-grid form-grid--full">
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+                    <div class="form-group">
+                        <label class="form-label">单用户每日上限</label>
+                        <input class="form-input form-input--narrow" id="aiLimitDay" type="number" min="1" max="10000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">单用户每分钟上限</label>
+                        <input class="form-input form-input--narrow" id="aiLimitMin" type="number" min="1" max="1000">
+                    </div>
+                </div>
+            </div>
+            <div class="actions">
+                <button type="button" class="btn btn--primary" id="btnSaveLimits">💾 保存限流</button>
+            </div>
+        </div>
+
+        <!-- 安全提示 -->
+        <div class="card card--warn-soft">
+            <div class="card__title">⚠️ 安全提示</div>
+            <ul class="warn-list">
+                <li>API Key 存储在 <code>system_configs</code> 表中，权限校验仅 admin。</li>
+                <li>前端展示永远脱敏（仅末尾 4 位）。</li>
+                <li>保存后客户端缓存会立即失效，下一次 AI 调用将使用新配置。</li>
+                <li>如果 LLM 调用失败，C 端用户会看到兜底提示而非崩溃。</li>
+                <li>建议生产环境结合密钥管理服务（KMS），不要把真实 key 直接写在 .env 中。</li>
+            </ul>
+        </div>
+    </main>
+
+    <script type="module">
+        const API_BASE = '/api/v1';
+        const TOKEN_KEY = 'fithub_admin_access';
+        const REFRESH_KEY = 'fithub_admin_refresh';
+        const USER_KEY = 'fithub_admin_user';
+
+        // ============ 鉴权 ============
+        const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+        if (!localStorage.getItem(TOKEN_KEY) || !user) {
+            window.location.href = '/admin/login.html';
+        }
+        if (user?.role !== 'admin') {
+            alert('仅管理员可访问此页面');
+            window.location.href = '/admin/';
+        }
+
+        // ============ API 封装 ============
+        async function api(method, path, body) {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem(TOKEN_KEY);
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const resp = await fetch(`${API_BASE}${path}`, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined,
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+                throw new Error(err.detail || `HTTP ${resp.status}`);
+            }
+            if (resp.status === 204) return null;
+            return resp.json();
+        }
+
+        // ============ 工具 ============
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => document.querySelectorAll(sel);
+
+        function showAlert(msg, type = 'info') {
+            const el = $('#alert');
+            el.className = `alert alert--${type}`;
+            el.textContent = msg;
+            el.classList.remove('alert--hidden');
+            if (type === 'success') {
+                setTimeout(() => el.classList.add('alert--hidden'), 3500);
+            }
+        }
+
+        function showTestResult(ok, message, latency, model) {
+            const el = $('#testResult');
+            el.style.display = 'flex';
+            el.className = `test-result ${ok ? 'test-result--ok' : 'test-result--err'}`;
+            const icon = ok ? '✅' : '❌';
+            const status = ok ? '连接成功' : '连接失败';
+            el.innerHTML = `
+                <span style="font-size: 18px;">${icon}</span>
+                <span><strong>${status}</strong> · ${escapeHtml(message)} ${model ? `· 模型 <code>${escapeHtml(model)}</code>` : ''}</span>
+                ${latency != null ? `<span class="test-result__latency">${latency} ms</span>` : ''}
+            `;
+        }
+
+        function escapeHtml(s) {
+            if (s == null) return '';
+            return String(s).replace(/[&<>"']/g, (c) =>
+                ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])
+            );
+        }
+
+        // ============ 预设 ============
+        const PRESETS = {
+            openai:    { api_base: 'https://api.openai.com/v1',                          model_chat: 'gpt-4o-mini',          model_embed: 'text-embedding-3-small' },
+            deepseek:  { api_base: 'https://api.deepseek.com/v1',                        model_chat: 'deepseek-chat',        model_embed: 'text-embedding-3-small' },
+            qwen:      { api_base: 'https://dashscope.aliyuncs.com/compatible-mode/v1',   model_chat: 'qwen-plus',            model_embed: 'text-embedding-v3' },
+            zhipu:     { api_base: 'https://open.bigmodel.cn/api/paas/v4',                model_chat: 'glm-4',                model_embed: 'embedding-2' },
+            moonshot:  { api_base: 'https://api.moonshot.cn/v1',                         model_chat: 'moonshot-v1-8k',       model_embed: 'text-embedding-3-small' },
+            minimax:   { api_base: 'https://api.minimax.cn/v1',                          model_chat: 'gpt-4o-mini',          model_embed: 'text-embedding-3-small' },
+        };
+
+        $$('.preset-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const key = chip.dataset.preset;
+                const preset = PRESETS[key];
+                if (!preset) return;
+                $('input[name="api_base"]').value = preset.api_base;
+                $('input[name="model_chat"]').value = preset.model_chat;
+                $('input[name="model_embed"]').value = preset.model_embed;
+                $('input[name="api_key"]').focus();
+                showAlert(`已填入 ${chip.textContent} 预设，请填入 API Key`, 'info');
+            });
+        });
+
+        // ============ 加载 ============
+        async function loadLLMConfig() {
+            try {
+                const data = await api('GET', '/admin/configs/llm');
+                const v = data.value || {};
+                $('input[name="api_base"]').value = v.api_base || '';
+                $('input[name="model_chat"]').value = v.model_chat || 'gpt-4o-mini';
+                $('input[name="model_embed"]').value = v.model_embed || 'text-embedding-3-small';
+                $('input[name="temperature"]').value = v.temperature ?? 0.7;
+                $('input[name="max_tokens"]').value = v.max_tokens ?? 2048;
+                $('input[name="timeout"]').value = v.timeout ?? 60;
+                $('textarea[name="system_prompt"]').value = v.system_prompt || '';
+                $('input[name="api_key"]').placeholder = v.api_key ? `已配置（${v.api_key}）— 留空保持不变` : 'sk-...';
+
+                const sourceEl = $('#llmSource');
+                if (v.api_base && v.api_key) {
+                    sourceEl.textContent = '配置来源：数据库';
+                    sourceEl.className = 'badge badge--success';
+                } else {
+                    sourceEl.textContent = '配置来源：.env 兜底';
+                    sourceEl.className = 'badge badge--warn';
+                }
+            } catch (e) {
+                showAlert('加载 LLM 配置失败：' + e.message, 'error');
+            }
+        }
+
+        async function loadAILimits() {
+            try {
+                const data = await api('GET', '/admin/configs/ai-limits');
+                $('#aiLimitDay').value = data.per_user_per_day ?? 50;
+                $('#aiLimitMin').value = data.per_user_per_minute ?? 5;
+            } catch (e) {
+                showAlert('加载限流配置失败：' + e.message, 'error');
+            }
+        }
+
+        // ============ 保存 ============
+        $('#btnSave').addEventListener('click', async () => {
+            const btn = $('#btnSave');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 保存中...';
+            try {
+                const body = {
+                    api_base: $('input[name="api_base"]').value.trim(),
+                    model_chat: $('input[name="model_chat"]').value.trim(),
+                    model_embed: $('input[name="model_embed"]').value.trim(),
+                    temperature: parseFloat($('input[name="temperature"]').value),
+                    max_tokens: parseInt($('input[name="max_tokens"]').value),
+                    timeout: parseInt($('input[name="timeout"]').value),
+                    system_prompt: $('textarea[name="system_prompt"]').value.trim(),
+                };
+                const keyVal = $('input[name="api_key"]').value.trim();
+                if (keyVal) body.api_key = keyVal; // 空 = 不修改
+
+                await api('PUT', '/admin/configs/llm', body);
+                showAlert('配置已保存，下次 AI 调用立即生效', 'success');
+                await loadLLMConfig();
+            } catch (e) {
+                showAlert('保存失败：' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '💾 保存配置';
+            }
+        });
+
+        $('#btnSaveLimits').addEventListener('click', async () => {
+            try {
+                const body = {
+                    per_user_per_day: parseInt($('#aiLimitDay').value),
+                    per_user_per_minute: parseInt($('#aiLimitMin').value),
+                    max_context_rounds: 5,
+                };
+                await api('PUT', '/admin/configs/ai-limits', body);
+                showAlert('限流配置已保存', 'success');
+            } catch (e) {
+                showAlert('保存限流失败：' + e.message, 'error');
+            }
+        });
+
+        // ============ 测试连接 ============
+        $('#btnTest').addEventListener('click', async () => {
+            const btn = $('#btnTest');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 测试中...';
+            $('#testResult').style.display = 'none';
+            try {
+                // 用当前表单值测试（未保存也能测试）
+                const body = {
+                    api_base: $('input[name="api_base"]').value.trim(),
+                    model_chat: $('input[name="model_chat"]').value.trim(),
+                    temperature: parseFloat($('input[name="temperature"]').value),
+                    max_tokens: parseInt($('input[name="max_tokens"]').value),
+                    timeout: parseInt($('input[name="timeout"]').value),
+                };
+                const keyVal = $('input[name="api_key"]').value.trim();
+                if (keyVal) body.api_key = keyVal;
+
+                const result = await api('POST', '/admin/configs/llm/test', body);
+                showTestResult(result.ok, result.message, result.latency_ms, result.model);
+            } catch (e) {
+                showTestResult(false, e.message, null, null);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔌 测试连接';
+            }
+        });
+
+        $('#btnReload').addEventListener('click', () => {
+            loadLLMConfig();
+            loadAILimits();
+            $('#testResult').style.display = 'none';
+            showAlert('已重新加载', 'info');
+        });
+
+        // ============ 退出 ============
+        // ============ 启动 ============
+        loadLLMConfig();
+        loadAILimits();
+    </script>
+</body>
+</html>

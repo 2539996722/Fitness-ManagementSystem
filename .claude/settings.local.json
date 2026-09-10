@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://127.0.0.1:8002/admin/templates.html)"
+    ]
+  },
+  "model": "claude-3-5-sonnet",
+  "effort": "high"
+}

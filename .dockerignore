@@ -1,0 +1,84 @@
+# ============================================
+# Docker 构建上下文忽略
+# ============================================
+# 与 .gitignore 类似，但作用于 Docker build context
+# 减少镜像大小、避免泄露敏感文件
+# ============================================
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker 相关
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+*.egg
+
+# 环境变量（绝对不要进镜像）
+.env
+.env.*
+*.pem
+*.key
+
+# 日志
+*.log
+logs/
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 数据集（太大，需要时单独挂载）
+data/exercises-dataset-zh/
+data/chroma/
+data/uploads/
+
+# 文档（不需要进镜像）
+README.md
+prd.md
+数据库使用.md
+
+# 测试文件
+tests/
+.pytest.ini
+conftest.py
+
+# 前端（前端用 nginx 镜像，不进后端镜像）
+web/
+nginx.conf
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp

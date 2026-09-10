@@ -1,0 +1,144 @@
+/* 评论管理页面样式（极简，复用 soft-ui.css 的变量与阴影）。 */
+
+.rv-card {
+    background: var(--bg-0);
+    padding: var(--sp-5);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-out-sm);
+    margin-bottom: var(--sp-4);
+}
+.rv-card__title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: var(--sp-4);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--text);
+}
+
+.rv-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    align-items: flex-end;
+}
+.rv-filter { display: flex; flex-direction: column; gap: 6px; }
+.rv-filter__label { font-size: 12px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.3px; }
+
+.rv-input {
+    padding: 10px 14px;
+    background: var(--bg-0);
+    border: none;
+    border-radius: var(--r-md);
+    font-size: 13px;
+    color: var(--text);
+    font-family: inherit;
+    min-width: 140px;
+    box-shadow: var(--shadow-in-sm);
+    outline: none;
+    transition: box-shadow var(--t-base);
+}
+.rv-input:focus { box-shadow: var(--shadow-in-md), 0 0 0 2px var(--accent-soft); }
+.rv-input--narrow { min-width: 100px; max-width: 200px; }
+
+.rv-btn {
+    padding: 10px 18px;
+    background: var(--bg-0);
+    border: none;
+    border-radius: var(--r-pill);
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text);
+    font-weight: 600;
+    font-family: inherit;
+    box-shadow: var(--shadow-out-sm);
+    transition: all var(--t-base);
+}
+.rv-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-out-md); }
+.rv-btn:active { box-shadow: var(--shadow-in-sm); transform: translateY(0); }
+.rv-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.rv-btn--primary {
+    background: linear-gradient(135deg, var(--accent) 0%, #ff8c5e 100%);
+    color: white;
+    box-shadow: 4px 4px 12px var(--accent-glow), -2px -2px 8px var(--highlight-color);
+}
+.rv-btn--primary:hover { box-shadow: 6px 6px 16px var(--accent-glow), -3px -3px 10px var(--highlight-color); }
+.rv-btn--danger {
+    background: linear-gradient(135deg, var(--error) 0%, #f87171 100%);
+    color: white;
+}
+.rv-btn--sm { padding: 6px 12px; font-size: 12px; }
+.rv-btn--ghost { box-shadow: none; background: transparent; }
+.rv-btn--ghost:hover { background: var(--bg-0); box-shadow: var(--shadow-flat); }
+
+.rv-table-wrap {
+    overflow-x: auto;
+    margin-top: var(--sp-4);
+    background: var(--bg-0);
+    border-radius: var(--r-md);
+    padding: var(--sp-2);
+    box-shadow: var(--shadow-out-sm);
+}
+.rv-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.rv-table th {
+    background: var(--bg-2);
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.6px;
+    white-space: nowrap;
+}
+.rv-table td {
+    padding: 12px;
+    border-bottom: 1px solid rgba(163, 177, 198, 0.18);
+    vertical-align: middle;
+}
+.rv-table tbody tr:hover td { background: var(--bg-1); }
+.rv-table tbody tr:last-child td { border-bottom: none; }
+
+.rv-content {
+    max-width: 360px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rv-rating {
+    color: var(--warn);
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.rv-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: var(--r-pill);
+    font-size: 11px;
+    font-weight: 600;
+}
+.rv-badge--ok { background: var(--success-soft); color: var(--success); }
+.rv-badge--del { background: var(--error-soft); color: var(--error); }
+
+.rv-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--sp-4);
+    font-size: 13px;
+    color: var(--text-muted);
+}
+.rv-pagination__btns { display: flex; gap: var(--sp-2); }
+
+.rv-empty {
+    text-align: center;
+    padding: var(--sp-6);
+    color: var(--text-muted);
+}
+
+.rv-checkbox { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.rv-checkbox input { accent-color: var(--accent); }

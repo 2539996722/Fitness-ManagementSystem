@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitHub 管理后台</title>
+    <link rel="stylesheet" href="css/soft-ui.css">
+    <script type="module" src="js/admin-layout.js"></script>
+</head>
+<body>
+    <aside class="sidebar" id="appSidebar"></aside>
+
+    <main class="main">
+        <div class="header">
+            <div class="header__title" id="pageTitle">数据看板</div>
+            <div class="header__user">
+                <span class="header__role" id="userRole">-</span>
+                <span id="userName">-</span>
+                <button class="header__btn" id="logoutBtn">退出登录</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card__title">
+                <span><span class="card__title-icon">🎉</span> 欢迎进入 FitHub 管理后台</span>
+            </div>
+            <p style="color: var(--color-text-muted); line-height: 1.8; margin-bottom: var(--sp-4);">
+                通过左侧菜单进入各功能模块。数据看板、会员管理、系统配置仅管理员可见；会话工作台由教练使用。
+            </p>
+
+            <div class="placeholder">
+                <div style="font-weight: 600; color: var(--text); margin-bottom: var(--sp-3);">当前可用模块（按角色显示）</div>
+                <ul style="text-align: left; display: inline-block; line-height: 2; list-style: none;">
+                    <li>📊 <a href="/admin/dashboard.html">数据看板</a>（管理员）</li>
+                    <li>👥 <a href="/admin/users.html">会员管理</a>（管理员）</li>
+                    <li>⚙️ <a href="/admin/system-config.html">系统配置</a>（管理员）</li>
+                    <li>📋 <a href="/admin/templates.html">计划模板</a>（管理员 / 教练）</li>
+                    <li>💬 会话工作台（嵌入数据看板）</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        const TOKEN_KEY = 'fithub_admin_access';
+        const USER_KEY = 'fithub_admin_user';
+
+        const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+
+        // 未登录 OR 角色不对 → 跳登录
+        // ponytail: customer_service 已从 B 端移除（login.html 拦截），这里只允许 admin/trainer
+        if (!localStorage.getItem(TOKEN_KEY) || !user ||
+            !['admin', 'trainer'].includes(user.role)) {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem('fithub_admin_refresh');
+            localStorage.removeItem(USER_KEY);
+            window.location.href = '/admin/login.html';
+        }
+
+        // 渲染用户信息
+
+        // 退出登录
+    </script>
+</body>
+</html>

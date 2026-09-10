@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模板详情 · FitHub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .detail-page {
+            position: relative; z-index: 1;
+            max-width: 960px; margin: 0 auto;
+            padding: var(--space-5);
+        }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--text-muted); font-size: var(--font-size-sm);
+            text-decoration: none; margin-bottom: var(--space-4);
+            cursor: pointer; transition: color 0.2s;
+        }
+        .back-link:hover { color: var(--accent-cool-bright); }
+
+        .hero {
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            margin-bottom: var(--space-4);
+            position: relative; overflow: hidden;
+        }
+        .hero::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--accent-cool), var(--primary));
+        }
+        .hero__head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); margin-bottom: var(--space-3); }
+        .hero__name { font-size: var(--font-size-2xl); font-weight: 800; color: var(--text-primary); flex: 1; }
+        .hero__meta { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
+        .tag { padding: 4px 10px; border-radius: var(--radius-sm); font-size: var(--font-size-xs); font-weight: 500; }
+        .tag--goal { background: rgba(255, 122, 69, 0.12); color: var(--primary-bright); border: 1px solid rgba(255, 122, 69, 0.3); }
+        .tag--level-beginner { background: rgba(78, 236, 200, 0.12); color: var(--accent-mint); border: 1px solid rgba(78, 236, 200, 0.3); }
+        .tag--level-intermediate { background: rgba(77, 208, 255, 0.12); color: var(--accent-cool-bright); border: 1px solid rgba(77, 208, 255, 0.3); }
+        .tag--level-advanced { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .tag--muted { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+        .hero__desc { color: var(--text-secondary); font-size: var(--font-size-base); line-height: 1.7; margin-bottom: var(--space-4); }
+        .hero__stats {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
+            padding-top: var(--space-4); border-top: 1px solid var(--border-subtle);
+        }
+        .hero__stat-label { color: var(--text-muted); font-size: var(--font-size-xs); margin-bottom: 4px; }
+        .hero__stat-value { font-size: var(--font-size-xl); font-weight: 800; color: var(--text-primary); }
+        .hero__stat-value--hot { background: linear-gradient(135deg, var(--primary-bright), var(--primary)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+        .actions-bar {
+            display: flex; gap: var(--space-3);
+            padding: var(--space-4);
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-4);
+            align-items: center;
+        }
+        .actions-bar__hint { flex: 1; color: var(--text-muted); font-size: var(--font-size-sm); }
+        .btn-primary {
+            padding: var(--space-3) var(--space-5);
+            background: linear-gradient(135deg, var(--primary-bright), var(--primary));
+            color: white; border: none; border-radius: var(--radius-md);
+            font-weight: 700; font-size: var(--font-size-base); cursor: pointer;
+            box-shadow: 0 0 16px var(--primary-glow); transition: all 0.2s;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 0 24px var(--primary-glow); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .section {
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+            margin-bottom: var(--space-4);
+        }
+        .section__title {
+            font-size: var(--font-size-lg); font-weight: 700; color: var(--text-primary);
+            margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2);
+        }
+
+        .week-block {
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-3); margin-bottom: var(--space-3);
+            background: rgba(10, 14, 31, 0.3);
+        }
+        .week-block__head { font-weight: 700; color: var(--accent-cool-bright); margin-bottom: var(--space-2); }
+        .day-block {
+            display: flex; gap: var(--space-3);
+            padding: var(--space-2) var(--space-3);
+            background: rgba(77, 208, 255, 0.04);
+            border-left: 3px solid var(--accent-cool);
+            border-radius: 4px;
+            margin-bottom: var(--space-2);
+        }
+        .day-block__no { font-weight: 700; color: var(--accent-cool-bright); min-width: 32px; }
+        .day-block__name { font-weight: 600; color: var(--text-primary); margin-right: var(--space-2); }
+        .day-block__exercises { color: var(--text-secondary); font-size: var(--font-size-sm); line-height: 1.6; }
+        .day-block__ex { display: inline-block; margin-right: var(--space-2); }
+        .day-block__ex strong { color: var(--text-primary); font-weight: 600; }
+        .day-block__rest { padding: var(--space-2) var(--space-3); color: var(--text-muted); font-style: italic; }
+
+        .alert {
+            padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
+            margin-bottom: var(--space-3); font-size: var(--font-size-sm);
+            border: 1px solid;
+        }
+        .alert--success { background: rgba(34, 197, 94, 0.12); color: #22c55e; border-color: rgba(34, 197, 94, 0.3); }
+        .alert--error { background: rgba(244, 63, 94, 0.12); color: #f43f5e; border-color: rgba(244, 63, 94, 0.3); }
+
+        .loading {
+            text-align: center; padding: var(--space-8); color: var(--text-muted);
+        }
+        .error-state {
+            text-align: center; padding: var(--space-8);
+            background: var(--bg-card);
+            border: 1px dashed var(--border-base);
+            border-radius: var(--radius-lg);
+        }
+        .error-state__art { font-size: 64px; margin-bottom: var(--space-3); }
+        .error-state__title { font-size: var(--font-size-lg); color: var(--text-primary); margin-bottom: var(--space-2); }
+        .error-state__desc { color: var(--text-muted); margin-bottom: var(--space-4); }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <a href="/c/" class="navbar__brand">
+            <span class="navbar__logo">💪</span>
+            <span class="navbar__title">FitHub</span>
+        </a>
+        <nav class="navbar__nav">
+            <a href="/c/" class="navbar__link">动作库</a>
+            <a href="/c/plans.html" class="navbar__link">训练计划</a>
+            <a href="/c/templates.html" class="navbar__link navbar__link--active">模板市场</a>
+            <a href="#" class="navbar__link" data-requires-auth>个人中心</a>
+        </nav>
+        <div class="navbar__auth">
+            <a href="/admin/login.html" class="btn btn--ghost">⚙️ 后台</a>
+            <a href="/c/login.html" class="btn btn--ghost" id="navLogin">登录</a>
+            <a href="/c/register.html" class="btn btn--primary" id="navRegister">注册</a>
+            <button class="btn btn--ghost" id="navLogout" style="display:none">退出</button>
+        </div>
+    </header>
+
+    <main class="detail-page">
+        <a href="/c/templates.html" class="back-link">← 返回模板市场</a>
+
+        <div id="alertBox"></div>
+
+        <div id="content">
+            <div class="loading">加载中...</div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>动作媒体 © Gym visual · <a href="https://gymvisual.com/" target="_blank" rel="noopener">来源</a></p>
+        <p>FitHub · v0.2.0</p>
+    </footer>
+
+    <script type="module">
+        import { api, tokenStore } from './js/api.js';
+
+        const GOAL_NAMES = { muscle_gain: '增肌', fat_loss: '减脂', body_shape: '塑形', endurance: '体能' };
+        const LEVEL_NAMES = { beginner: '新手', intermediate: '有基础', advanced: '老手' };
+        const LEVEL_CLASS = { beginner: 'tag--level-beginner', intermediate: 'tag--level-intermediate', advanced: 'tag--level-advanced' };
+
+        function escapeHtml(s) {
+            if (s == null) return '';
+            return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+        }
+        function fmtDt(s) { if (!s) return ''; return new Date(s).toLocaleString('zh-CN', { hour12: false }); }
+
+        function updateAuthUI() {
+            const loggedIn = tokenStore.isLoggedIn;
+            document.getElementById('navLogin').style.display = loggedIn ? 'none' : 'inline-flex';
+            document.getElementById('navRegister').style.display = loggedIn ? 'none' : 'inline-flex';
+            const lo = document.getElementById('navLogout');
+            if (loggedIn) {
+                lo.style.display = 'inline-flex';
+                lo.textContent = `退出（${tokenStore.user?.nickname || tokenStore.user?.username}）`;
+                lo.onclick = () => { if (confirm('确定退出？')) { tokenStore.clear(); location.reload(); } };
+            } else lo.style.display = 'none';
+        }
+
+        function showAlert(msg, type) {
+            document.getElementById('alertBox').innerHTML =
+                `<div class="alert alert--${type}">${escapeHtml(msg)}</div>`;
+            if (type === 'success') setTimeout(() => { document.getElementById('alertBox').innerHTML = ''; }, 4000);
+        }
+
+        function getId() {
+            const m = location.search.match(/[?&]id=(\d+)/);
+            return m ? parseInt(m[1], 10) : null;
+        }
+
+        async function load() {
+            const id = getId();
+            if (!id) {
+                document.getElementById('content').innerHTML = `
+                    <div class="error-state">
+                        <div class="error-state__art">❌</div>
+                        <div class="error-state__title">参数错误</div>
+                        <div class="error-state__desc">缺少模板 id</div>
+                        <a href="/c/templates.html" class="btn-primary">返回市场</a>
+                    </div>`;
+                return;
+            }
+            try {
+                const t = await api.get(`/plan-templates/${id}`);
+                render(t);
+            } catch (err) {
+                document.getElementById('content').innerHTML = `
+                    <div class="error-state">
+                        <div class="error-state__art">🔍</div>
+                        <div class="error-state__title">模板不可用</div>
+                        <div class="error-state__desc">${escapeHtml(err.message)}</div>
+                        <a href="/c/templates.html" class="btn-primary">返回市场</a>
+                    </div>`;
+            }
+        }
+
+        function render(t) {
+            const weekCount = (t.weeks || []).length;
+            const rating = t.avg_rating != null ? Number(t.avg_rating).toFixed(1) : '—';
+            const html = `
+                <div class="hero">
+                    <div class="hero__head">
+                        <div class="hero__name">${escapeHtml(t.name)}</div>
+                    </div>
+                    <div class="hero__meta">
+                        <span class="tag tag--goal">🎯 ${GOAL_NAMES[t.goal] || t.goal}</span>
+                        <span class="tag ${LEVEL_CLASS[t.level] || ''}">👤 ${LEVEL_NAMES[t.level] || t.level}</span>
+                        <span class="tag tag--muted">📅 ${weekCount} 周</span>
+                        ${t.published_at ? `<span class="tag tag--muted">🕐 发布于 ${fmtDt(t.published_at).slice(0, 10)}</span>` : ''}
+                    </div>
+                    ${t.description ? `<div class="hero__desc">${escapeHtml(t.description)}</div>` : ''}
+                    <div class="hero__stats">
+                        <div>
+                            <div class="hero__stat-label">👥 累计采用</div>
+                            <div class="hero__stat-value hero__stat-value--hot">${t.use_count}</div>
+                        </div>
+                        <div>
+                            <div class="hero__stat-label">⭐ 用户评分</div>
+                            <div class="hero__stat-value">${rating}</div>
+                        </div>
+                        <div>
+                            <div class="hero__stat-label">💬 评论数</div>
+                            <div class="hero__stat-value">${t.review_count || 0}</div>
+                        </div>
+                        <div>
+                            <div class="hero__stat-label">📅 训练周期</div>
+                            <div class="hero__stat-value">${weekCount}<span style="font-size:var(--font-size-sm);color:var(--text-muted);font-weight:400;"> 周</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions-bar">
+                    <div class="actions-bar__hint">⚡ 一键套用，自动复制周训练结构到你的训练计划</div>
+                    <button class="btn-primary" id="btnAdopt">🚀 采用此模板</button>
+                </div>
+
+                <div class="section">
+                    <div class="section__title">📋 训练结构预览</div>
+                    ${renderWeeks(t.weeks || [])}
+                </div>
+            `;
+            document.getElementById('content').innerHTML = html;
+            document.getElementById('btnAdopt').addEventListener('click', () => adopt(t));
+        }
+
+        function renderWeeks(weeks) {
+            if (weeks.length === 0) {
+                return `<div style="color:var(--text-muted);padding:var(--space-3);">（暂无周训练数据）</div>`;
+            }
+            return weeks.map((w) => `
+                <div class="week-block">
+                    <div class="week-block__head">第 ${w.week} 周</div>
+                    ${(w.days || []).map((d) => `
+                        <div class="day-block">
+                            <span class="day-block__no">D${d.day}</span>
+                            <span class="day-block__name">${escapeHtml(d.name || '训练')}</span>
+                            <span class="day-block__exercises">
+                                ${(d.exercises || []).map((ex) => `
+                                    <span class="day-block__ex">
+                                        <strong>${escapeHtml(ex.exercise_id)}</strong>
+                                        ${ex.sets ? `· ${ex.sets}组` : ''}${ex.reps ? `× ${ex.reps}次` : ''}
+                                    </span>
+                                `).join('')}
+                            </span>
+                        </div>
+                    `).join('') || '<div class="day-block__rest">（休息周）</div>'}
+                </div>
+            `).join('');
+        }
+
+        async function adopt(t) {
+            if (!tokenStore.isLoggedIn) {
+                if (confirm('采用模板需要先登录，是否前往登录？')) {
+                    location.href = '/c/login.html?redirect=' + encodeURIComponent(location.href);
+                }
+                return;
+            }
+            const btn = document.getElementById('btnAdopt');
+            btn.disabled = true;
+            btn.textContent = '⏳ 生成中...';
+            try {
+                const r = await api.post(`/plan-templates/${t.id}/adopt`, {});
+                showAlert('✅ 已采用！正在跳转到计划详情...', 'success');
+                setTimeout(() => {
+                    location.href = `/c/plan-detail.html?id=${r.plan_id}`;
+                }, 1200);
+            } catch (err) {
+                showAlert('采用失败：' + err.message, 'error');
+                btn.disabled = false;
+                btn.textContent = '🚀 采用此模板';
+            }
+        }
+
+        updateAuthUI();
+        load();
+    </script>
+</body>
+</html>

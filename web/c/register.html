@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 · FitHub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle,
+                rgba(255, 107, 53, 0.15) 0%,
+                rgba(139, 92, 246, 0.08) 30%,
+                transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        .auth-card {
+            width: 100%;
+            max-width: 440px;
+            background: rgba(18, 18, 28, 0.7);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            padding: var(--space-6);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-subtle);
+            box-shadow:
+                0 24px 64px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: var(--space-5); right: var(--space-5);
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-cool), var(--primary), transparent);
+            opacity: 0.6;
+        }
+        .auth-card__title {
+            font-size: var(--font-size-2xl);
+            font-weight: 800;
+            margin-bottom: var(--space-2);
+            text-align: center;
+            background: linear-gradient(135deg, var(--accent-cool) 0%, var(--primary-bright) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 24px var(--accent-cool-glow);
+        }
+        .auth-card__subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--space-5);
+            letter-spacing: 2px;
+        }
+        .auth-card__form-group { margin-bottom: var(--space-4); }
+        .auth-card__form-group label {
+            display: block;
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            margin-bottom: var(--space-2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        .auth-card__error {
+            color: var(--primary-bright);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--space-3);
+            min-height: 20px;
+            text-shadow: 0 0 8px var(--primary-glow);
+        }
+        .auth-card__submit {
+            width: 100%;
+            justify-content: center;
+            padding: var(--space-3) var(--space-4);
+            font-size: var(--font-size-base);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .auth-card__footer {
+            text-align: center;
+            margin-top: var(--space-5);
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+        }
+        .auth-card__footer a {
+            color: var(--accent-cool);
+            text-shadow: 0 0 6px var(--accent-cool-glow);
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <h1 class="auth-card__title">💪 FitHub 注册</h1>
+        <p class="auth-card__subtitle">JOIN THE TRAINING</p>
+        <form id="registerForm">
+            <div class="auth-card__form-group">
+                <label class="sidebar__label">用户名</label>
+                <input type="text" id="username" class="input" required minlength="3" maxlength="32" placeholder="中英文/数字/下划线">
+            </div>
+            <div class="auth-card__form-group">
+                <label class="sidebar__label">密码</label>
+                <input type="password" id="password" class="input" required minlength="8" maxlength="20" placeholder="8-20 字符，必须含字母和数字">
+            </div>
+            <div class="auth-card__form-group">
+                <label class="sidebar__label">确认密码</label>
+                <input type="password" id="passwordConfirm" class="input" required minlength="8" maxlength="20">
+            </div>
+            <div class="auth-card__form-group">
+                <label class="sidebar__label">昵称（可选）</label>
+                <input type="text" id="nickname" class="input" maxlength="32" placeholder="留空则使用用户名">
+            </div>
+            <div class="auth-card__error" id="errorMsg"></div>
+            <button type="submit" class="btn btn--primary auth-card__submit">注册</button>
+        </form>
+        <div class="auth-card__footer">
+            已有账号？<a href="/c/login.html">立即登录</a><br>
+            <a href="/c/">← 返回首页</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { api, tokenStore } from './js/api.js';
+
+        const form = document.getElementById('registerForm');
+        const errorMsg = document.getElementById('errorMsg');
+
+        if (tokenStore.isLoggedIn) {
+            window.location.href = '/c/';
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMsg.textContent = '';
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('passwordConfirm').value;
+            const nickname = document.getElementById('nickname').value.trim() || null;
+
+            if (password !== passwordConfirm) {
+                errorMsg.textContent = '两次输入的密码不一致';
+                return;
+            }
+
+            const submitBtn = form.querySelector('button');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '注册中...';
+
+            try {
+                const data = await api.auth.register({ username, password, nickname });
+                tokenStore.set(data.access_token, data.refresh_token, data.user);
+                window.location.href = '/c/';
+            } catch (err) {
+                errorMsg.textContent = err.message || '注册失败';
+                submitBtn.disabled = false;
+                submitBtn.textContent = '注册';
+            }
+        });
+    </script>
+</body>
+</html>

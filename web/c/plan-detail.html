@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计划详情 · FitHub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .detail-page {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: var(--space-6) var(--space-5);
+        }
+        .back-bar {
+            margin-bottom: var(--space-4);
+        }
+        .back-bar__btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2) var(--space-4);
+            background: var(--bg-card);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            backdrop-filter: blur(12px);
+            transition: all 0.2s var(--ease);
+        }
+        .back-bar__btn:hover {
+            border-color: var(--accent-cool);
+            color: var(--accent-cool-bright);
+            box-shadow: 0 0 12px var(--accent-cool-glow);
+            transform: translateX(-2px);
+        }
+
+        /* 弹窗 */
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal__backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(5, 5, 9, 0.7);
+            backdrop-filter: blur(8px);
+        }
+        .modal__box {
+            position: relative;
+            width: 90%;
+            max-width: 480px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 32px rgba(77, 208, 255, 0.1);
+        }
+        .modal__title {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-5);
+            text-shadow: 0 0 12px var(--accent-cool-glow);
+        }
+        .modal__field { margin-bottom: var(--space-4); }
+        .modal__field label {
+            display: block;
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            margin-bottom: var(--space-2);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .modal__actions {
+            display: flex;
+            gap: var(--space-3);
+            justify-content: flex-end;
+            margin-top: var(--space-5);
+        }
+        .detail-header {
+            background: rgba(30, 36, 70, 0.55);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-xl);
+            padding: var(--space-5);
+            margin-bottom: var(--space-5);
+            position: relative;
+            overflow: hidden;
+        }
+        .detail-header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), var(--accent-cool), transparent);
+            opacity: 0.6;
+        }
+        .detail-header__row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-4);
+        }
+        .detail-header__name {
+            font-size: var(--font-size-2xl);
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+        .detail-header__meta {
+            display: flex;
+            gap: var(--space-4);
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+        }
+        .detail-header__progress {
+            text-align: right;
+            min-width: 200px;
+        }
+        .detail-header__progress-pct {
+            font-size: var(--font-size-2xl);
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-cool), var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 20px var(--accent-cool-glow);
+        }
+        .detail-header__progress-bar {
+            height: 6px;
+            background: rgba(10, 14, 31, 0.5);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: var(--space-2);
+        }
+        .detail-header__progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cool), var(--primary));
+            box-shadow: 0 0 12px var(--accent-cool-glow);
+        }
+
+        .week-tabs {
+            display: flex;
+            gap: var(--space-2);
+            margin-bottom: var(--space-4);
+            overflow-x: auto;
+        }
+        .week-tab {
+            padding: var(--space-2) var(--space-4);
+            background: var(--bg-card);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            transition: all 0.3s var(--ease);
+        }
+        .week-tab:hover { border-color: var(--accent-cool); }
+        .week-tab--active {
+            border-color: var(--primary);
+            background: rgba(255, 122, 69, 0.15);
+            color: var(--primary-bright);
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        .day-card {
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+            margin-bottom: var(--space-4);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        /* 横轴日历（week × 7 day 列） */
+        .week-calendar {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: var(--space-3);
+            margin-bottom: var(--space-4);
+        }
+        .week-day {
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-3);
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            transition: border-color 0.2s;
+        }
+        .week-day:hover { border-color: var(--border-base); }
+        .week-day--rest {
+            opacity: 0.5;
+            background: rgba(10, 14, 31, 0.3);
+        }
+        .week-day--done {
+            border-color: var(--accent-mint);
+            background: rgba(78, 236, 200, 0.05);
+        }
+        .week-day__head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: var(--space-2);
+            margin-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .week-day__title {
+            font-size: var(--font-size-xs);
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .week-day__badge {
+            padding: 2px 8px;
+            background: var(--accent-cool);
+            color: var(--bg-void);
+            border-radius: var(--radius-pill, 999px);
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .week-day__badge--done {
+            background: var(--accent-mint);
+        }
+        .week-day__badge--rest {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border-subtle);
+        }
+        .week-day__count {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: var(--space-2);
+        }
+        .week-day__exercises {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            flex: 1;
+        }
+        .week-day__empty {
+            color: var(--text-muted);
+            font-size: var(--font-size-xs);
+            text-align: center;
+            padding: var(--space-3);
+            font-style: italic;
+        }
+        @media (max-width: 900px) {
+            .week-calendar { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .week-calendar { grid-template-columns: 1fr; }
+        }
+
+        /* 迷你动作卡片（横轴日历内） */
+        .ex-mini {
+            display: flex;
+            gap: var(--space-2);
+            padding: var(--space-2);
+            background: rgba(10, 14, 31, 0.5);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            transition: border-color 0.2s;
+            align-items: center;
+        }
+        .ex-mini:hover { border-color: var(--accent-cool); }
+        .ex-mini--done { border-color: var(--accent-mint); background: rgba(78, 236, 200, 0.05); }
+        .ex-mini__img {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            background: white;
+            border: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+        .ex-mini__info { flex: 1; min-width: 0; overflow: hidden; }
+        .ex-mini__name {
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-bottom: 4px;
+        }
+        .ex-mini--done .ex-mini__name { color: var(--accent-mint); }
+        .ex-mini__sets {
+            display: flex;
+            gap: 3px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .set-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: transparent;
+            border: 1px solid var(--border-base);
+            color: var(--text-muted);
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            padding: 0;
+            line-height: 1;
+        }
+        .set-dot:hover { border-color: var(--accent-cool); color: var(--accent-cool); }
+        .set-dot--done {
+            background: var(--accent-mint);
+            border-color: var(--accent-mint);
+            color: var(--bg-void);
+            box-shadow: 0 0 6px rgba(78, 236, 200, 0.4);
+        }
+        .set-dot--done:hover { background: var(--accent-mint); }
+        .day-card__head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-4);
+            padding-bottom: var(--space-3);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .day-card__title { font-size: var(--font-size-lg); font-weight: 700; color: var(--text-primary); }
+        .day-card__status {
+            padding: 4px var(--space-3);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        .day-card__status--done {
+            background: rgba(78, 236, 200, 0.15);
+            color: var(--accent-mint);
+            border: 1px solid rgba(78, 236, 200, 0.4);
+        }
+        .day-card__status--pending {
+            background: rgba(255, 122, 69, 0.15);
+            color: var(--primary-bright);
+            border: 1px solid rgba(255, 122, 69, 0.4);
+        }
+
+        .exercise-row {
+            display: grid;
+            grid-template-columns: 60px 1fr auto;
+            gap: var(--space-3);
+            align-items: center;
+            padding: var(--space-3);
+            margin-bottom: var(--space-2);
+            background: rgba(10, 14, 31, 0.4);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            transition: all 0.3s var(--ease);
+        }
+        .exercise-row--done {
+            border-color: rgba(78, 236, 200, 0.3);
+            background: rgba(78, 236, 200, 0.05);
+        }
+        .exercise-row__img {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            background: white;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .exercise-row__img:hover { transform: scale(1.1); }
+        .exercise-row__name-zh { color: var(--text-primary); font-weight: 500; }
+        .exercise-row__name-en { color: var(--text-muted); font-size: var(--font-size-xs); margin-top: 2px; }
+        .exercise-row__params { color: var(--text-secondary); font-size: var(--font-size-sm); margin-top: var(--space-1); }
+
+        .sets-tracker {
+            display: flex;
+            gap: var(--space-1);
+        }
+        .set-checkbox {
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--border-base);
+            border-radius: var(--radius-sm);
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-weight: 700;
+            transition: all 0.2s var(--ease);
+        }
+        .set-checkbox:hover { border-color: var(--accent-cool); color: var(--accent-cool); }
+        .set-checkbox--checked {
+            background: var(--accent-cool);
+            border-color: var(--accent-cool);
+            color: var(--bg-void);
+            box-shadow: 0 0 12px var(--accent-cool-glow);
+        }
+
+        .day-actions {
+            margin-top: var(--space-4);
+            padding-top: var(--space-3);
+            border-top: 1px solid var(--border-subtle);
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <a href="/c/" class="navbar__brand">
+            <span class="navbar__logo">💪</span>
+            <span class="navbar__title">FitHub</span>
+        </a>
+        <nav class="navbar__nav">
+            <a href="/c/" class="navbar__link">动作库</a>
+            <a href="/c/plans.html" class="navbar__link navbar__link--active">训练计划</a>
+            <a href="#" class="navbar__link" data-requires-auth>个人中心</a>
+        </nav>
+        <div class="navbar__auth">
+            <a href="/admin/login.html" class="btn btn--ghost">⚙️ 后台</a>
+            <a href="/c/login.html" class="btn btn--ghost" id="navLogin">登录</a>
+            <a href="/c/register.html" class="btn btn--primary" id="navRegister">注册</a>
+            <button class="btn btn--ghost" id="navLogout" style="display:none">退出</button>
+        </div>
+    </header>
+
+    <main class="detail-page">
+        <!-- 返回按钮 -->
+        <div class="back-bar">
+            <a href="/c/plans.html" class="back-bar__btn">
+                ← 返回训练计划
+            </a>
+        </div>
+
+        <!-- 编辑弹窗 -->
+        <div id="editModal" class="modal" style="display:none;">
+            <div class="modal__backdrop"></div>
+            <div class="modal__box">
+                <h2 class="modal__title">✏️ 编辑计划</h2>
+                <div class="modal__field">
+                    <label>计划名称</label>
+                    <input type="text" id="editName" class="input" maxlength="64">
+                </div>
+                <div class="modal__field">
+                    <label>训练目标</label>
+                    <select id="editGoal" class="input">
+                        <option value="muscle_gain">💪 增肌</option>
+                        <option value="fat_loss">🔥 减脂</option>
+                        <option value="body_shape">✨ 塑形</option>
+                        <option value="endurance">🏃 体能</option>
+                    </select>
+                </div>
+                <div class="modal__field">
+                    <label>每周训练天数</label>
+                    <input type="number" id="editDays" class="input" min="1" max="7">
+                </div>
+                <div class="modal__actions">
+                    <button class="btn btn--ghost" id="editCancel">取消</button>
+                    <button class="btn btn--primary" id="editSave">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="planDetail">
+            <div class="loading">加载中...</div>
+        </div>
+    </main>
+
+    <footer class="footer"><p>FitHub · v0.2.0</p></footer>
+
+    <script type="module">
+        import { api, tokenStore } from './js/api.js';
+        import { t } from './js/translations.js';
+
+        const params = new URLSearchParams(location.search);
+        const planId = +params.get('id');
+
+        const state = {
+            plan: null,
+            records: [],
+            exercises: {},
+            currentWeek: 1,
+        };
+
+        const GOAL = { muscle_gain: '增肌', fat_loss: '减脂', body_shape: '塑形', endurance: '体能' };
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+        }
+
+        // 数据集的 image 是相对路径（如 images/0001-xxx.jpg），转成 /static/...
+        function resolveMediaUrl(path) {
+            if (!path) return '';
+            if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) return path;
+            if (path.startsWith('images/') || path.startsWith('videos/')) return '/static/' + path;
+            return path;
+        }
+
+        function updateAuthUI() {
+            const loggedIn = tokenStore.isLoggedIn;
+            document.getElementById('navLogin').style.display = loggedIn ? 'none' : 'inline-flex';
+            document.getElementById('navRegister').style.display = loggedIn ? 'none' : 'inline-flex';
+            const lo = document.getElementById('navLogout');
+            if (loggedIn) {
+                lo.style.display = 'inline-flex';
+                lo.textContent = `退出（${tokenStore.user?.nickname || tokenStore.user?.username}）`;
+                lo.onclick = () => { if (confirm('确定退出？')) { tokenStore.clear(); location.href = '/c/login.html'; } };
+            } else lo.style.display = 'none';
+            if (!loggedIn) location.href = '/c/login.html';
+        }
+
+        function getRecordKey(week, day, exerciseId) {
+            return `${week}|${day}|${exerciseId}`;
+        }
+
+        function isDayCompleted(week, day) {
+            const dayPlan = state.plan.weeks.find(w => w.week === week)?.days.find(d => d.day === day);
+            if (!dayPlan) return false;
+            return dayPlan.exercises.every(ex => {
+                const rec = state.records.find(r =>
+                    r.plan_week === week && r.plan_day === day && r.exercise_id === ex.exercise_id
+                );
+                return rec && rec.completed_sets.filter(Boolean).length > 0;
+            });
+        }
+
+        function render() {
+            if (!state.plan || !state.exercises) return;
+            const plan = state.plan;
+            const wrap = document.getElementById('planDetail');
+
+            const totalDays = plan.weeks.reduce((acc, w) => acc + w.days.length, 0);
+            const completedDays = plan.weeks.reduce((acc, w) => acc + w.days.filter(d => isDayCompleted(w.week, d.day)).length, 0);
+            const pct = totalDays > 0 ? Math.round(completedDays / totalDays * 100) : 0;
+
+            const currentWeekData = plan.weeks.find(w => w.week === state.currentWeek);
+
+            wrap.innerHTML = `
+                <div class="detail-header">
+                    <div class="detail-header__row">
+                        <div style="flex:1;">
+                            <div style="display:flex;align-items:center;gap:var(--space-3);">
+                                <h1 class="detail-header__name" style="margin:0;">${escapeHtml(plan.name)} ${plan.is_current === 1 ? '<span style="font-size:12px;background:var(--primary);padding:2px 8px;border-radius:4px;margin-left:8px;">CURRENT</span>' : ''}</h1>
+                                <button class="btn btn--ghost edit-plan-btn" style="padding:var(--space-1) var(--space-2);font-size:var(--font-size-xs);">✏️ 编辑</button>
+                                ${plan.is_current !== 1 ? '<button class="btn btn--ghost set-current-btn" style="padding:var(--space-1) var(--space-2);font-size:var(--font-size-xs);">⭐ 设为当前</button>' : ''}
+                            </div>
+                            <div class="detail-header__meta">
+                                <span>🎯 ${GOAL[plan.goal]}</span>
+                                <span>📅 每周 ${plan.days_per_week} 天</span>
+                                <span>📝 ${plan.weeks.length} 周</span>
+                            </div>
+                        </div>
+                        <div class="detail-header__progress">
+                            <div class="detail-header__progress-pct">${pct}%</div>
+                            <div style="color:var(--text-muted);font-size:var(--font-size-xs);">${completedDays} / ${totalDays} 天已完成</div>
+                            <div class="detail-header__progress-bar"><div class="detail-header__progress-fill" style="width:${pct}%"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="week-tabs">
+                    ${plan.weeks.map(w => `
+                        <div class="week-tab ${w.week === state.currentWeek ? 'week-tab--active' : ''}" data-week="${w.week}">第 ${w.week} 周</div>
+                    `).join('')}
+                </div>
+
+                <div id="weekContent">
+                    ${currentWeekData ? renderWeekCalendar(currentWeekData.week, currentWeekData) : '<p style="color:var(--text-muted);">该周暂无训练安排</p>'}
+                </div>
+            `;
+
+            wrap.querySelectorAll('.week-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    state.currentWeek = +tab.dataset.week;
+                    render();
+                });
+            });
+
+            wrap.querySelectorAll('.set-dot').forEach(cb => {
+                cb.addEventListener('click', () => toggleSet(cb));
+            });
+
+            wrap.querySelectorAll('.edit-plan-btn').forEach(btn => {
+                btn.addEventListener('click', () => openEditModal());
+            });
+            wrap.querySelectorAll('.set-current-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    if (!confirm('设为当前计划？其他计划会自动取消当前状态。')) return;
+                    try {
+                        await api.patch(`/plans/${state.plan.id}`, { is_current: true });
+                        location.reload();
+                    } catch (e) { alert('操作失败：' + e.message); }
+                });
+            });
+        }
+
+        function renderWeekCalendar(week, weekData) {
+            // 横轴7列：周一~周日（基于 plan.days_per_week 自动显示训练日 + 休息日）
+            const daysPerWeek = state.plan?.days_per_week || 7;
+            const days = [];
+            for (let i = 1; i <= 7; i++) {
+                const d = (weekData.days || []).find(x => x.day === i);
+                days.push({ idx: i, data: d });
+            }
+
+            return `
+                <div class="week-calendar">
+                    ${days.map(({ idx, data }) => {
+                        const dayName = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][idx - 1];
+                        if (!data) {
+                            // 休息日
+                            return `
+                                <div class="week-day week-day--rest">
+                                    <div class="week-day__head">
+                                        <div class="week-day__title">${dayName}</div>
+                                        <div class="week-day__badge week-day__badge--rest">休息</div>
+                                    </div>
+                                    <div class="week-day__empty">无训练</div>
+                                </div>
+                            `;
+                        }
+                        const done = isDayCompleted(week, idx);
+                        const exs = data.exercises || [];
+                        return `
+                            <div class="week-day ${done ? 'week-day--done' : ''}">
+                                <div class="week-day__head">
+                                    <div class="week-day__title">${dayName} · Day ${idx}</div>
+                                    <div class="week-day__badge ${done ? 'week-day__badge--done' : ''}">${done ? '✓' : idx}</div>
+                                </div>
+                                <div class="week-day__count">${exs.length} 个动作 · ${escapeHtml(data.name || '训练')}</div>
+                                <div class="week-day__exercises">
+                                    ${exs.length === 0 ? '<div class="week-day__empty">未安排动作</div>' :
+                                      exs.map(ex => renderExerciseCard(week, idx, ex)).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderExerciseCard(week, day, ex) {
+            const detail = state.exercises[ex.exercise_id];
+            const rec = state.records.find(r =>
+                r.plan_week === week && r.plan_day === day && r.exercise_id === ex.exercise_id);
+            const completedSets = rec?.completed_sets || new Array(ex.sets).fill(false);
+            const isDone = completedSets.filter(Boolean).length === ex.sets;
+            return `
+                <div class="ex-mini ${isDone ? 'ex-mini--done' : ''}" data-week="${week}" data-day="${day}" data-exercise="${ex.exercise_id}">
+                    <img class="ex-mini__img"
+                         src="${resolveMediaUrl(detail?.image || '')}"
+                         data-gif="${resolveMediaUrl(detail?.gif_url || '')}"
+                         loading="lazy"
+                         onmouseenter="if(this.dataset.gif){const o=this.src;this.src=this.dataset.gif;this.dataset.o=o;}"
+                         onmouseleave="if(this.dataset.o){this.src=this.dataset.o;}"
+                         onerror="this.style.opacity='0.3'">
+                    <div class="ex-mini__info">
+                        <div class="ex-mini__name">${escapeHtml(detail?.name_zh || ex.exercise_id)}</div>
+                        <div class="ex-mini__sets">
+                            ${completedSets.map((c, i) => `
+                                <button class="set-dot ${c ? 'set-dot--done' : ''}"
+                                        data-week="${week}" data-day="${day}"
+                                        data-exercise="${ex.exercise_id}" data-set="${i}"
+                                        title="第 ${i + 1} 组">${c ? '✓' : (i + 1)}</button>
+                            `).join('')}
+                            <span style="color:var(--text-muted);font-size:10px;margin-left:auto;">${ex.sets}×${ex.reps}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderExerciseRow(week, day, ex) {
+            const detail = state.exercises[ex.exercise_id];
+            const rec = state.records.find(r => r.plan_week === week && r.plan_day === day && r.exercise_id === ex.exercise_id);
+            const completedSets = rec?.completed_sets || new Array(ex.sets).fill(false);
+            const isDone = completedSets.filter(Boolean).length === ex.sets;
+
+            return `
+                <div class="exercise-row ${isDone ? 'exercise-row--done' : ''}" data-week="${week}" data-day="${day}" data-exercise="${ex.exercise_id}">
+                    <a href="/c/detail.html?id=${ex.exercise_id}">
+                        <img class="exercise-row__img"
+                             src="${resolveMediaUrl(detail?.image || '')}"
+                             data-gif="${resolveMediaUrl(detail?.gif_url || '')}"
+                             loading="lazy"
+                             onmouseenter="if(this.dataset.gif){const o=this.src;this.src=this.dataset.gif;this.dataset.o=o;}"
+                             onmouseleave="if(this.dataset.o){this.src=this.dataset.o;}"
+                             onerror="this.style.opacity='0.3'">
+                    </a>
+                    <div>
+                        <div class="exercise-row__name-zh">${escapeHtml(detail?.name_zh || ex.exercise_id)}</div>
+                        <div class="exercise-row__name-en">${escapeHtml(detail?.name_en || '')}</div>
+                        <div class="exercise-row__params">${ex.sets} 组 × ${ex.reps} 次${ex.weight_kg ? ` @ ${ex.weight_kg}kg` : ''}</div>
+                    </div>
+                    <div class="sets-tracker">
+                        ${completedSets.map((checked, i) => `
+                            <button class="set-checkbox ${checked ? 'set-checkbox--checked' : ''}"
+                                    data-week="${week}" data-day="${day}"
+                                    data-exercise="${ex.exercise_id}"
+                                    data-set="${i}">${i + 1}</button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function toggleSet(btn) {
+            const week = +btn.dataset.week;
+            const day = +btn.dataset.day;
+            const exerciseId = btn.dataset.exercise;
+            const setIdx = +btn.dataset.set;
+
+            const ex = state.plan.weeks.find(w => w.week === week).days.find(d => d.day === day).exercises.find(e => e.exercise_id === exerciseId);
+            const totalSets = ex.sets;
+
+            // 找已有记录，没有则创建
+            let rec = state.records.find(r => r.plan_week === week && r.plan_day === day && r.exercise_id === exerciseId);
+            let completedSets;
+            if (!rec) {
+                completedSets = new Array(totalSets).fill(false);
+                completedSets[setIdx] = true;
+            } else {
+                completedSets = [...rec.completed_sets];
+                if (completedSets.length < totalSets) {
+                    while (completedSets.length < totalSets) completedSets.push(false);
+                }
+                completedSets[setIdx] = !completedSets[setIdx];
+            }
+
+            try {
+                btn.disabled = true;
+                const updated = await api.post(`/plans/${planId}/records`, {
+                    plan_id: planId,
+                    exercise_id: exerciseId,
+                    plan_week: week,
+                    plan_day: day,
+                    completed_sets: completedSets,
+                });
+                // 更新本地状态
+                const idx = state.records.findIndex(r => r.plan_week === week && r.plan_day === day && r.exercise_id === exerciseId);
+                if (idx >= 0) state.records[idx] = updated;
+                else state.records.push(updated);
+                render();
+            } catch (err) {
+                alert('打卡失败：' + err.message);
+                btn.disabled = false;
+            }
+        }
+
+        async function load() {
+            try {
+                const plan = await api.get(`/plans/${planId}`);
+                state.plan = plan;
+
+                // 拉取所有动作详情（用 filter 拿到全部）
+                const exList = await api.get('/exercises?page_size=1324');
+                state.exercises = {};
+                exList.items.forEach(e => { state.exercises[e.id] = e; });
+
+                // 拉取所有打卡记录
+                state.records = await api.get(`/plans/${planId}/records`);
+
+                render();
+            } catch (err) {
+                document.getElementById('planDetail').innerHTML = `<div class="empty-state">❌ 加载失败：${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        // ============ 编辑弹窗 ============
+        function openEditModal() {
+            const plan = state.plan;
+            if (!plan) return;
+            document.getElementById('editName').value = plan.name;
+            document.getElementById('editGoal').value = plan.goal;
+            document.getElementById('editDays').value = plan.days_per_week;
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        async function saveEdit() {
+            const plan = state.plan;
+            const name = document.getElementById('editName').value.trim();
+            const goal = document.getElementById('editGoal').value;
+            const days = +document.getElementById('editDays').value;
+
+            if (!name) { alert('请输入计划名称'); return; }
+            if (days < 1 || days > 7) { alert('每周训练天数必须在 1-7 之间'); return; }
+
+            try {
+                await api.patch(`/plans/${plan.id}`, {
+                    name,
+                    goal,
+                    days_per_week: days,
+                });
+                closeEditModal();
+                location.reload();
+            } catch (e) {
+                alert('保存失败：' + e.message);
+            }
+        }
+
+        updateAuthUI();
+
+        // 绑定弹窗事件（只执行一次）
+        document.getElementById('editCancel').addEventListener('click', closeEditModal);
+        document.getElementById('editSave').addEventListener('click', saveEdit);
+        document.querySelector('#editModal .modal__backdrop').addEventListener('click', closeEditModal);
+        load();
+    </script>
+</body>
+</html>

@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新建训练计划 · FitHub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .create-page {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--space-6) var(--space-5);
+        }
+        .create-card {
+            background: rgba(30, 36, 70, 0.55);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        .create-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: var(--space-6); right: var(--space-6);
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), var(--accent-cool), transparent);
+            opacity: 0.6;
+        }
+        .step {
+            display: none;
+        }
+        .step--active { display: block; }
+        .step__title {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            color: var(--accent-cool-bright);
+            text-shadow: 0 0 12px var(--accent-cool-glow);
+            margin-bottom: var(--space-2);
+        }
+        .step__desc {
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--space-5);
+        }
+        .goal-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-3);
+        }
+        .goal-option {
+            padding: var(--space-5) var(--space-3);
+            background: rgba(10, 14, 31, 0.4);
+            border: 2px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s var(--ease);
+        }
+        .goal-option:hover { border-color: var(--accent-cool); }
+        .goal-option--selected {
+            border-color: var(--primary);
+            background: rgba(255, 122, 69, 0.1);
+            box-shadow: 0 0 16px var(--primary-glow);
+        }
+        .goal-option__emoji { font-size: 32px; margin-bottom: var(--space-2); }
+        .goal-option__name { font-weight: 600; color: var(--text-primary); }
+
+        .day-selector {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: var(--space-2);
+            margin-bottom: var(--space-5);
+        }
+        .day-chip {
+            padding: var(--space-3);
+            background: rgba(10, 14, 31, 0.4);
+            border: 2px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s var(--ease);
+        }
+        .day-chip:hover { border-color: var(--accent-cool); }
+        .day-chip--selected {
+            border-color: var(--accent-cool);
+            background: rgba(77, 208, 255, 0.15);
+            box-shadow: 0 0 12px var(--accent-cool-glow);
+            color: var(--accent-cool-bright);
+            font-weight: 700;
+        }
+        .day-chip__name { font-size: var(--font-size-xs); color: var(--text-muted); }
+        .day-chip__num { font-size: var(--font-size-lg); font-weight: 700; }
+        .day-chip--selected .day-chip__name { color: var(--accent-cool); }
+
+        .exercise-search {
+            position: relative;
+            margin-bottom: var(--space-4);
+        }
+        .exercise-search input {
+            width: 100%;
+            padding: var(--space-3);
+            background: rgba(10, 14, 31, 0.5);
+            color: var(--text-primary);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-base);
+        }
+        .exercise-search input:focus {
+            outline: none;
+            border-color: var(--accent-cool);
+            box-shadow: 0 0 0 3px rgba(77, 208, 255, 0.12);
+        }
+        .exercise-results {
+            position: absolute;
+            top: 100%;
+            left: 0; right: 0;
+            margin-top: 4px;
+            max-height: 280px;
+            overflow-y: auto;
+            background: rgba(10, 14, 31, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-cool);
+            border-radius: var(--radius-md);
+            z-index: 50;
+            display: none;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+        .exercise-results--open { display: block; }
+        .exercise-results__item {
+            padding: var(--space-3);
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            gap: var(--space-3);
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .exercise-results__item:hover { background: rgba(77, 208, 255, 0.05); }
+        .exercise-results__item:last-child { border-bottom: none; }
+        .exercise-results__item-img {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            background: white;
+            flex-shrink: 0;
+            border: 1px solid var(--border-subtle);
+        }
+        .exercise-results__item-info { flex: 1; min-width: 0; }
+        .exercise-results__item-name {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: var(--font-size-base);
+            margin-bottom: 4px;
+        }
+        .exercise-results__item-tags {
+            color: var(--text-muted);
+            font-size: var(--font-size-xs);
+            display: flex;
+            gap: var(--space-1);
+            flex-wrap: wrap;
+        }
+        .exercise-results__item-tags .tag {
+            padding: 2px 6px;
+            font-size: 10px;
+        }
+        .btn-pick {
+            padding: var(--space-2) var(--space-3);
+            background: var(--accent-cool);
+            color: var(--bg-void);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            box-shadow: 0 0 12px var(--accent-cool-glow);
+            transition: all 0.2s var(--ease);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .btn-pick:hover {
+            background: var(--accent-cool-bright);
+            transform: translateY(-1px);
+            box-shadow: 0 0 20px var(--accent-cool-glow);
+        }
+        .btn-pick--picked {
+            background: var(--accent-mint);
+            color: var(--bg-void);
+            box-shadow: 0 0 12px rgba(78, 236, 200, 0.5);
+            cursor: default;
+        }
+        .btn-pick--picked:hover {
+            background: var(--accent-mint);
+            transform: none;
+        }
+        /* 复合框：搜索 + 下拉融合 */
+        .combo-pick {
+            background: rgba(10, 14, 31, 0.4);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            transition: all 0.3s var(--ease);
+            margin-bottom: var(--space-3);
+        }
+        .combo-pick:focus-within {
+            border-color: var(--accent-cool);
+            box-shadow: 0 0 0 3px rgba(77, 208, 255, 0.12), 0 0 16px var(--accent-cool-glow);
+        }
+        .combo-pick input[type="text"] {
+            width: 100%;
+            padding: var(--space-3) var(--space-4);
+            background: rgba(10, 14, 31, 0.6);
+            color: var(--text-primary);
+            border: none;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: var(--font-size-base);
+            outline: none;
+        }
+        .combo-pick input[type="text"]::placeholder {
+            color: var(--text-muted);
+        }
+        .combo-pick__select {
+            width: 100%;
+            height: 240px;
+            padding: var(--space-2);
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+            outline: none;
+        }
+        .combo-pick__select option {
+            padding: var(--space-2) var(--space-3);
+            background: rgba(10, 14, 31, 0.95);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            margin-bottom: 2px;
+            cursor: pointer;
+        }
+        .combo-pick__select option:hover,
+        .combo-pick__select option:checked {
+            background: rgba(77, 208, 255, 0.2);
+            color: var(--accent-cool-bright);
+        }
+        .combo-pick__select option[disabled] {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        .combo-pick__add {
+            width: 100%;
+            margin-top: 0;
+            padding: var(--space-3);
+            font-size: var(--font-size-base);
+            letter-spacing: 1px;
+        }
+        .combo-pick__add:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 搜索框（精简） */
+        .body-search {
+            margin-bottom: var(--space-3);
+        }
+        .body-search input[type="text"] {
+            width: 100%;
+            padding: var(--space-3) var(--space-4);
+            background: rgba(10, 14, 31, 0.5);
+            color: var(--text-primary);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-base);
+            outline: none;
+            transition: all 0.2s var(--ease);
+        }
+        .body-search input[type="text"]:focus {
+            border-color: var(--accent-cool);
+            box-shadow: 0 0 0 3px rgba(77, 208, 255, 0.15);
+        }
+
+        /* 按部位分组 */
+        .body-groups {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-1);
+            margin-bottom: var(--space-4);
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: var(--space-1);
+        }
+
+        /* 部位分隔行（无背景、无边框）*/
+        .body-group {
+            border-radius: var(--radius-sm);
+        }
+        .body-group__head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-2) var(--space-3);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s;
+            border-radius: var(--radius-sm);
+        }
+        .body-group__head:hover { background: rgba(255, 255, 255, 0.03); }
+        .body-group__title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        .body-group__emoji { font-size: 16px; }
+        .body-group__name { color: var(--text-secondary); }
+        .body-group__count {
+            color: var(--text-muted);
+            font-size: var(--font-size-xs);
+            font-weight: 400;
+        }
+        .body-group__arrow {
+            color: var(--text-muted);
+            transition: transform 0.2s;
+            font-size: 10px;
+        }
+        .body-group--open .body-group__arrow { transform: rotate(90deg); color: var(--accent-cool); }
+        .body-group--open > .body-group__head { color: var(--accent-cool-bright); }
+        .body-group--open > .body-group__head .body-group__name { color: var(--accent-cool-bright); }
+
+        .body-group__body {
+            display: none;
+            padding: var(--space-1) 0 var(--space-2) var(--space-5);
+        }
+        .body-group--open .body-group__body { display: block; }
+
+        /* 动作行（极简：一行一项，无缩略图） */
+        .exercise-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-2) var(--space-3);
+            cursor: pointer;
+            transition: background 0.15s;
+            border-radius: var(--radius-sm);
+        }
+        .exercise-row:hover { background: rgba(77, 208, 255, 0.05); }
+        .exercise-row--picked { color: var(--accent-mint); }
+        .exercise-row--picked:hover { background: rgba(78, 236, 200, 0.05); }
+
+        .exercise-row__check {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1.5px solid var(--border-base);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: transparent;
+            font-size: 12px;
+            transition: all 0.15s;
+        }
+        .exercise-row:hover .exercise-row__check {
+            border-color: var(--accent-cool);
+        }
+        .exercise-row--picked .exercise-row__check {
+            background: var(--accent-mint);
+            border-color: var(--accent-mint);
+            color: var(--bg-void);
+            box-shadow: 0 0 8px rgba(78, 236, 200, 0.4);
+        }
+
+        .exercise-row__name {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+        }
+        .exercise-row--picked .exercise-row__name {
+            color: var(--accent-mint);
+            text-shadow: 0 0 4px rgba(78, 236, 200, 0.3);
+        }
+        .exercise-row__name-en {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            margin-left: var(--space-2);
+        }
+        .exercise-row__add {
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+            flex-shrink: 0;
+        }
+        .exercise-row:hover .exercise-row__add { color: var(--accent-cool); }
+        .exercise-row--picked .exercise-row__add {
+            color: var(--accent-mint);
+            text-shadow: 0 0 4px rgba(78, 236, 200, 0.3);
+        }
+
+        .body-groups-empty {
+            text-align: center;
+            color: var(--text-muted);
+            padding: var(--space-4);
+            font-size: var(--font-size-sm);
+        }
+        .exercise-search__hint {
+            margin-top: var(--space-2);
+            color: var(--text-muted);
+            font-size: var(--font-size-xs);
+        }
+
+        .summary-row {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .summary-row__label { color: var(--text-muted); }
+        .summary-row__value { color: var(--text-primary); font-weight: 500; }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: var(--space-5);
+            padding-top: var(--space-4);
+            border-top: 1px solid var(--border-subtle);
+        }
+        .actions .btn { min-width: 120px; justify-content: center; }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <a href="/c/" class="navbar__brand">
+            <span class="navbar__logo">💪</span>
+            <span class="navbar__title">FitHub</span>
+        </a>
+        <nav class="navbar__nav">
+            <a href="/c/" class="navbar__link">动作库</a>
+            <a href="/c/plans.html" class="navbar__link navbar__link--active">训练计划</a>
+            <a href="#" class="navbar__link" data-requires-auth>个人中心</a>
+        </nav>
+        <div class="navbar__auth">
+            <a href="/admin/login.html" class="btn btn--ghost">⚙️ 后台</a>
+            <a href="/c/login.html" class="btn btn--ghost" id="navLogin">登录</a>
+            <a href="/c/register.html" class="btn btn--primary" id="navRegister">注册</a>
+            <button class="btn btn--ghost" id="navLogout" style="display:none">退出</button>
+        </div>
+    </header>
+
+    <main class="create-page">
+        <div class="create-card">
+            <!-- Step 1: 目标选择 -->
+            <div class="step step--active" data-step="1">
+                <h2 class="step__title">第 1 步 · 选择训练目标</h2>
+                <p class="step__desc">告诉我们你的健身目标，我们会基于此推荐合适的训练节奏。</p>
+                <div class="goal-grid">
+                    <div class="goal-option" data-goal="muscle_gain"><div class="goal-option__emoji">💪</div><div class="goal-option__name">增肌</div></div>
+                    <div class="goal-option" data-goal="fat_loss"><div class="goal-option__emoji">🔥</div><div class="goal-option__name">减脂</div></div>
+                    <div class="goal-option" data-goal="body_shape"><div class="goal-option__emoji">✨</div><div class="goal-option__name">塑形</div></div>
+                    <div class="goal-option" data-goal="endurance"><div class="goal-option__emoji">🏃</div><div class="goal-option__name">体能</div></div>
+                </div>
+                <div class="actions">
+                    <a href="/c/plans.html" class="btn btn--secondary">取消</a>
+                    <button class="btn btn--primary" id="step1Next" disabled>下一步</button>
+                </div>
+            </div>
+
+            <!-- Step 2: 训练天数 + 添加动作 -->
+            <div class="step" data-step="2">
+                <h2 class="step__title">第 2 步 · 选择训练天数</h2>
+                <p class="step__desc">选择每周训练几天。建议新手从 3 天开始。</p>
+                <div class="day-selector" id="daySelector"></div>
+
+                <h3 class="step__title" style="margin-top: var(--space-5); font-size: var(--font-size-lg);">添加动作</h3>
+                <p class="step__desc">
+                    按部位浏览动作（可展开/折叠），或用搜索快速定位。点击"＋加入"按钮加入计划。
+                </p>
+
+                <!-- 搜索框 -->
+                <div class="body-search">
+                    <input type="text" id="exerciseSearch" placeholder="🔍 搜索动作名（中/英）...">
+                </div>
+
+                <!-- 按部位分组 -->
+                <div id="bodyGroups" class="body-groups">
+                    <!-- JS 渲染 -->
+                </div>
+
+                <div class="exercise-search__hint">💡 点击部位头部展开/折叠，点击"＋加入"加入下方已选列表。</div>
+
+                <div id="selectedExercises"></div>
+
+                <div class="actions">
+                    <button class="btn btn--secondary" id="step2Prev">上一步</button>
+                    <button class="btn btn--primary" id="step2Next" disabled>下一步</button>
+                </div>
+            </div>
+
+            <!-- Step 3: 计划名称 + 确认 -->
+            <div class="step" data-step="3">
+                <h2 class="step__title">第 3 步 · 确认计划</h2>
+                <p class="step__desc">给你的计划起一个名字，便于以后查找。</p>
+                <input type="text" id="planName" class="input" placeholder="例如：新手 3 天增肌计划" style="margin-bottom: var(--space-5);">
+
+                <h3 class="step__title" style="font-size: var(--font-size-lg);">计划摘要</h3>
+                <div id="planSummary" style="margin-top: var(--space-3);"></div>
+
+                <div class="actions">
+                    <button class="btn btn--secondary" id="step3Prev">上一步</button>
+                    <button class="btn btn--primary" id="createPlan">✓ 创建计划</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer"><p>FitHub · v0.2.0</p></footer>
+
+    <script type="module">
+        // 全局错误捕获（调试用，定位"按钮无反应"问题）
+        window.addEventListener('error', (e) => {
+            console.error('[PlanCreate] Script error:', e.message, e.filename, e.lineno);
+        });
+
+        import { api, tokenStore } from './js/api.js';
+        import { t } from './js/translations.js';
+
+        const state = {
+            step: 1,
+            goal: null,
+            daysPerWeek: 3,
+            exercises: [],   // {exercise_id, name_zh, name_en, sets, reps, weight_kg}
+        };
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+        }
+
+        function updateAuthUI() {
+            const loggedIn = tokenStore.isLoggedIn;
+            document.getElementById('navLogin').style.display = loggedIn ? 'none' : 'inline-flex';
+            document.getElementById('navRegister').style.display = loggedIn ? 'none' : 'inline-flex';
+            const lo = document.getElementById('navLogout');
+            if (loggedIn) {
+                lo.style.display = 'inline-flex';
+                lo.textContent = `退出（${tokenStore.user?.nickname || tokenStore.user?.username}）`;
+                lo.onclick = () => { if (confirm('确定退出？')) { tokenStore.clear(); location.href = '/c/login.html'; } };
+            } else lo.style.display = 'none';
+            if (!loggedIn) location.href = '/c/login.html';
+        }
+
+        // 步骤切换
+        function showStep(n) {
+            state.step = n;
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('step--active'));
+            const target = document.querySelector(`.step[data-step="${n}"]`);
+            if (target) target.classList.add('step--active');
+            if (n === 3) renderSummary();
+        }
+
+        // Step 1: 目标选择（防御性：检查元素存在 + console日志）
+        const goalOptions = document.querySelectorAll('.goal-option');
+        console.log('[PlanCreate] Found goal options:', goalOptions.length);
+        if (goalOptions.length === 0) {
+            console.error('[PlanCreate] ❌ No .goal-option elements found! DOM not ready?');
+        }
+        goalOptions.forEach(opt => {
+            opt.addEventListener('click', () => {
+                console.log('[PlanCreate] Goal clicked:', opt.dataset.goal);
+                document.querySelectorAll('.goal-option').forEach(o => o.classList.remove('goal-option--selected'));
+                opt.classList.add('goal-option--selected');
+                state.goal = opt.dataset.goal;
+                const nextBtn = document.getElementById('step1Next');
+                if (nextBtn) nextBtn.disabled = false;
+                else console.error('[PlanCreate] ❌ step1Next button not found');
+            });
+        });
+
+        const step1Next = document.getElementById('step1Next');
+        if (step1Next) {
+            step1Next.addEventListener('click', () => {
+                console.log('[PlanCreate] Step1 next clicked');
+                renderDaySelector();
+                showStep(2);
+            });
+        } else {
+            console.error('[PlanCreate] ❌ step1Next button not found at init');
+        }
+
+        // Step 2: 天数选择
+        function renderDaySelector() {
+            const sel = document.getElementById('daySelector');
+            const days = ['一', '二', '三', '四', '五', '六', '日'];
+            sel.innerHTML = '';
+            for (let i = 1; i <= 7; i++) {
+                const chip = document.createElement('div');
+                chip.className = 'day-chip';
+                if (i <= state.daysPerWeek) chip.classList.add('day-chip--selected');
+                chip.innerHTML = `<div class="day-chip__num">${i}</div><div class="day-chip__name">${days[i-1]}</div>`;
+                chip.addEventListener('click', () => {
+                    state.daysPerWeek = i;
+                    renderDaySelector();
+                });
+                sel.appendChild(chip);
+            }
+        }
+
+
+        function renderSelected() {
+            const wrap = document.getElementById('selectedExercises');
+            if (state.exercises.length === 0) {
+                wrap.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: var(--space-4);">尚未添加动作</p>';
+                document.getElementById('step2Next').disabled = true;
+                return;
+            }
+            wrap.innerHTML = '';
+
+            // 头部说明
+            const header = document.createElement('div');
+            header.style.cssText = 'color: var(--text-muted); font-size: var(--font-size-xs); margin-bottom: var(--space-3); letter-spacing: 1px;';
+            header.innerHTML = `已选 <strong style="color:var(--accent-cool-bright);">${state.exercises.length}</strong> 个动作 · 分配到 <strong style="color:var(--accent-cool-bright);">${state.daysPerWeek}</strong> 个训练日`;
+            wrap.appendChild(header);
+
+            state.exercises.forEach((ex, i) => {
+                // 确保 day 字段存在（默认按周均匀分配）
+                if (typeof ex.day !== 'number') {
+                    ex.day = ((i % state.daysPerWeek) + 1);
+                }
+                const row = document.createElement('div');
+                row.style.cssText = 'display:grid;grid-template-columns:24px 1fr auto auto auto auto auto;gap:var(--space-2);padding:var(--space-3);margin-bottom:var(--space-2);background:rgba(10,14,31,0.4);border:1px solid var(--border-subtle);border-radius:var(--radius-md);align-items:center;';
+                // 天数选择器（select）
+                const dayOptions = [];
+                for (let d = 1; d <= state.daysPerWeek; d++) {
+                    dayOptions.push(`<option value="${d}" ${ex.day === d ? 'selected' : ''}>Day ${d}</option>`);
+                }
+                row.innerHTML = `
+                    <div style="color:var(--accent-cool);font-weight:700;font-size:var(--font-size-sm);">${i + 1}</div>
+                    <div>
+                        <div style="color:var(--text-primary);font-weight:500;font-size:var(--font-size-sm);">${escapeHtml(ex.name_zh || ex.name_en)}</div>
+                        <div style="color:var(--text-muted);font-size:var(--font-size-xs);">${ex.exercise_id}</div>
+                    </div>
+                    <select class="input" data-field="day" data-idx="${i}" title="分配到第几天" style="width:80px;">${dayOptions.join('')}</select>
+                    <input type="number" class="input" min="1" max="20" value="${ex.sets}" style="width:64px;" data-field="sets" data-idx="${i}" title="组数">
+                    <span style="color:var(--text-muted);font-size:var(--font-size-xs);">×</span>
+                    <input type="number" class="input" min="1" max="100" value="${ex.reps}" style="width:64px;" data-field="reps" data-idx="${i}" title="次数">
+                    <button class="btn btn--ghost" data-remove="${i}" style="padding:var(--space-1) var(--space-2);color:var(--primary-bright);" title="移除">✕</button>
+                `;
+                wrap.appendChild(row);
+            });
+
+            // 按 day 分组预览（提示用户每天的训练量）
+            const dayCounts = {};
+            state.exercises.forEach(ex => { dayCounts[ex.day] = (dayCounts[ex.day] || 0) + 1; });
+            const summary = document.createElement('div');
+            summary.style.cssText = 'margin-top: var(--space-3); padding: var(--space-3); background: rgba(77, 208, 255, 0.05); border: 1px solid rgba(77, 208, 255, 0.2); border-radius: var(--radius-md); font-size: var(--font-size-xs); color: var(--accent-cool-bright);';
+            summary.innerHTML = Object.keys(dayCounts).sort((a,b)=>+a-+b).map(d => `<strong style="color:var(--primary-bright);">Day ${d}</strong>: ${dayCounts[d]}个动作`).join('  ·  ');
+            wrap.appendChild(summary);
+
+            wrap.querySelectorAll('input[data-field], select[data-field]').forEach(inp => {
+                inp.addEventListener('input', (e) => {
+                    const i = +e.target.dataset.idx;
+                    const f = e.target.dataset.field;
+                    state.exercises[i][f] = e.target.value ? +e.target.value : null;
+                });
+                inp.addEventListener('change', (e) => {
+                    const i = +e.target.dataset.idx;
+                    const f = e.target.dataset.field;
+                    state.exercises[i][f] = e.target.value ? +e.target.value : null;
+                    if (f === 'day') renderSelected();  // day 变了重新渲染
+                });
+            });
+            wrap.querySelectorAll('button[data-remove]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    state.exercises.splice(+e.target.dataset.remove, 1);
+                    renderSelected();
+                });
+            });
+            document.getElementById('step2Next').disabled = false;
+        }
+
+        document.getElementById('step2Prev').addEventListener('click', () => showStep(1));
+        document.getElementById('step2Next').addEventListener('click', () => showStep(3));
+
+        // Step 3: 摘要 + 创建
+        function renderSummary() {
+            const wrap = document.getElementById('planSummary');
+            const GOAL = { muscle_gain: '增肌', fat_loss: '减脂', body_shape: '塑形', endurance: '体能' };
+            wrap.innerHTML = `
+                <div class="summary-row"><div class="summary-row__label">训练目标</div><div class="summary-row__value">${GOAL[state.goal]}</div></div>
+                <div class="summary-row"><div class="summary-row__label">每周天数</div><div class="summary-row__value">${state.daysPerWeek} 天</div></div>
+                <div class="summary-row"><div class="summary-row__label">动作数量</div><div class="summary-row__value">${state.exercises.length} 个</div></div>
+                <div class="summary-row"><div class="summary-row__label">动作列表</div><div class="summary-row__value">${state.exercises.map(e => escapeHtml(e.name_zh || e.name_en)).join('、')}</div></div>
+            `;
+        }
+        document.getElementById('step3Prev').addEventListener('click', () => showStep(2));
+
+        document.getElementById('createPlan').addEventListener('click', async () => {
+            const name = document.getElementById('planName').value.trim() || '我的训练计划';
+
+            // 按 day 分组动作
+            const dayMap = {};
+            state.exercises.forEach(e => {
+                if (!dayMap[e.day]) dayMap[e.day] = [];
+                dayMap[e.day].push({
+                    exercise_id: e.exercise_id,
+                    sets: e.sets,
+                    reps: e.reps,
+                    weight_kg: e.weight_kg,
+                    rest_sec: 60,
+                });
+            });
+            // 构造 days 数组（按 day 1..N 顺序）
+            const days = Object.keys(dayMap).sort((a, b) => +a - +b).map(d => ({
+                day: +d,
+                name: `训练日 ${d}`,
+                exercises: dayMap[d],
+            }));
+
+            try {
+                const plan = await api.post('/plans', {
+                    name,
+                    goal: state.goal,
+                    weeks: [{ week: 1, days }],
+                    days_per_week: state.daysPerWeek,
+                    equipment: [],
+                });
+                alert('✅ 计划创建成功！');
+                location.href = `/c/plan-detail.html?id=${plan.id}`;
+            } catch (err) {
+                alert('❌ 创建失败：' + err.message);
+            }
+        });
+
+        // ============ 复合选择器（搜索 + 下拉融合）============
+        const searchInput = document.getElementById('exerciseSearch');
+        const bodyGroupsEl = document.getElementById('bodyGroups');
+
+        // 独立的 addExercise 函数（不依赖旧搜索变量）
+        function addExercise(ex) {
+            if (state.exercises.find(e => e.exercise_id === ex.id || e.exercise_id === ex.exercise_id)) return;
+            state.exercises.push({
+                exercise_id: ex.id || ex.exercise_id,
+                name_zh: ex.name_zh,
+                name_en: ex.name_en,
+                sets: 3,
+                reps: 10,
+                weight_kg: null,
+            });
+            renderSelected();
+        }
+
+        // ============ 按部位分组渲染 ============
+        const BODY_GROUPS = [
+            { key: 'chest',      emoji: '💪', zh: '胸部' },
+            { key: 'back',       emoji: '🏋️', zh: '背部' },
+            { key: 'shoulders',  emoji: '🤸', zh: '肩部' },
+            { key: 'upper arms', emoji: '💪', zh: '上臂' },
+            { key: 'lower arms', emoji: '✋', zh: '前臂' },
+            { key: 'upper legs', emoji: '🦵', zh: '大腿' },
+            { key: 'lower legs', emoji: '🦶', zh: '小腿' },
+            { key: 'waist',      emoji: '🧘', zh: '腰部/核心' },
+            { key: 'cardio',     emoji: '🏃', zh: '有氧' },
+            { key: 'neck',       emoji: '🧎', zh: '颈部' },
+        ];
+
+        let allExercises = [];
+        const openGroups = new Set(['chest', 'back']);  // 默认展开前两个
+
+        async function loadAllExercises() {
+            try {
+                const data = await api.get('/exercises?page_size=1324');
+                allExercises = data.items;
+                renderBodyGroups();
+            } catch (e) {
+                console.error('加载动作列表失败：', e);
+            }
+        }
+
+        function resolveMediaUrl(path) {
+            if (!path) return '';
+            if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) return path;
+            if (path.startsWith('images/') || path.startsWith('videos/')) return '/static/' + path;
+            return path;
+        }
+
+        function getFilteredExercises() {
+            const kw = searchInput.value.trim().toLowerCase();
+            if (!kw) return allExercises;
+            return allExercises.filter(ex =>
+                (ex.name_zh || '').toLowerCase().includes(kw) ||
+                (ex.name_en || '').toLowerCase().includes(kw)
+            );
+        }
+
+        function renderBodyGroups() {
+            const filtered = getFilteredExercises();
+            bodyGroupsEl.innerHTML = '';
+
+            if (filtered.length === 0) {
+                bodyGroupsEl.innerHTML = '<div class="body-groups-empty">🔍 无匹配动作</div>';
+                return;
+            }
+
+            // 按部位分组
+            const grouped = {};
+            filtered.forEach(ex => {
+                const bp = (ex.body_part || '其他').toLowerCase();
+                if (!grouped[bp]) grouped[bp] = [];
+                grouped[bp].push(ex);
+            });
+
+            // 按 BODY_GROUPS 顺序渲染，未识别的放最后
+            const orderedKeys = [
+                ...BODY_GROUPS.map(g => g.key).filter(k => grouped[k]),
+                ...Object.keys(grouped).filter(k => !BODY_GROUPS.find(g => g.key === k)),
+            ];
+
+            orderedKeys.forEach(bpKey => {
+                const group = BODY_GROUPS.find(g => g.key === bpKey) || { key: bpKey, emoji: '🏋️', zh: bpKey };
+                const items = grouped[bpKey];
+                const isOpen = openGroups.has(bpKey);
+                const pickedIds = new Set(state.exercises.map(e => e.exercise_id));
+
+                const div = document.createElement('div');
+                div.className = 'body-group' + (isOpen ? ' body-group--open' : '');
+                div.dataset.bp = bpKey;
+
+                div.innerHTML = `
+                    <div class="body-group__head">
+                        <div class="body-group__title">
+                            <span class="body-group__emoji">${group.emoji}</span>
+                            <span class="body-group__name">${group.zh}</span>
+                            <span class="body-group__count">${items.length}</span>
+                        </div>
+                        <div class="body-group__arrow">▶</div>
+                    </div>
+                    <div class="body-group__body">
+                        ${items.map(ex => {
+                            const picked = pickedIds.has(ex.id);
+                            return `
+                                <div class="exercise-row ${picked ? 'exercise-row--picked' : ''}" data-ex-id="${ex.id}">
+                                    <div class="exercise-row__check">✓</div>
+                                    <div class="exercise-row__name">
+                                        ${escapeHtml(ex.name_zh || ex.id)}
+                                        <span class="exercise-row__name-en">${escapeHtml(ex.name_en || '')}</span>
+                                    </div>
+                                    <div class="exercise-row__add">${picked ? '已选' : '＋ 加入'}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+
+                // 折叠/展开
+                div.querySelector('.body-group__head').addEventListener('click', () => {
+                    if (openGroups.has(bpKey)) openGroups.delete(bpKey);
+                    else openGroups.add(bpKey);
+                    div.classList.toggle('body-group--open');
+                });
+
+                // 点击行加入/移除
+                div.querySelectorAll('.exercise-row').forEach(row => {
+                    row.addEventListener('click', () => {
+                        const exId = row.dataset.exId;
+                        const alreadyPicked = state.exercises.find(e => e.exercise_id === exId);
+                        if (alreadyPicked) {
+                            // 取消选择
+                            state.exercises = state.exercises.filter(e => e.exercise_id !== exId);
+                        } else {
+                            const ex = allExercises.find(x => x.id === exId);
+                            if (ex) {
+                                state.exercises.push({
+                                    exercise_id: ex.id,
+                                    name_zh: ex.name_zh,
+                                    name_en: ex.name_en,
+                                    sets: 3,
+                                    reps: 10,
+                                    weight_kg: null,
+                                });
+                            }
+                        }
+                        renderSelected();
+                    });
+                });
+
+                bodyGroupsEl.appendChild(div);
+            });
+        }
+
+        // 搜索过滤
+        searchInput.addEventListener('input', () => renderBodyGroups());
+
+        // 监听已选变化，刷新卡片状态
+        const _origRenderSelected = renderSelected;
+        renderSelected = function() {
+            _origRenderSelected.apply(this, arguments);
+            renderBodyGroups();  // 同步"已选"按钮状态
+        };
+
+        // Init
+        updateAuthUI();
+        renderSelected();
+        renderDaySelector();
+        loadAllExercises();
+    </script>
+</body>
+</html>

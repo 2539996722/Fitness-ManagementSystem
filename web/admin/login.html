@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B 端登录 · FitHub 管理后台</title>
+    <link rel="stylesheet" href="css/soft-ui.css">
+</head>
+<body class="login-page">
+    <div class="login-card">
+        <div class="login-card__header">
+            <div class="login-card__logo">⚙️</div>
+            <div class="login-card__title">FitHub 管理后台</div>
+            <div class="login-card__subtitle">管理员 · 教练</div>
+            <span class="badge badge--primary" style="margin-top: var(--sp-3);">B 端入口</span>
+        </div>
+
+        <form id="loginForm" autocomplete="on">
+            <div class="form-group">
+                <label class="form-label" for="username">账号</label>
+                <input type="text" id="username" class="form-input" required autocomplete="username" placeholder="管理员 / 教练账号">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="password">密码</label>
+                <input type="password" id="password" class="form-input" required autocomplete="current-password" placeholder="登录密码">
+            </div>
+            <div class="form-error" id="errorMsg"></div>
+            <button type="submit" class="btn btn--primary btn--block btn--lg" id="submitBtn">登 录</button>
+        </form>
+
+        <div class="login-card__footer">
+            <a href="/c/">← 返回 C 端</a> · <a href="/portal">切换入口</a><br>
+            <span style="margin-top: var(--sp-2); display: inline-block;">默认管理员：admin / admin123（请登录后立即修改）</span>
+        </div>
+    </div>
+
+    <script type="module">
+        const API_BASE = '/api/v1';
+
+        const TOKEN_KEY = 'fithub_admin_access';
+        const REFRESH_KEY = 'fithub_admin_refresh';
+        const USER_KEY = 'fithub_admin_user';
+
+        const form = document.getElementById('loginForm');
+        const errorMsg = document.getElementById('errorMsg');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // 已登录且角色是 admin/trainer → 跳 dashboard.html
+        // ponytail: customer_service 代码保留，恢复时去掉下面一行 customer_service 判定
+        (function autoRedirectIfLoggedIn() {
+            const token = localStorage.getItem(TOKEN_KEY);
+            if (!token) return;
+            try {
+                const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+                if (user && ['admin', 'trainer'].includes(user.role)) {
+                    window.location.href = '/admin/dashboard.html';
+                }
+                // 客服角色：当前 B 端未对客服开放 → 跳回 C 端（保留 localStorage 便于回切）
+                else if (user && user.role === 'customer_service') {
+                    window.location.href = '/c/';
+                }
+                // 角色不对（极少见，比如 token 来自 C 端 user）：留在登录页
+            } catch (_) { /* ponytail: 解析失败就当未登录 */ }
+        })();
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMsg.textContent = '';
+            submitBtn.disabled = true;
+            const original = submitBtn.textContent;
+            submitBtn.innerHTML = '<span class="loading"></span> 登录中…';
+
+            try {
+                const resp = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value.trim(),
+                        password: document.getElementById('password').value,
+                        remember_me: false,
+                    }),
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({ detail: '登录失败' }));
+                    throw new Error(err.detail);
+                }
+
+                const data = await resp.json();
+
+                // 权限校验：必须是 admin / trainer
+                // ponytail: customer_service 代码保留，恢复时把 customer_service 加回下方数组
+                const role = data.user?.role || 'user';
+                if (role === 'customer_service') {
+                    throw new Error('B 端当前未对客服开放，请联系管理员');
+                }
+                if (!['admin', 'trainer'].includes(role)) {
+                    throw new Error('该账号无后台访问权限');
+                }
+
+                localStorage.setItem(TOKEN_KEY, data.access_token);
+                localStorage.setItem(REFRESH_KEY, data.refresh_token);
+                localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+
+                window.location.href = '/admin/dashboard.html';
+            } catch (err) {
+                errorMsg.textContent = err.message || '登录失败';
+                submitBtn.disabled = false;
+                submitBtn.textContent = original;
+            }
+        });
+
+        // 输入框聚焦时清空错误
+        document.getElementById('username').addEventListener('input', () => errorMsg.textContent = '');
+        document.getElementById('password').addEventListener('input', () => errorMsg.textContent = '');
+    </script>
+</body>
+</html>

@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会员管理 · FitHub 管理后台</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="css/soft-ui.css">
+    <style>
+        /* —— 页面私有样式（共享部分见 soft-ui.css） —— */
+        .filters { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: flex-end; }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
+        .filter-label { font-size: 12px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.3px; }
+        .form-input--narrow { max-width: 200px; }
+        /* 表格 */
+        .table-wrap { overflow-x: auto; border-radius: var(--r-md); box-shadow: var(--shadow-out-sm); padding: var(--sp-2); background: var(--bg-0); }
+        table.data { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+        table.data th { background: var(--bg-2); text-align: left; padding: 10px 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.6px; white-space: nowrap; }
+        table.data td { padding: 12px; border-bottom: 1px solid rgba(163, 177, 198, 0.18); vertical-align: middle; }
+        table.data tbody tr:hover td { background: var(--bg-1); }
+        table.data tbody tr:last-child td { border-bottom: none; }
+        .cell-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+        /* 分页 */
+        .pagination { display: flex; justify-content: space-between; align-items: center; margin-top: var(--sp-4); font-size: 13px; color: var(--text-muted); }
+        .pagination__btns { display: flex; gap: var(--sp-2); }
+        /* 抽屉（侧滑详情） */
+        .drawer-mask { position: fixed; inset: 0; background: rgba(45, 55, 72, 0.45); backdrop-filter: blur(4px); z-index: 100; display: none; }
+        .drawer-mask--open { display: block; animation: fadeIn 0.2s ease; }
+        .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 560px; max-width: 100vw; background: var(--bg-0); box-shadow: var(--shadow-out-lg); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 101; overflow-y: auto; border-radius: var(--r-lg) 0 0 var(--r-lg); }
+        .drawer--open { transform: translateX(0); }
+        .drawer__head { padding: var(--sp-5); border-bottom: 1px solid rgba(163, 177, 198, 0.2); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--bg-0); z-index: 1; }
+        .drawer__title { font-size: 18px; font-weight: 700; }
+        .drawer__close { background: var(--bg-0); border: none; width: 32px; height: 32px; border-radius: var(--r-pill); cursor: pointer; color: var(--text-muted); box-shadow: var(--shadow-flat); font-size: 18px; transition: all var(--t-base); }
+        .drawer__close:hover { color: var(--accent); box-shadow: var(--shadow-out-sm); }
+        .drawer__body { padding: var(--sp-5); }
+        .drawer__foot { padding: var(--sp-4) var(--sp-5); border-top: 1px solid rgba(163, 177, 198, 0.2); display: flex; gap: var(--sp-2); justify-content: flex-end; position: sticky; bottom: 0; background: var(--bg-0); }
+        .detail-section { margin-bottom: var(--sp-5); }
+        .detail-section h4 { font-size: 13px; color: var(--text-muted); margin-bottom: var(--sp-2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+        .kv { display: grid; grid-template-columns: 100px 1fr; gap: 8px var(--sp-3); font-size: 13px; }
+        .kv__k { color: var(--text-muted); font-weight: 500; }
+        .kv__v { color: var(--text); word-break: break-all; }
+        /* 模态 */
+        .modal-mask { position: fixed; inset: 0; background: rgba(45, 55, 72, 0.45); backdrop-filter: blur(4px); z-index: 200; display: none; align-items: center; justify-content: center; }
+        .modal-mask--open { display: flex; animation: fadeIn 0.2s ease; }
+        .modal { background: var(--bg-0); border-radius: var(--r-lg); box-shadow: var(--shadow-out-lg); width: 420px; max-width: 92vw; overflow: hidden; }
+        .modal__head { padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid rgba(163, 177, 198, 0.2); font-weight: 700; }
+        .modal__body { padding: var(--sp-5); }
+        .modal__foot { padding: var(--sp-3) var(--sp-5); border-top: 1px solid rgba(163, 177, 198, 0.2); display: flex; gap: var(--sp-2); justify-content: flex-end; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* 备注框 */
+        .remark-box { white-space: pre-wrap; max-height: 80px; overflow-y: auto; font-size: 12px; color: var(--text-muted); background: var(--bg-2); padding: 8px 12px; border-radius: var(--r-md); box-shadow: var(--shadow-in-sm); }
+        .empty { text-align: center; padding: var(--sp-6); color: var(--text-muted); }
+        /* 密码展示 */
+        .pwd-reveal { background: var(--warn-soft); border-left: 4px solid var(--warn); padding: var(--sp-4); border-radius: var(--r-md); margin-top: var(--sp-3); }
+        .pwd-reveal code { font-size: 18px; font-weight: 700; user-select: all; color: var(--warn); letter-spacing: 1px; }
+        .pwd-reveal__tip { font-size: 12px; color: var(--text-muted); margin-top: var(--sp-2); }
+    </style>
+    <script type="module" src="js/admin-layout.js"></script>
+</head>
+<body>
+    <aside class="sidebar" id="appSidebar"></aside>
+
+    <main class="main">
+        <div class="header">
+            <div class="header__title">会员管理</div>
+            <div class="header__user">
+                <span class="header__role" id="userRole">-</span>
+                <span id="userName">-</span>
+                <button class="header__btn" id="logoutBtn">退出登录</button>
+            </div>
+        </div>
+
+        <div id="alert" class="alert alert--hidden"></div>
+
+        <!-- 筛选 -->
+        <div class="card">
+            <div class="filters">
+                <div class="filter-group">
+                    <label class="filter-label">关键词（用户名/昵称/ID）</label>
+                    <input id="fKeyword" class="form-input" placeholder="如 zhang / 张 / 1001">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">角色</label>
+                    <select id="fRole" class="form-select">
+                        <option value="">全部</option>
+                        <option value="user">普通用户</option>
+                        <!-- ponytail: customer_service 角色已从 B 端移除，但 DB 中可能仍有客服账号，保留选项以供查询/导出 -->
+                        <option value="customer_service">客服</option>
+                        <option value="trainer">教练</option>
+                        <option value="admin">管理员</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">状态</label>
+                    <select id="fStatus" class="form-select">
+                        <option value="">全部</option>
+                        <option value="0">正常</option>
+                        <option value="1">封禁</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">注册起始</label>
+                    <input id="fFrom" type="date" class="form-input form-input--narrow">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">注册截止</label>
+                    <input id="fTo" type="date" class="form-input form-input--narrow">
+                </div>
+                <button class="btn btn--primary" id="btnSearch">🔍 查询</button>
+                <button class="btn btn--ghost" id="btnReset">重置</button>
+                <button class="btn" id="btnExport">⬇ 导出 CSV</button>
+                <span style="margin-left:auto;"></span>
+                <button class="btn btn--primary" id="btnCreate">➕ 新建用户</button>
+            </div>
+        </div>
+
+        <!-- 列表 -->
+        <div class="card">
+            <div class="card__title">
+                👥 会员列表
+                <span id="totalLabel" style="font-weight: normal; font-size: 13px; color: var(--color-text-muted);"></span>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>昵称</th>
+                            <th>角色</th>
+                            <th>状态</th>
+                            <th>注册时间</th>
+                            <th>最近登录</th>
+                            <th>计划</th>
+                            <th>AI对话</th>
+                            <th>备注</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody">
+                        <tr><td colspan="11" class="empty">加载中…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <span id="pageInfo">第 1 页 / 共 0 条</span>
+                <div class="pagination__btns">
+                    <button class="btn btn--sm" id="btnPrev">← 上一页</button>
+                    <button class="btn btn--sm" id="btnNext">下一页 →</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 详情抽屉 -->
+    <div class="drawer-mask" id="drawerMask"></div>
+    <aside class="drawer" id="drawer">
+        <div class="drawer__head">
+            <div class="drawer__title">会员详情</div>
+            <button class="drawer__close" id="drawerClose">✕</button>
+        </div>
+        <div class="drawer__body" id="drawerBody">加载中…</div>
+        <div class="drawer__foot" id="drawerFoot"></div>
+    </aside>
+
+    <!-- 操作模态（封禁/解封） -->
+    <div class="modal-mask" id="modalMask">
+        <div class="modal">
+            <div class="modal__head" id="modalTitle">操作</div>
+            <div class="modal__body">
+                <div class="form-group" style="display:flex; flex-direction:column; gap:6px;">
+                    <label class="filter-label" id="modalReasonLabel">原因</label>
+                    <textarea id="modalReason" class="form-input" rows="3" placeholder="请说明…"></textarea>
+                </div>
+                <div class="pwd-reveal" id="pwdReveal" style="display:none;">
+                    <div>新密码（已复制到剪贴板）：</div>
+                    <code id="pwdText"></code>
+                    <div class="pwd-reveal__tip">⚠️ 请妥善保管，关闭后无法再次查看。</div>
+                </div>
+            </div>
+            <div class="modal__foot">
+                <button class="btn btn--ghost" id="modalCancel">取消</button>
+                <button class="btn btn--primary" id="modalOk">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建用户 模态 -->
+    <div class="modal-mask" id="createMask">
+        <div class="modal" style="width: 480px;">
+            <div class="modal__head">➕ 新建用户</div>
+            <div class="modal__body">
+                <div class="form-group" style="display:flex; flex-direction:column; gap:6px; margin-bottom: var(--space-3);">
+                    <label class="filter-label">用户名 <span style="color:#ef4444;">*</span>（3-32 字符，字母/数字/下划线/中文）</label>
+                    <input id="cuUsername" class="form-input" maxlength="32" placeholder="如 zhangsan / 张三">
+                </div>
+                <div class="form-group" style="display:flex; flex-direction:column; gap:6px; margin-bottom: var(--space-3);">
+                    <label class="filter-label">初始密码 <span style="color:var(--color-text-muted); font-weight: normal;">（留空则自动生成 10 位随机密码）</span></label>
+                    <input id="cuPassword" class="form-input" type="text" maxlength="20" placeholder="8-20 字符，含字母和数字">
+                </div>
+                <div class="form-group" style="display:flex; flex-direction:column; gap:6px; margin-bottom: var(--space-3);">
+                    <label class="filter-label">昵称（可选，留空 = 用户名）</label>
+                    <input id="cuNickname" class="form-input" maxlength="32" placeholder="如 小张">
+                </div>
+                <div class="form-group" style="display:flex; flex-direction:column; gap:6px; margin-bottom: var(--space-3);">
+                    <label class="filter-label">角色 <span style="color:#ef4444;">*</span></label>
+                    <!-- ponytail: customer_service 已从新建表单移除（DB 中已有客服账号不受影响）；恢复时加回 <option value="customer_service"> -->
+                    <select id="cuRole" class="form-select">
+                        <option value="user">普通用户（user）</option>
+                        <option value="trainer">教练（trainer）</option>
+                        <option value="admin">管理员（admin）</option>
+                    </select>
+                </div>
+                <div class="form-group" style="display:flex; flex-direction:column; gap:6px; margin-bottom: var(--space-3);">
+                    <label class="filter-label">备注（可选）</label>
+                    <textarea id="cuRemark" class="form-input" rows="2" maxlength="255" placeholder="如：内部测试账号 / 试用账号"></textarea>
+                </div>
+            </div>
+            <div class="modal__foot">
+                <button class="btn btn--ghost" id="cuCancel">取消</button>
+                <button class="btn btn--primary" id="cuOk">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建成功 + 显示初始密码 模态 -->
+    <div class="modal-mask" id="createdMask">
+        <div class="modal" style="width: 480px;">
+            <div class="modal__head">✅ 用户创建成功</div>
+            <div class="modal__body">
+                <div class="kv" style="margin-bottom: var(--space-4);">
+                    <div class="kv__k">用户ID</div><div class="kv__v" id="cudId">—</div>
+                    <div class="kv__k">用户名</div><div class="kv__v" id="cudUsername">—</div>
+                    <div class="kv__k">昵称</div><div class="kv__v" id="cudNickname">—</div>
+                    <div class="kv__k">角色</div><div class="kv__v" id="cudRole">—</div>
+                </div>
+                <div class="pwd-reveal">
+                    <div>初始密码（已复制到剪贴板）：</div>
+                    <code id="cudPassword">—</code>
+                    <div class="pwd-reveal__tip">⚠️ 请妥善保管，关闭后无法再次查看。账号拥有者首次登录后建议立即修改密码。</div>
+                </div>
+            </div>
+            <div class="modal__foot">
+                <button class="btn btn--primary" id="cudOk">我已记录，关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const API_BASE = '/api/v1';
+        const TOKEN_KEY = 'fithub_admin_access';
+        const USER_KEY = 'fithub_admin_user';
+
+        // 鉴权
+        const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+        if (!localStorage.getItem(TOKEN_KEY) || !user) {
+            window.location.href = '/admin/login.html';
+        }
+        if (user?.role !== 'admin' && user?.role !== 'trainer') {
+            alert('仅管理员/教练可访问此页面');
+            window.location.href = '/admin/';
+        }
+
+        document.querySelectorAll('[data-requires-roles]').forEach((el) => {
+            const allowed = el.dataset.requiresRoles.split(',');
+            if (!allowed.includes(user.role)) el.style.display = 'none';
+        });
+        // 动态注入（列表行 / 抽屉 footer）也要按角色过滤
+        function applyRoleFilter(root) {
+            (root || document).querySelectorAll('[data-requires-roles]').forEach((el) => {
+                const allowed = el.dataset.requiresRoles.split(',');
+                if (!allowed.includes(user.role)) el.style.display = 'none';
+            });
+        }
+
+        // API
+        async function api(method, path, body) {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem(TOKEN_KEY);
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const resp = await fetch(`${API_BASE}${path}`, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined,
+            });
+            if (resp.status === 401) {
+                localStorage.clear();
+                window.location.href = '/admin/login.html';
+                return;
+            }
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+                throw new Error(err.detail || `HTTP ${resp.status}`);
+            }
+            if (resp.status === 204) return null;
+            return resp.json();
+        }
+
+        function escapeHtml(s) {
+            if (s == null) return '';
+            return String(s).replace(/[&<>"']/g, (c) =>
+                ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+            );
+        }
+
+        function showAlert(msg, type = 'info') {
+            const el = document.getElementById('alert');
+            el.className = `alert alert--${type}`;
+            el.textContent = msg;
+            el.classList.remove('alert--hidden');
+            if (type === 'success') setTimeout(() => el.classList.add('alert--hidden'), 3500);
+        }
+
+        function fmtDt(s) {
+            if (!s) return '—';
+            const d = new Date(s);
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        const ROLE_LABEL = { user: '用户', customer_service: '客服', trainer: '教练', admin: '管理员' };
+
+        // 状态
+        const state = {
+            page: 1,
+            pageSize: 20,
+            total: 0,
+            filters: {},
+            currentDetail: null,
+            modalAction: null,
+            modalTargetId: null,
+        };
+
+        // 加载列表
+        async function loadList() {
+            const tbody = document.getElementById('tbody');
+            tbody.innerHTML = `<tr><td colspan="11" class="empty"><span class="loading"></span> 加载中…</td></tr>`;
+            const params = new URLSearchParams({
+                page: state.page,
+                page_size: state.pageSize,
+                ...state.filters,
+            });
+            // 过滤空值
+            for (const [k, v] of [...params.entries()]) if (!v) params.delete(k);
+
+            try {
+                const data = await api('GET', `/admin/members?${params}`);
+                state.total = data.total;
+                if (data.items.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="11" class="empty">暂无数据</td></tr>`;
+                } else {
+                    tbody.innerHTML = data.items.map((u) => `
+                        <tr data-id="${u.id}">
+                            <td>${u.id}</td>
+                            <td><strong>${escapeHtml(u.username)}</strong></td>
+                            <td>${escapeHtml(u.nickname) || '—'}</td>
+                            <td><span class="badge badge--muted">${ROLE_LABEL[u.role] || u.role}</span></td>
+                            <td>${u.status === 1 ? '<span class="badge badge--error">封禁</span>' : '<span class="badge badge--success">正常</span>'}</td>
+                            <td>${fmtDt(u.created_at)}</td>
+                            <td>${fmtDt(u.last_login_at)}</td>
+                            <td>${u.plan_count}</td>
+                            <td>${u.ai_msg_count}</td>
+                            <td><div class="remark-box">${escapeHtml(u.remark) || '—'}</div></td>
+                            <td>
+                                <div class="cell-actions">
+                                    <button class="btn btn--sm" data-act="detail" data-id="${u.id}">详情</button>
+                                    ${u.status === 1
+                                        ? `<button class="btn btn--sm btn--success" data-act="unban" data-id="${u.id}">解封</button>`
+                                        : `<button class="btn btn--sm btn--danger" data-act="ban" data-id="${u.id}" data-requires-roles="admin">封禁</button>`}
+                                    <button class="btn btn--sm" data-act="reset" data-id="${u.id}" data-requires-roles="admin">重置密码</button>
+                                    <button class="btn btn--sm btn--ghost btn--danger-text" data-act="delete" data-id="${u.id}" data-name="${escapeHtml(u.username)}" data-requires-roles="admin">删除</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+                document.getElementById('totalLabel').textContent = `共 ${data.total} 条`;
+                document.getElementById('pageInfo').textContent = `第 ${data.page} 页 / 共 ${data.total} 条`;
+                document.getElementById('btnPrev').disabled = data.page <= 1;
+                document.getElementById('btnNext').disabled = !data.has_more;
+                applyRoleFilter(tbody);  // 列表行内的写按钮按角色隐藏
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="11" class="empty">加载失败：${escapeHtml(e.message)}</td></tr>`;
+            }
+        }
+
+        // 列表行事件代理
+        document.getElementById('tbody').addEventListener('click', async (e) => {
+            const btn = e.target.closest('button[data-act]');
+            if (!btn) return;
+            const id = +btn.dataset.id;
+            const act = btn.dataset.act;
+            if (act === 'detail') openDrawer(id);
+            else if (act === 'ban') openModal('ban', id);
+            else if (act === 'unban') openModal('unban', id);
+            else if (act === 'reset') doReset(id);
+            else if (act === 'delete') openModal('delete', id, btn.dataset.name);
+        });
+
+        // 筛选
+        document.getElementById('btnSearch').addEventListener('click', () => {
+            state.page = 1;
+            state.filters = {
+                keyword: document.getElementById('fKeyword').value.trim(),
+                role: document.getElementById('fRole').value,
+                status: document.getElementById('fStatus').value,
+                date_from: document.getElementById('fFrom').value ? `${document.getElementById('fFrom').value}T00:00:00` : '',
+                date_to: document.getElementById('fTo').value ? `${document.getElementById('fTo').value}T23:59:59` : '',
+            };
+            loadList();
+        });
+        document.getElementById('btnReset').addEventListener('click', () => {
+            document.getElementById('fKeyword').value = '';
+            document.getElementById('fRole').value = '';
+            document.getElementById('fStatus').value = '';
+            document.getElementById('fFrom').value = '';
+            document.getElementById('fTo').value = '';
+            state.page = 1;
+            state.filters = {};
+            loadList();
+        });
+        document.getElementById('btnPrev').addEventListener('click', () => { if (state.page > 1) { state.page--; loadList(); } });
+        document.getElementById('btnNext').addEventListener('click', () => { state.page++; loadList(); });
+
+        // 导出
+        document.getElementById('btnExport').addEventListener('click', async () => {
+            const params = new URLSearchParams({ ...state.filters });
+            for (const [k, v] of [...params.entries()]) if (!v) params.delete(k);
+            const url = `${API_BASE}/admin/members/export?${params}`;
+            const token = localStorage.getItem(TOKEN_KEY);
+            try {
+                const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+                    throw new Error(err.detail);
+                }
+                const blob = await resp.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `members_${Date.now()}.csv`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showAlert('已导出', 'success');
+            } catch (e) {
+                showAlert('导出失败：' + e.message, 'error');
+            }
+        });
+
+        // 抽屉
+        async function openDrawer(id) {
+            document.getElementById('drawerMask').classList.add('drawer-mask--open');
+            document.getElementById('drawer').classList.add('drawer--open');
+            document.getElementById('drawerBody').innerHTML = '<span class="loading"></span> 加载中…';
+            document.getElementById('drawerFoot').innerHTML = '';
+            try {
+                const u = await api('GET', `/admin/members/${id}`);
+                state.currentDetail = u;
+                renderDrawer(u);
+            } catch (e) {
+                document.getElementById('drawerBody').innerHTML = `加载失败：${escapeHtml(e.message)}`;
+            }
+        }
+        function closeDrawer() {
+            document.getElementById('drawerMask').classList.remove('drawer-mask--open');
+            document.getElementById('drawer').classList.remove('drawer--open');
+        }
+        document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+        document.getElementById('drawerMask').addEventListener('click', closeDrawer);
+
+        function renderDrawer(u) {
+            const convRows = (u.recent_conversations || []).map((c) => `
+                <tr><td>${c.id}</td><td>${escapeHtml(c.title)}</td><td>${c.conversation_type}</td><td>${c.status}</td><td>${fmtDt(c.updated_at)}</td></tr>
+            `).join('') || `<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:8px;">暂无</td></tr>`;
+            const planRows = (u.recent_plans || []).map((p) => `
+                <tr><td>${p.id}</td><td>${escapeHtml(p.name)}</td><td>${p.goal}</td><td>${p.is_current === 1 ? '✓' : ''}</td><td>${fmtDt(p.created_at)}</td></tr>
+            `).join('') || `<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:8px;">暂无</td></tr>`;
+
+            document.getElementById('drawerBody').innerHTML = `
+                <div class="detail-section">
+                    <h4>基本信息</h4>
+                    <div class="kv">
+                        <div class="kv__k">用户ID</div><div class="kv__v">${u.id}</div>
+                        <div class="kv__k">用户名</div><div class="kv__v">${escapeHtml(u.username)}</div>
+                        <div class="kv__k">昵称</div><div class="kv__v">${escapeHtml(u.nickname) || '—'}</div>
+                        <div class="kv__k">角色</div><div class="kv__v">${ROLE_LABEL[u.role] || u.role}</div>
+                        <div class="kv__k">状态</div><div class="kv__v">${u.status === 1 ? '<span class="badge badge--error">封禁</span>' : '<span class="badge badge--success">正常</span>'}</div>
+                        <div class="kv__k">性别/年龄</div><div class="kv__v">${u.gender === 1 ? '男' : u.gender === 2 ? '女' : '未知'} / ${u.age ?? '—'}</div>
+                        <div class="kv__k">身高/体重</div><div class="kv__v">${u.height_cm ?? '—'} cm / ${u.weight_kg ?? '—'} kg</div>
+                        <div class="kv__k">注册时间</div><div class="kv__v">${fmtDt(u.created_at)}</div>
+                        <div class="kv__k">最近登录</div><div class="kv__v">${fmtDt(u.last_login_at)}</div>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <h4>管理员备注</h4>
+                    <textarea id="editRemark" class="form-input" rows="3" placeholder="可填写封禁原因、特殊情况说明…">${escapeHtml(u.remark) || ''}</textarea>
+                </div>
+                <div class="detail-section">
+                    <h4>数据统计</h4>
+                    <div class="kv">
+                        <div class="kv__k">训练计划</div><div class="kv__v">${u.plan_count} 个</div>
+                        <div class="kv__k">AI 对话</div><div class="kv__v">${u.ai_msg_count} 条</div>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <h4>最近计划（最多 5 条）</h4>
+                    <table class="data" style="font-size:12px;">
+                        <thead><tr><th>ID</th><th>名称</th><th>目标</th><th>当前</th><th>创建</th></tr></thead>
+                        <tbody>${planRows}</tbody>
+                    </table>
+                </div>
+                <div class="detail-section">
+                    <h4>最近会话（最多 5 条）</h4>
+                    <table class="data" style="font-size:12px;">
+                        <thead><tr><th>ID</th><th>标题</th><th>类型</th><th>状态</th><th>更新</th></tr></thead>
+                        <tbody>${convRows}</tbody>
+                    </table>
+                </div>
+            `;
+            document.getElementById('drawerFoot').innerHTML = `
+                <button class="btn btn--ghost" id="btnSaveRemark" data-requires-roles="admin">💾 保存备注</button>
+                ${u.status === 1
+                    ? `<button class="btn btn--success" id="btnDrawerUnban" data-requires-roles="admin">✅ 解封</button>`
+                    : `<button class="btn btn--danger" id="btnDrawerBan" data-requires-roles="admin">🚫 封禁</button>`}
+                <button class="btn btn--primary" id="btnDrawerReset" data-requires-roles="admin">🔑 重置密码</button>
+            `;
+            applyRoleFilter(document.getElementById('drawerFoot'));  // 抽屉底部按钮按角色隐藏
+
+            document.getElementById('btnSaveRemark')?.addEventListener('click', () => doSaveRemark(u.id));
+            const banBtn = document.getElementById('btnDrawerBan');
+            const unbanBtn = document.getElementById('btnDrawerUnban');
+            const resetBtn = document.getElementById('btnDrawerReset');
+            if (banBtn) banBtn.addEventListener('click', () => { closeDrawer(); openModal('ban', u.id); });
+            if (unbanBtn) unbanBtn.addEventListener('click', () => { closeDrawer(); openModal('unban', u.id); });
+            if (resetBtn) resetBtn.addEventListener('click', () => { closeDrawer(); doReset(u.id); });
+        }
+
+        async function doSaveRemark(id) {
+            const remark = document.getElementById('editRemark').value;
+            try {
+                await api('PATCH', `/admin/members/${id}/remark`, { remark: remark || null });
+                showAlert('备注已保存', 'success');
+                closeDrawer();
+                loadList();
+            } catch (e) {
+                showAlert('保存失败：' + e.message, 'error');
+            }
+        }
+
+        // 模态（封禁/解封/重置密码/删除）
+        function openModal(act, id, name) {
+            state.modalAction = act;
+            state.modalTargetId = id;
+            const mask = document.getElementById('modalMask');
+            const title = document.getElementById('modalTitle');
+            const reasonLabel = document.getElementById('modalReasonLabel');
+            const reason = document.getElementById('modalReason');
+            const pwdReveal = document.getElementById('pwdReveal');
+            pwdReveal.style.display = 'none';
+            reason.value = '';
+
+            if (act === 'ban') {
+                title.textContent = '封禁会员';
+                reasonLabel.textContent = '封禁原因（必填）';
+                reason.placeholder = '如：违反社区规范';
+                reason.parentElement.style.display = '';
+            } else if (act === 'unban') {
+                title.textContent = '解封会员';
+                reasonLabel.textContent = '解封说明（可选）';
+                reason.placeholder = '可选填写…';
+                reason.parentElement.style.display = '';
+            } else if (act === 'delete') {
+                title.textContent = `删除会员「${name}」`;
+                reasonLabel.textContent = '删除说明（可选，会写入操作日志）';
+                reason.placeholder = '可选：说明删除原因';
+                reason.parentElement.style.display = '';
+            }
+            mask.classList.add('modal-mask--open');
+            reason.focus();
+        }
+        function closeModal() {
+            document.getElementById('modalMask').classList.remove('modal-mask--open');
+            state.modalAction = null;
+        }
+        document.getElementById('modalCancel').addEventListener('click', closeModal);
+        document.getElementById('modalMask').addEventListener('click', (e) => {
+            if (e.target.id === 'modalMask') closeModal();
+        });
+        document.getElementById('modalOk').addEventListener('click', async () => {
+            const act = state.modalAction;
+            const id = state.modalTargetId;
+            const reason = document.getElementById('modalReason').value.trim();
+            if (act === 'ban') {
+                if (!reason) { showAlert('请填写封禁原因', 'error'); return; }
+                try {
+                    await api('PATCH', `/admin/members/${id}/status`, { status: 1, reason });
+                    showAlert('已封禁', 'success');
+                    closeModal();
+                    loadList();
+                } catch (e) { showAlert('封禁失败：' + e.message, 'error'); }
+            } else if (act === 'unban') {
+                try {
+                    await api('PATCH', `/admin/members/${id}/status`, { status: 0, reason: reason || null });
+                    showAlert('已解封', 'success');
+                    closeModal();
+                    loadList();
+                } catch (e) { showAlert('解封失败：' + e.message, 'error'); }
+            } else if (act === 'delete') {
+                if (!confirm('确定删除？该操作会写入操作日志，可追溯但不可撤销同名。')) return;
+                try {
+                    await api('DELETE', `/admin/members/${id}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`);
+                    showAlert('已删除', 'success');
+                    closeModal();
+                    loadList();
+                } catch (e) { showAlert('删除失败：' + e.message, 'error'); }
+            }
+        });
+
+        async function doReset(id) {
+            if (!confirm('确定重置该用户的密码？\n（系统将生成一个随机新密码）')) return;
+            try {
+                const r = await api('POST', `/admin/members/${id}/reset-password`);
+                // 弹窗展示新密码
+                document.getElementById('modalTitle').textContent = '密码已重置';
+                document.getElementById('modalReason').parentElement.style.display = 'none';
+                document.getElementById('pwdReveal').style.display = '';
+                document.getElementById('pwdText').textContent = r.new_password;
+                document.getElementById('modalMask').classList.add('modal-mask--open');
+                // 复制到剪贴板
+                try { await navigator.clipboard.writeText(r.new_password); } catch (_) { /* ponytail: clipboard may be blocked in some browsers */ }
+            } catch (e) { showAlert('重置失败：' + e.message, 'error'); }
+        }
+
+        // 重置密码后用 OK 关闭模态
+        document.getElementById('modalOk').addEventListener('click', () => {
+            // 重置密码的模态直接关闭
+            if (document.getElementById('pwdReveal').style.display !== 'none') {
+                closeModal();
+                document.getElementById('modalReason').parentElement.style.display = '';
+            }
+        });
+
+        // ===== 新建用户 =====
+        function openCreate() {
+            document.getElementById('cuUsername').value = '';
+            document.getElementById('cuPassword').value = '';
+            document.getElementById('cuNickname').value = '';
+            // trainer 只能创建 user / customer_service —— UI 层隐藏 admin/trainer 选项
+            const roleSel = document.getElementById('cuRole');
+            const trainerRestricted = user.role === 'trainer';
+            Array.from(roleSel.options).forEach(opt => {
+                opt.hidden = trainerRestricted && (opt.value === 'admin' || opt.value === 'trainer');
+            });
+            roleSel.value = 'user';
+            document.getElementById('cuRemark').value = '';
+            document.getElementById('createMask').classList.add('modal-mask--open');
+            setTimeout(() => document.getElementById('cuUsername').focus(), 50);
+        }
+        function closeCreate() {
+            document.getElementById('createMask').classList.remove('modal-mask--open');
+        }
+        document.getElementById('btnCreate').addEventListener('click', openCreate);
+        document.getElementById('cuCancel').addEventListener('click', closeCreate);
+        document.getElementById('createMask').addEventListener('click', (e) => {
+            if (e.target.id === 'createMask') closeCreate();
+        });
+        document.getElementById('cuUsername').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('cuPassword').focus();
+        });
+        document.getElementById('cuPassword').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('cuNickname').focus();
+        });
+        document.getElementById('cuNickname').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') doCreate();
+        });
+        document.getElementById('cuOk').addEventListener('click', doCreate);
+
+        async function doCreate() {
+            const username = document.getElementById('cuUsername').value.trim();
+            const password = document.getElementById('cuPassword').value;
+            const nickname = document.getElementById('cuNickname').value.trim();
+            const role = document.getElementById('cuRole').value;
+            const remark = document.getElementById('cuRemark').value.trim();
+            if (!username) { showAlert('请填写用户名', 'error'); return; }
+            // 前端基础校验（后端会再校验一遍）
+            if (password && (password.length < 8 || password.length > 20 || !/[A-Za-z]/.test(password) || !/\d/.test(password))) {
+                showAlert('密码格式错误：8-20 字符，必须含字母和数字', 'error');
+                return;
+            }
+            const body = { username, role };
+            if (password) body.password = password;
+            if (nickname) body.nickname = nickname;
+            if (remark) body.remark = remark;
+
+            const okBtn = document.getElementById('cuOk');
+            okBtn.disabled = true;
+            okBtn.textContent = '创建中…';
+            try {
+                const r = await api('POST', '/admin/members', body);
+                closeCreate();
+                // 显示成功 + 初始密码
+                document.getElementById('cudId').textContent = r.user.id;
+                document.getElementById('cudUsername').textContent = r.user.username;
+                document.getElementById('cudNickname').textContent = r.user.nickname || '—';
+                document.getElementById('cudRole').textContent = ROLE_LABEL[r.user.role] || r.user.role;
+                document.getElementById('cudPassword').textContent = r.initial_password;
+                document.getElementById('createdMask').classList.add('modal-mask--open');
+                // 复制密码到剪贴板
+                try { await navigator.clipboard.writeText(r.initial_password); } catch (_) {}
+                // 刷新列表
+                loadList();
+            } catch (e) {
+                showAlert('创建失败：' + e.message, 'error');
+            } finally {
+                okBtn.disabled = false;
+                okBtn.textContent = '创建';
+            }
+        }
+
+        document.getElementById('cudOk').addEventListener('click', () => {
+            document.getElementById('createdMask').classList.remove('modal-mask--open');
+        });
+        document.getElementById('createdMask').addEventListener('click', (e) => {
+            if (e.target.id === 'createdMask') document.getElementById('createdMask').classList.remove('modal-mask--open');
+        });
+
+        // 退出
+        loadList();
+    </script>
+</body>
+</html>

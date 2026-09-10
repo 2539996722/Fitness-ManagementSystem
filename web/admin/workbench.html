@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会话工作台 · FitHub 管理后台</title>
+    <link rel="stylesheet" href="css/soft-ui.css">
+    <link rel="stylesheet" href="css/queue.css">
+    <script type="module" src="js/admin-layout.js"></script>
+</head>
+<body class="page-workbench">
+    <aside class="sidebar" id="appSidebar"></aside>
+
+    <main class="main">
+        <div class="header">
+            <div class="header__title">会话工作台</div>
+            <div class="header__user">
+                <span class="header__role" id="userRole">-</span>
+                <span id="userName">-</span>
+                <button class="header__btn" id="logoutBtn">退出登录</button>
+            </div>
+        </div>
+
+        <div class="wb-shell" id="wbShell">
+            <div class="wb-shell__topbar">
+                <div class="wb-shell__title">
+                    💬 会话工作台
+                    <span id="wbRoleTag"></span>
+                </div>
+                <div class="wb-shell__actions">
+                    <button class="wb-shell__toggle" id="wbToggleUser" title="展开/收起右栏">
+                        <span id="wbToggleUserIcon">📋 隐藏会员信息</span>
+                    </button>
+                    <div id="wbTabs" class="tab-row">
+                        <button class="tab tab--active" data-wb="cs" id="wbTabCs">📞 客服</button>
+                        <button class="tab" data-wb="trainer" id="wbTabTrainer">🏋️ 教练</button>
+                    </div>
+                </div>
+            </div>
+            <div id="wbPanels" class="wb-shell__panels">
+                <div id="csPanel" data-wb-panel="cs"></div>
+                <div id="trainerPanel" data-wb-panel="trainer"></div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        const TOKEN_KEY = 'fithub_admin_access';
+        const USER_KEY = 'fithub_admin_user';
+
+        const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+        if (!localStorage.getItem(TOKEN_KEY) || !user) {
+            window.location.href = '/admin/login.html';
+        }
+        if (!['admin', 'trainer'].includes(user?.role)) {
+            alert('仅管理员/教练可访问此页面');
+            window.location.href = '/admin/login.html';
+        }
+
+        // 挂载客服 + 教练两个工作台面板
+        import('./js/queue.js').then(({ mountQueue }) => mountQueue('csPanel'));
+        import('./js/trainer-queue.js').then(({ mountTrainer }) => mountTrainer('trainerPanel'));
+
+        const wbTabs = document.querySelectorAll('[data-wb]');
+        const wbPanels = document.querySelectorAll('[data-wb-panel]');
+        const wbRoleTag = document.getElementById('wbRoleTag');
+        const wbTabTrainer = document.getElementById('wbTabTrainer');
+
+        // ponytail: customer_service 已从 B 端移除（login.html 拦截），这里不再按角色切默认 Tab
+        const defaultWb = 'trainer';
+        const wbLabel = {
+            cs:      '· 客服视角：转人工队列与历史',
+            trainer: '· 教练视角：专业咨询队列',
+        };
+        function switchWb(tab) {
+            wbTabs.forEach(t => t.classList.toggle('tab--active', t.dataset.wb === tab));
+            wbPanels.forEach(p => {
+                const show = p.dataset.wbPanel === tab;
+                p.style.display = show ? 'flex' : 'none';
+            });
+            if (wbRoleTag) wbRoleTag.textContent = wbLabel[tab] || '';
+            document.title = `会话工作台 · ${tab === 'trainer' ? '教练视角' : '客服视角'} · FitHub 管理后台`;
+        }
+        wbTabs.forEach(t => t.addEventListener('click', () => switchWb(t.dataset.wb)));
+        switchWb(defaultWb);
+
+        // 右栏（会员信息）折叠开关
+        const wbShell = document.getElementById('wbShell');
+        const wbToggleUser = document.getElementById('wbToggleUser');
+        const wbToggleUserIcon = document.getElementById('wbToggleUserIcon');
+        const USER_PANE_KEY = 'fithub_admin_user_pane_hidden';
+        function applyUserPaneHidden(hidden) {
+            if (hidden) {
+                wbShell.classList.add('wb-shell--user-hidden');
+                wbToggleUserIcon.textContent = '📋 显示会员信息';
+            } else {
+                wbShell.classList.remove('wb-shell--user-hidden');
+                wbToggleUserIcon.textContent = '📋 隐藏会员信息';
+            }
+        }
+        applyUserPaneHidden(localStorage.getItem(USER_PANE_KEY) === '1');
+        wbToggleUser.addEventListener('click', () => {
+            const next = !wbShell.classList.contains('wb-shell--user-hidden');
+            applyUserPaneHidden(next);
+            localStorage.setItem(USER_PANE_KEY, next ? '1' : '0');
+        });
+
+        </script>
+</body>
+</html>

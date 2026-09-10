@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>链路追踪 · FitHub 管理后台</title>
+    <link rel="stylesheet" href="css/soft-ui.css">
+    <style>
+        /* —— 页面私有 —— */
+        .filters { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: flex-end; }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
+        .filter-label { font-size: 12px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.3px; }
+        .form-input--narrow { max-width: 220px; }
+
+        .table-wrap { overflow-x: auto; border-radius: var(--r-md); box-shadow: var(--shadow-out-sm); padding: var(--sp-2); background: var(--bg-0); }
+        table.data { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+        table.data th { background: var(--bg-2); text-align: left; padding: 10px 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.6px; white-space: nowrap; }
+        table.data td { padding: 12px; border-bottom: 1px solid rgba(163, 177, 198, 0.18); vertical-align: middle; }
+        table.data tbody tr { cursor: pointer; }
+        table.data tbody tr:hover td { background: var(--bg-1); }
+        table.data tbody tr:last-child td { border-bottom: none; }
+
+        .cell-time { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-muted); font-size: 12px; }
+        .cell-time__ago { font-size: 11px; color: var(--text-muted); opacity: 0.7; }
+
+        .rid-pill {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: var(--r-pill);
+          background: var(--bg-2);
+          color: var(--text);
+          font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+          font-size: 11px;
+          letter-spacing: 0.4px;
+          cursor: pointer;
+          border: 1px solid rgba(163, 177, 198, 0.25);
+        }
+        .rid-pill:hover { background: var(--accent-soft); color: var(--accent); }
+
+        .intent-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: var(--r-pill);
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: var(--r-pill);
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .status-badge--success { background: var(--success-soft); color: var(--success); }
+        .status-badge--error   { background: #fee2e2; color: #dc2626; }
+
+        .num-cell { font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+        .num-cell--slow { color: #f59e0b; }
+
+        /* —— 详情抽屉 —— */
+        .drawer-mask { position: fixed; inset: 0; background: rgba(45, 55, 72, 0.45); backdrop-filter: blur(4px); z-index: 100; display: none; }
+        .drawer-mask--open { display: block; animation: fadeIn 0.2s ease; }
+        .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 760px; max-width: 100vw; background: var(--bg-0); box-shadow: var(--shadow-out-lg); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 101; overflow-y: auto; border-radius: var(--r-lg) 0 0 var(--r-lg); }
+        .drawer--open { transform: translateX(0); }
+        .drawer__head { padding: var(--sp-5); border-bottom: 1px solid rgba(163, 177, 198, 0.2); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--bg-0); z-index: 1; }
+        .drawer__title { font-size: 18px; font-weight: 700; }
+        .drawer__close { background: var(--bg-0); border: none; width: 32px; height: 32px; border-radius: var(--r-pill); cursor: pointer; color: var(--text-muted); box-shadow: var(--shadow-flat); font-size: 18px; transition: all var(--t-base); }
+        .drawer__close:hover { color: var(--accent); box-shadow: var(--shadow-out-sm); }
+        .drawer__body { padding: var(--sp-5); }
+
+        /* 时间线 */
+        .trace-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-3); margin-bottom: var(--sp-5); }
+        .trace-stat { background: var(--bg-2); padding: var(--sp-3); border-radius: var(--r-md); }
+        .trace-stat__label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600; }
+        .trace-stat__value { font-size: 22px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+        .trace-stat--ok .trace-stat__value { color: var(--success); }
+        .trace-stat--slow .trace-stat__value { color: #f59e0b; }
+        .trace-stat--err .trace-stat__value { color: #dc2626; }
+
+        .timeline { display: flex; flex-direction: column; gap: var(--sp-3); }
+        .timeline-stage {
+          background: var(--bg-1);
+          border-radius: var(--r-md);
+          padding: var(--sp-4);
+          box-shadow: var(--shadow-in-sm);
+          border-left: 4px solid var(--accent);
+        }
+        .timeline-stage--error { border-left-color: #dc2626; }
+        .timeline-stage__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-2); }
+        .timeline-stage__name { font-size: 15px; font-weight: 700; }
+        .timeline-stage__metrics { display: flex; gap: var(--sp-3); font-size: 12px; color: var(--text-muted); }
+        .timeline-stage__metrics strong { color: var(--text); font-variant-numeric: tabular-nums; }
+        .timeline-stage__details { margin-top: var(--sp-3); display: grid; gap: var(--sp-2); }
+        .timeline-stage__detail-row { font-size: 12px; }
+        .timeline-stage__detail-label { color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 2px; }
+        .timeline-stage__detail-value { background: var(--bg-2); padding: 6px 10px; border-radius: var(--r-sm); white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+        .timeline-stage__error { background: #fee2e2; color: #dc2626; padding: 8px 12px; border-radius: var(--r-sm); margin-top: var(--sp-2); font-size: 12px; }
+
+        .pagination { display: flex; justify-content: space-between; align-items: center; margin-top: var(--sp-3); font-size: 13px; color: var(--text-muted); }
+        .pagination__btns { display: flex; gap: var(--sp-2); }
+    </style>
+</head>
+<body>
+    <aside id="appSidebar" class="sidebar sidebar--admin"></aside>
+    <main class="main">
+            <header class="main__header">
+                <h1 class="main__title">🔍 链路追踪</h1>
+                <div class="main__user">
+                    <span id="userName" class="main__user-name"></span>
+                    <span id="userRole" class="main__user-role"></span>
+                    <button id="logoutBtn" class="main__logout">退出</button>
+                </div>
+            </header>
+
+            <section class="content">
+                <div id="alert" class="alert alert--hidden"></div>
+
+                <!-- 筛选 -->
+                <div class="card">
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label class="filter-label">Request ID</label>
+                            <input id="fRid" class="form-input form-input--narrow" placeholder="32 字符 hex">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">意图</label>
+                            <select id="fIntent" class="form-select form-input--narrow">
+                                <option value="">全部</option>
+                                <option value="qa">qa</option>
+                                <option value="plan">plan</option>
+                                <option value="substitute">substitute</option>
+                                <option value="diet">diet</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">状态</label>
+                            <select id="fStatus" class="form-select form-input--narrow">
+                                <option value="">全部</option>
+                                <option value="success">成功</option>
+                                <option value="error">失败</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">用户 ID</label>
+                            <input id="fUserId" type="number" min="1" class="form-input form-input--narrow" placeholder="如 16">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">时间窗（天）</label>
+                            <input id="fDays" type="number" min="1" max="90" value="7" class="form-input form-input--narrow">
+                        </div>
+                        <button class="btn btn--primary" id="btnSearch">🔍 查询</button>
+                        <button class="btn btn--ghost" id="btnReset">重置</button>
+                    </div>
+                </div>
+
+                <!-- 列表 -->
+                <div class="card">
+                    <div class="card__title">
+                        🛰️ AI 调用 trace（按时间倒序）
+                        <span id="totalLabel" style="font-weight: normal; font-size: 13px; color: var(--text-muted);"></span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data">
+                            <thead>
+                                <tr>
+                                    <th style="width: 180px;">Request ID</th>
+                                    <th style="width: 80px;">意图</th>
+                                    <th style="width: 80px;">状态</th>
+                                    <th style="width: 90px;" class="num-cell">总耗时</th>
+                                    <th style="width: 90px;" class="num-cell">Token</th>
+                                    <th style="width: 70px;" class="num-cell">阶段数</th>
+                                    <th style="width: 110px;">会话</th>
+                                    <th style="width: 110px;">用户</th>
+                                    <th style="width: 130px;">最后阶段</th>
+                                    <th style="width: 80px;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody">
+                                <tr><td colspan="10" class="empty">加载中…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination">
+                        <span id="pageInfo">第 1 页 / 共 0 条</span>
+                        <div class="pagination__btns">
+                            <button class="btn btn--sm" id="btnPrev">← 上一页</button>
+                            <button class="btn btn--sm" id="btnNext">下一页 →</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+    <!-- 详情抽屉 -->
+    <div class="drawer-mask" id="drawerMask"></div>
+    <aside class="drawer" id="drawer">
+        <div class="drawer__head">
+            <div class="drawer__title">🛰️ 链路详情</div>
+            <button class="drawer__close" id="drawerClose">✕</button>
+        </div>
+        <div class="drawer__body" id="drawerBody">加载中…</div>
+    </aside>
+
+    <script type="module">
+        const API_BASE = '/api/v1';
+        const TOKEN_KEY = 'fithub_admin_access';
+        const USER_KEY = 'fithub_admin_user';
+
+        const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+        if (!localStorage.getItem(TOKEN_KEY) || !user) {
+            window.location.href = '/admin/login.html';
+        }
+        if (user?.role !== 'admin') {
+            alert('仅管理员可访问此页面');
+            window.location.href = '/admin/';
+        }
+
+        async function api(path) {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem(TOKEN_KEY);
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const resp = await fetch(API_BASE + path, { headers });
+            if (!resp.ok) {
+                const text = await resp.text();
+                throw new Error(`HTTP ${resp.status}: ${text.slice(0, 200)}`);
+            }
+            return resp.json();
+        }
+
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+                ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+            );
+        }
+
+        const state = { items: [], total: 0, limit: 50, offset: 0 };
+
+        async function loadList() {
+            const params = new URLSearchParams();
+            params.set('limit', state.limit);
+            params.set('offset', state.offset);
+            const rid = document.getElementById('fRid').value.trim();
+            const intent = document.getElementById('fIntent').value;
+            const status = document.getElementById('fStatus').value;
+            const userId = document.getElementById('fUserId').value;
+            const days = document.getElementById('fDays').value || '7';
+            if (rid) params.set('request_id', rid);
+            if (intent) params.set('intent', intent);
+            if (status) params.set('status', status);
+            if (userId) params.set('user_id', userId);
+            params.set('days', days);
+
+            try {
+                const d = await api('/admin/traces?' + params.toString());
+                state.items = d.items || [];
+                state.total = d.total || 0;
+                renderList();
+            } catch (e) {
+                showAlert('加载失败：' + e.message, 'error');
+            }
+        }
+
+        function renderList() {
+            const tbody = document.getElementById('tbody');
+            if (state.items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="empty">暂无数据</td></tr>`;
+                document.getElementById('totalLabel').textContent = '';
+            } else {
+                tbody.innerHTML = state.items.map(it => {
+                    const latency = it.total_latency_ms || 0;
+                    const latencyClass = latency > 2000 ? 'num-cell--slow' : '';
+                    return `
+                        <tr data-rid="${esc(it.request_id)}">
+                            <td><span class="rid-pill" title="${esc(it.request_id)}（点击复制）" data-copy="${esc(it.request_id)}">${esc(it.request_id.slice(0, 12))}…</span></td>
+                            <td>${it.intent ? `<span class="intent-badge">${esc(it.intent)}</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
+                            <td><span class="status-badge status-badge--${esc(it.status)}">${esc(it.status)}</span></td>
+                            <td class="num-cell ${latencyClass}">${latency} ms</td>
+                            <td class="num-cell">${(it.total_tokens || 0).toLocaleString()}</td>
+                            <td class="num-cell">${it.span_count}</td>
+                            <td>${it.conversation_id ? `#${it.conversation_id}` : '—'}</td>
+                            <td>${it.user_id ? `#${it.user_id}` : '—'}</td>
+                            <td class="cell-time">${esc(it.last_span_at || '')}</td>
+                            <td><button class="btn btn--sm btn--primary" data-detail="${esc(it.request_id)}">详情</button></td>
+                        </tr>
+                    `;
+                }).join('');
+                document.getElementById('totalLabel').textContent = `共 ${state.total} 条`;
+            }
+            const page = Math.floor(state.offset / state.limit) + 1;
+            const totalPages = Math.max(1, Math.ceil(state.total / state.limit));
+            document.getElementById('pageInfo').textContent = `第 ${page} 页 / 共 ${totalPages} 页（${state.total} 条）`;
+        }
+
+        // 复制 RID
+        document.getElementById('tbody').addEventListener('click', async (e) => {
+            const copyEl = e.target.closest('[data-copy]');
+            if (copyEl) {
+                try {
+                    await navigator.clipboard.writeText(copyEl.dataset.copy);
+                    copyEl.textContent = '已复制 ✓';
+                    setTimeout(() => { copyEl.textContent = copyEl.dataset.copy.slice(0, 12) + '…'; }, 1500);
+                } catch (_) {}
+                return;
+            }
+            const detailEl = e.target.closest('[data-detail]');
+            if (detailEl) {
+                openDetail(detailEl.dataset.detail);
+            }
+        });
+
+        function showAlert(msg, type = 'info') {
+            const el = document.getElementById('alert');
+            el.textContent = msg;
+            el.className = `alert alert--${type}`;
+            el.classList.remove('alert--hidden');
+            if (type === 'success') setTimeout(() => el.classList.add('alert--hidden'), 3500);
+        }
+
+        async function openDetail(rid) {
+            document.getElementById('drawerBody').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">加载中…</div>';
+            document.getElementById('drawerMask').classList.add('drawer-mask--open');
+            document.getElementById('drawer').classList.add('drawer--open');
+            try {
+                const d = await api('/admin/traces/' + encodeURIComponent(rid));
+                renderDetail(d);
+            } catch (e) {
+                document.getElementById('drawerBody').innerHTML =
+                    `<div style="color:#dc2626;padding:20px;">加载失败：${esc(e.message)}</div>`;
+            }
+        }
+
+        function renderDetail(d) {
+            const elapsed = d.total_latency_ms || 0;
+            const llmSpan = (d.spans || []).find(s => s.stage === 'llm');
+            const llmTokens = llmSpan ? (llmSpan.total_tokens || 0) : 0;
+            const statusClass = d.status === 'success' ? 'trace-stat--ok' : 'trace-stat--err';
+            const statusText = d.status === 'success' ? '✅ 全成功' : '⚠️ 有失败';
+            const latencyClass = elapsed > 2000 ? 'trace-stat--slow' : 'trace-stat--ok';
+
+            let html = `
+                <div class="trace-summary">
+                    <div class="trace-stat ${statusClass}">
+                        <div class="trace-stat__label">状态</div>
+                        <div class="trace-stat__value" style="font-size:18px;">${statusText}</div>
+                    </div>
+                    <div class="trace-stat ${latencyClass}">
+                        <div class="trace-stat__label">总耗时</div>
+                        <div class="trace-stat__value">${elapsed}<span style="font-size:13px;color:var(--text-muted);"> ms</span></div>
+                    </div>
+                    <div class="trace-stat">
+                        <div class="trace-stat__label">总 Token</div>
+                        <div class="trace-stat__value">${llmTokens.toLocaleString()}</div>
+                    </div>
+                    <div class="trace-stat">
+                        <div class="trace-stat__label">阶段数</div>
+                        <div class="trace-stat__value">${(d.spans || []).length}</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:var(--sp-4);">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Request ID</div>
+                    <div style="font-family:ui-monospace,monospace;font-size:13px;background:var(--bg-2);padding:8px 12px;border-radius:var(--r-sm);margin-top:4px;">${esc(d.request_id)}</div>
+                </div>
+
+                <h3 style="margin-bottom:var(--sp-3);">🛰️ 阶段时间线</h3>
+                <div class="timeline">
+            `;
+
+            for (const s of (d.spans || [])) {
+                const stageName = STAGE_LABEL[s.stage] || s.stage;
+                const statusBadge = s.status === 'success'
+                    ? '<span class="status-badge status-badge--success">success</span>'
+                    : '<span class="status-badge status-badge--error">error</span>';
+                const stageClass = s.status === 'success' ? 'timeline-stage' : 'timeline-stage timeline-stage--error';
+                const meta = s.meta || {};
+                const metaStr = Object.keys(meta).length
+                    ? Object.entries(meta).map(([k, v]) => `<div class="timeline-stage__detail-row"><span class="timeline-stage__detail-label">${esc(k)}</span><div class="timeline-stage__detail-value">${esc(typeof v === 'object' ? JSON.stringify(v) : v)}</div></div>`).join('')
+                    : '';
+
+                html += `
+                    <div class="${stageClass}">
+                        <div class="timeline-stage__head">
+                            <div class="timeline-stage__name">${esc(stageName)}</div>
+                            ${statusBadge}
+                        </div>
+                        <div class="timeline-stage__metrics">
+                            <span>耗时 <strong>${s.latency_ms || 0}</strong> ms</span>
+                            ${s.total_tokens ? `<span>Token <strong>${s.total_tokens}</strong></span>` : ''}
+                            ${s.intent ? `<span>意图 <strong>${esc(s.intent)}</strong></span>` : ''}
+                        </div>
+                        ${s.input_preview ? `
+                            <div class="timeline-stage__details">
+                                <div class="timeline-stage__detail-row">
+                                    <span class="timeline-stage__detail-label">输入预览</span>
+                                    <div class="timeline-stage__detail-value">${esc(s.input_preview)}</div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${s.output_preview ? `
+                            <div class="timeline-stage__details">
+                                <div class="timeline-stage__detail-row">
+                                    <span class="timeline-stage__detail-label">输出预览</span>
+                                    <div class="timeline-stage__detail-value">${esc(s.output_preview)}</div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${metaStr ? `<div class="timeline-stage__details">${metaStr}</div>` : ''}
+                        ${s.error_message ? `<div class="timeline-stage__error">❌ ${esc(s.error_message)}</div>` : ''}
+                    </div>
+                `;
+            }
+            html += '</div>';
+
+            document.getElementById('drawerBody').innerHTML = html;
+        }
+
+        const STAGE_LABEL = {
+            query_rewrite: '① Query 改写',
+            intent: '② 意图识别',
+            rag: '③ RAG 检索',
+            tool: '④ 工具调用',
+            llm: '⑤ LLM 生成',
+            output: '⑥ 结果输出',
+        };
+
+        function closeDrawer() {
+            document.getElementById('drawerMask').classList.remove('drawer-mask--open');
+            document.getElementById('drawer').classList.remove('drawer--open');
+        }
+
+        document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+        document.getElementById('drawerMask').addEventListener('click', closeDrawer);
+
+        document.getElementById('btnSearch').addEventListener('click', () => { state.offset = 0; loadList(); });
+        document.getElementById('btnReset').addEventListener('click', () => {
+            ['fRid', 'fIntent', 'fStatus', 'fUserId'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('fDays').value = '7';
+            state.offset = 0;
+            loadList();
+        });
+        document.getElementById('btnPrev').addEventListener('click', () => {
+            if (state.offset >= state.limit) {
+                state.offset -= state.limit;
+                loadList();
+            }
+        });
+        document.getElementById('btnNext').addEventListener('click', () => {
+            if (state.offset + state.limit < state.total) {
+                state.offset += state.limit;
+                loadList();
+            }
+        });
+
+        // 挂载布局
+        import { renderSidebar, renderUserBadge, bindLogout } from '/admin/js/admin-layout.js';
+        renderSidebar();
+        renderUserBadge(user);
+        bindLogout();
+
+        // 首次加载
+        loadList();
+    </script>
+</body>
+</html>

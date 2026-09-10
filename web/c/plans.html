@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>训练计划 · FitHub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .plans-page {
+            position: relative;
+            z-index: 1;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: var(--space-6) var(--space-5);
+        }
+
+        /* ============ 顶部 ============ */
+        .plans-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: var(--space-5);
+            padding-bottom: var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .plans-header h1 {
+            font-size: var(--font-size-3xl);
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, var(--primary-bright) 50%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 32px var(--primary-glow);
+        }
+        .plans-header__sub {
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+            margin-top: var(--space-2);
+        }
+
+        /* ============ 统计概览 ============ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: var(--space-3);
+            margin-bottom: var(--space-5);
+        }
+        .stat-card {
+            position: relative;
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4) var(--space-5);
+            overflow: hidden;
+            transition: all 0.3s var(--ease);
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: var(--accent-color, var(--accent-cool));
+            box-shadow: 0 0 12px var(--accent-color, var(--accent-cool-glow));
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); }
+        .stat-card__label {
+            color: var(--text-muted);
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: var(--space-2);
+        }
+        .stat-card__value {
+            font-size: var(--font-size-2xl);
+            font-weight: 800;
+            color: var(--accent-color, var(--text-primary));
+            line-height: 1;
+        }
+        .stat-card__unit {
+            font-size: var(--font-size-sm);
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-left: 4px;
+        }
+        .stat-card__trend {
+            margin-top: var(--space-2);
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+        }
+
+        /* ============ 筛选栏 ============ */
+        .filter-bar {
+            display: flex;
+            gap: var(--space-3);
+            margin-bottom: var(--space-5);
+            padding: var(--space-4);
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filter-bar__search {
+            flex: 1;
+            min-width: 200px;
+            padding: var(--space-2) var(--space-3);
+            background: rgba(10, 14, 31, 0.5);
+            color: var(--text-primary);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-base);
+        }
+        .filter-bar__search:focus {
+            outline: none;
+            border-color: var(--accent-cool);
+            box-shadow: 0 0 0 3px rgba(77, 208, 255, 0.12);
+        }
+        .filter-chip-group {
+            display: flex;
+            gap: var(--space-1);
+            flex-wrap: wrap;
+        }
+        .filter-chip {
+            padding: var(--space-1) var(--space-3);
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-pill, 999px);
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+            white-space: nowrap;
+        }
+        .filter-chip:hover { border-color: var(--accent-cool); color: var(--accent-cool-bright); }
+        .filter-chip--active {
+            background: var(--accent-cool);
+            color: var(--bg-void);
+            border-color: var(--accent-cool);
+            box-shadow: 0 0 12px var(--accent-cool-glow);
+        }
+        .filter-bar__select {
+            padding: var(--space-2) var(--space-3);
+            background: rgba(10, 14, 31, 0.5);
+            color: var(--text-primary);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+        }
+        .filter-bar__select option { background: var(--bg-elevated); }
+
+        /* ============ 图表区 ============ */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: var(--space-4);
+            margin-bottom: var(--space-5);
+        }
+        .chart-card {
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+        }
+        .chart-card__title {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: var(--space-3);
+            letter-spacing: 1px;
+        }
+        .chart-card canvas {
+            max-height: 220px;
+        }
+        @media (max-width: 768px) {
+            .charts-row { grid-template-columns: 1fr; }
+        }
+
+        /* ============ Tab 栏 ============ */
+        .tabs-bar {
+            display: flex;
+            gap: var(--space-1);
+            margin-bottom: var(--space-4);
+            padding: var(--space-1);
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            backdrop-filter: blur(16px);
+        }
+        .tab {
+            padding: var(--space-2) var(--space-4);
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+        }
+        .tab:hover { color: var(--accent-cool-bright); background: rgba(255, 255, 255, 0.03); }
+        .tab--active {
+            background: var(--accent-cool);
+            color: var(--bg-void);
+            box-shadow: 0 0 12px var(--accent-cool-glow);
+        }
+        .tab-pane { display: none; }
+        .tab-pane--active { display: block; }
+
+        /* ============ 系统模板区 ============ */
+        .templates-section {
+            margin-bottom: var(--space-5);
+        }
+        .templates-section__head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-3);
+        }
+        .templates-section__title {
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .templates-section__hint {
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+        }
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-3);
+        }
+        .template-card {
+            position: relative;
+            padding: var(--space-4);
+            background: linear-gradient(135deg, rgba(255, 122, 69, 0.08) 0%, rgba(77, 208, 255, 0.06) 100%);
+            border: 1px solid rgba(255, 122, 69, 0.3);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.3s var(--ease);
+            overflow: hidden;
+        }
+        .template-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0.5;
+        }
+        .template-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary);
+            box-shadow: 0 8px 24px rgba(255, 122, 69, 0.2);
+        }
+        .template-card__emoji {
+            font-size: 32px;
+            margin-bottom: var(--space-2);
+            filter: drop-shadow(0 0 8px var(--primary-glow));
+        }
+        .template-card__name {
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .template-card__desc {
+            color: var(--text-muted);
+            font-size: var(--font-size-xs);
+            line-height: 1.5;
+            margin-bottom: var(--space-2);
+        }
+        .template-card__meta {
+            display: flex;
+            gap: var(--space-2);
+            color: var(--accent-cool-bright);
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+        }
+
+        /* ============ 计划卡片网格 ============ */
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: var(--space-4);
+        }
+        .plan-card {
+            position: relative;
+            background: var(--bg-card-solid);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+            border: 1px solid var(--border-base);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+            transition: all 0.4s var(--ease);
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 280px;
+        }
+        .plan-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-cool), var(--primary), transparent);
+            opacity: 0.6;
+        }
+        .plan-card--current {
+            border-color: var(--primary);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), 0 0 24px rgba(255, 122, 69, 0.15);
+        }
+        .plan-card--current::before {
+            background: linear-gradient(90deg, transparent, var(--primary), var(--accent-cool), var(--primary), transparent);
+            opacity: 1;
+        }
+        .plan-card--archived {
+            opacity: 0.55;
+            filter: grayscale(0.4);
+        }
+        .plan-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-cool);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(77, 208, 255, 0.2);
+        }
+
+        /* 卡片顶部徽章 */
+        .plan-card__badges {
+            position: absolute;
+            top: var(--space-3);
+            right: var(--space-3);
+            display: flex;
+            gap: var(--space-1);
+        }
+        .badge {
+            padding: 3px var(--space-2);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .badge--current {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 0 16px var(--primary-glow);
+        }
+        .badge--status {
+            background: rgba(78, 236, 200, 0.15);
+            color: var(--accent-mint);
+            border: 1px solid rgba(78, 236, 200, 0.4);
+        }
+        .badge--paused {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+        .badge--done {
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--accent-purple);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+        }
+
+        /* 卡片内容 */
+        .plan-card__name {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+            padding-right: 80px;
+        }
+        .plan-card__desc {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            line-height: 1.5;
+            margin-bottom: var(--space-3);
+        }
+        .plan-card__meta-row {
+            display: flex;
+            gap: var(--space-3);
+            flex-wrap: wrap;
+            margin-bottom: var(--space-3);
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+        }
+        .plan-card__meta-row strong { color: var(--text-primary); font-weight: 600; }
+
+        /* 缩略图条（首周前 6 个动作） */
+        .plan-card__thumbs {
+            display: flex;
+            gap: var(--space-1);
+            margin-bottom: var(--space-3);
+            flex-wrap: wrap;
+        }
+        .plan-card__thumb {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+        }
+        .plan-card__thumb:hover {
+            transform: scale(1.12);
+            border-color: var(--accent-cool);
+            box-shadow: 0 0 12px var(--accent-cool-glow);
+            z-index: 10;
+        }
+
+        /* 训练日预览 */
+        .day-preview {
+            display: flex;
+            gap: 4px;
+            margin-bottom: var(--space-3);
+            flex-wrap: wrap;
+        }
+        .day-chip {
+            padding: 4px var(--space-2);
+            background: rgba(77, 208, 255, 0.08);
+            border: 1px solid rgba(77, 208, 255, 0.25);
+            border-radius: var(--radius-sm);
+            font-size: 10px;
+            color: var(--accent-cool-bright);
+            text-shadow: 0 0 4px var(--accent-cool-glow);
+        }
+        .day-chip--rest {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: var(--border-subtle);
+            color: var(--text-muted);
+            text-shadow: none;
+        }
+        .day-chip--done {
+            background: rgba(78, 236, 200, 0.15);
+            border-color: rgba(78, 236, 200, 0.4);
+            color: var(--accent-mint);
+        }
+
+        /* 进度条 */
+        .plan-card__progress {
+            margin-top: auto;
+            padding-top: var(--space-3);
+        }
+        .plan-card__progress-text {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--space-2);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+        .plan-card__progress-pct {
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent-cool-bright), var(--primary-bright));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 8px var(--accent-cool-glow);
+        }
+        .plan-card__progress-bar {
+            height: 8px;
+            background: rgba(10, 14, 31, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid var(--border-subtle);
+        }
+        .plan-card__progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cool), var(--primary));
+            border-radius: 4px;
+            box-shadow: 0 0 12px var(--accent-cool-glow);
+            transition: width 0.6s var(--ease);
+        }
+        .plan-card__stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: var(--space-2);
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* 卡片操作 */
+        .plan-card__actions {
+            display: flex;
+            gap: var(--space-2);
+            margin-top: var(--space-4);
+            padding-top: var(--space-3);
+            border-top: 1px solid var(--border-subtle);
+        }
+        .plan-card__action {
+            flex: 1;
+            padding: var(--space-2);
+            background: rgba(10, 14, 31, 0.4);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: var(--font-size-xs);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+        }
+        .plan-card__action:hover {
+            border-color: var(--accent-cool);
+            color: var(--accent-cool-bright);
+        }
+        .plan-card__action--primary {
+            background: var(--accent-cool);
+            color: var(--bg-void);
+            border-color: var(--accent-cool);
+            font-weight: 700;
+        }
+        .plan-card__action--primary:hover {
+            background: var(--accent-cool-bright);
+            color: var(--bg-void);
+        }
+        .plan-card__action--danger:hover {
+            border-color: var(--primary-bright);
+            color: var(--primary-bright);
+        }
+
+        /* ============ 空状态 ============ */
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: var(--space-8) var(--space-5);
+            background: var(--bg-card);
+            border: 1px dashed var(--border-base);
+            border-radius: var(--radius-lg);
+            position: relative;
+            overflow: hidden;
+        }
+        .empty-state::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(77, 208, 255, 0.08), transparent 70%);
+            pointer-events: none;
+        }
+        .empty-state__art {
+            font-size: 80px;
+            margin-bottom: var(--space-4);
+            filter: drop-shadow(0 0 16px var(--accent-cool-glow));
+            position: relative;
+        }
+        .empty-state__title {
+            font-size: var(--font-size-xl);
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+            position: relative;
+        }
+        .empty-state__desc {
+            color: var(--text-muted);
+            margin-bottom: var(--space-5);
+            position: relative;
+        }
+        .empty-state__actions {
+            display: flex;
+            gap: var(--space-3);
+            justify-content: center;
+            position: relative;
+            flex-wrap: wrap;
+        }
+
+        .loading {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: var(--space-8);
+            color: var(--text-muted);
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px dashed var(--border-base);
+        }
+
+        /* ============ 响应式 ============ */
+        @media (max-width: 1024px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .templates-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 640px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .templates-grid { grid-template-columns: 1fr; }
+            .filter-bar { flex-direction: column; align-items: stretch; }
+            .plan-card__actions { flex-wrap: wrap; }
+        }
+
+        /* ============ AI 教练 Tab ============ */
+        /* 全屏三栏布局：navbar + chat-pane 占满视口，仅中间消息区滚动 */
+        .chat-pane {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            height: calc(100vh - 130px);  /* navbar ~80px + main padding 24px*2 */
+            min-height: 540px;
+            display: grid;
+            grid-template-columns: 260px 1fr;
+        }
+        body.chat-fullscreen { overflow: hidden; }  /* 锁全局滚动 */
+        .chat-sidebar {
+            padding: var(--space-4);
+            border-right: 1px solid var(--border-subtle);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        .chat-sidebar__head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-3);
+            padding-bottom: var(--space-3);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .chat-sidebar__title {
+            font-size: var(--font-size-sm);
+            font-weight: 700;
+            color: var(--accent-cool-bright);
+        }
+        .btn-new-chat {
+            padding: 4px var(--space-3);
+            background: var(--accent-cool);
+            color: var(--bg-void);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .chat-conv-item {
+            padding: var(--space-3);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            margin-bottom: var(--space-1);
+            border: 1px solid transparent;
+            transition: background 0.2s;
+            position: relative;
+        }
+        .chat-conv-item:hover { background: rgba(77, 208, 255, 0.05); }
+        .chat-conv-item--active {
+            background: rgba(77, 208, 255, 0.1);
+            border-color: rgba(77, 208, 255, 0.3);
+        }
+        .chat-conv-item__row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-2);
+        }
+        .chat-conv-item__title {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+        .chat-conv-item__del {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            opacity: 0;
+            transition: opacity 0.2s, color 0.2s, background 0.2s;
+            flex-shrink: 0;
+        }
+        .chat-conv-item:hover .chat-conv-item__del { opacity: 1; }
+        .chat-conv-item__del:hover {
+            color: var(--primary-bright);
+            background: rgba(255, 122, 69, 0.15);
+        }
+        .chat-conv-item__preview {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            margin-top: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chat-main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .chat-main__head {
+            padding: var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+            background: rgba(10, 14, 31, 0.3);
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+        .chat-main__head > div:first-child { flex: 1; }
+        .chat-main__title {
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+        }
+        .chat-main__hint {
+            color: var(--text-muted);
+            font-size: var(--font-size-xs);
+            margin-top: 4px;
+        }
+        .btn-stop {
+            padding: 6px 14px;
+            background: rgba(244, 63, 94, 0.15);
+            color: #f43f5e;
+            border: 1px solid rgba(244, 63, 94, 0.4);
+            border-radius: var(--radius-md, 8px);
+            font-size: var(--font-size-xs);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-stop:hover {
+            background: rgba(244, 63, 94, 0.25);
+        }
+        .btn-transfer {
+            padding: 6px 14px;
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-cool-bright, #38bdf8);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            border-radius: var(--radius-md, 8px);
+            font-size: var(--font-size-xs);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-transfer:hover {
+            background: rgba(56, 189, 248, 0.25);
+        }
+        .btn-transfer[disabled] {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .btn-find-trainer {
+            padding: 6px 14px;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--color-success, #10b981);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: var(--radius-md, 8px);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-find-trainer:hover {
+            background: rgba(16, 185, 129, 0.25);
+        }
+        .btn-find-trainer[disabled] {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .chat-status {
+            padding: 10px var(--space-4);
+            background: rgba(251, 191, 36, 0.12);
+            color: #fbbf24;
+            border-bottom: 1px solid rgba(251, 191, 36, 0.3);
+            font-size: var(--font-size-xs);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chat-status--active {
+            background: rgba(34, 197, 94, 0.12);
+            color: #22c55e;
+            border-bottom-color: rgba(34, 197, 94, 0.3);
+        }
+        .chat-status--closed {
+            background: rgba(107, 114, 128, 0.12);
+            color: var(--text-muted, #9ca3af);
+            border-bottom-color: rgba(107, 114, 128, 0.3);
+        }
+        .msg--customer_service { align-self: flex-start; }
+        .msg--customer_service .msg__avatar {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+        }
+        .msg--customer_service .msg__bubble {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(22, 163, 74, 0.10));
+            color: var(--text-primary);
+            border: 1px solid rgba(34, 197, 94, 0.45);
+        }
+        /* 系统消息（转人工提示等） */
+        .msg--system {
+            align-self: center;
+            max-width: 90%;
+        }
+        .msg--system .msg__bubble {
+            background: rgba(251, 191, 36, 0.08);
+            color: #fbbf24;
+            border: 1px dashed rgba(251, 191, 36, 0.35);
+            font-size: var(--font-size-xs);
+            text-align: center;
+        }
+        .msg--system .msg__avatar { display: none; }
+        .msg__bubble--streaming::after {
+            content: '▍';
+            margin-left: 2px;
+            animation: blink 1s infinite;
+            color: var(--accent-cool-bright, #38bdf8);
+        }
+        /* AI 思考中：三点动画（loading 状态） */
+        .msg__bubble--loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 56px;
+            min-height: 22px;
+            color: var(--text-muted, #9ca3af);
+        }
+        .chat-typing {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .chat-typing > span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-cool-bright, #38bdf8);
+            opacity: 0.4;
+            animation: typing-bounce 1.2s infinite ease-in-out;
+        }
+        .chat-typing > span:nth-child(2) { animation-delay: 0.15s; }
+        .chat-typing > span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes typing-bounce {
+            0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+            30% { opacity: 1; transform: translateY(-3px); }
+        }
+        /* 流式/错误状态错误提示 */
+        .msg__bubble--error {
+            color: #f43f5e;
+            border-color: rgba(244, 63, 94, 0.45);
+            background: rgba(244, 63, 94, 0.08);
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: var(--space-5);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-4);
+            min-height: 360px;
+        }
+        .chat-empty {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            padding: var(--space-6);
+            text-align: center;
+        }
+        .chat-empty__art { font-size: 64px; margin-bottom: var(--space-3); filter: drop-shadow(0 0 16px var(--accent-cool-glow)); }
+        .chat-empty__title { font-size: var(--font-size-lg); color: var(--text-primary); margin-bottom: var(--space-2); }
+        .chat-empty__desc { font-size: var(--font-size-sm); max-width: 400px; }
+
+        .msg {
+            display: flex;
+            gap: var(--space-3);
+            max-width: 80%;
+        }
+        .msg--user { align-self: flex-end; flex-direction: row-reverse; }
+        .msg--ai { align-self: flex-start; }
+        .msg__avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            flex-shrink: 0;
+            color: var(--bg-void);
+        }
+        .msg--user .msg__avatar {
+            background: linear-gradient(135deg, var(--primary-bright), var(--primary));
+        }
+        .msg--ai .msg__avatar {
+            background: linear-gradient(135deg, var(--accent-cool), var(--accent-purple));
+            box-shadow: 0 0 12px var(--accent-cool-glow);
+        }
+        .msg__bubble {
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-lg);
+            font-size: var(--font-size-sm);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .msg--user .msg__bubble {
+            background: var(--primary);
+            color: white;
+        }
+        .msg--ai .msg__bubble {
+            background: rgba(10, 14, 31, 0.5);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+        }
+        .msg__time {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* ============ 教练消息（M8）============ */
+        .msg--trainer { align-self: flex-start; max-width: 85%; }
+        .msg--trainer .msg__avatar {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+        }
+        .msg--trainer .msg__bubble {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(52, 211, 153, 0.08));
+            border: 1px solid rgba(16, 185, 129, 0.45);
+            padding: 12px;
+            max-width: 360px;
+        }
+        .trainer-card__title {
+            font-weight: 600; font-size: 13px;
+            color: #34d399; margin-bottom: 8px;
+        }
+        .trainer-card__cover {
+            width: 100%; max-height: 130px;
+            object-fit: cover; border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .trainer-card__name {
+            font-size: 15px; font-weight: 500;
+            color: var(--text-primary);
+        }
+        .trainer-card__meta {
+            font-size: 11px; color: var(--text-muted);
+            margin: 4px 0;
+        }
+        .trainer-card__desc {
+            font-size: 13px; color: var(--text-secondary);
+            margin: 6px 0; line-height: 1.5;
+        }
+        .trainer-card__actions {
+            display: flex; gap: 8px;
+            margin-top: 10px;
+        }
+        .trainer-card__btn {
+            padding: 6px 14px;
+            border-radius: 6px; border: none;
+            cursor: pointer; font-size: 13px;
+            font-weight: 500;
+        }
+        .trainer-card__btn--adopt {
+            background: #10b981; color: white;
+        }
+        .trainer-card__btn--view {
+            background: rgba(255,255,255,0.1); color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            text-decoration: none; display: inline-block;
+        }
+        .trainer-card__btn--adopt:disabled {
+            opacity: 0.5; cursor: not-allowed;
+        }
+        .trainer-card__plan-link {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #3b82f6;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        /* AI 推荐模板卡片（M9 plan-intent） */
+        .tpl-suggest {
+            margin: 4px 0 16px 52px;
+            max-width: 80%;
+        }
+        .tpl-suggest__title {
+            font-size: var(--font-size-sm);
+            color: var(--accent-cool-bright);
+            margin-bottom: var(--space-3);
+            font-weight: 600;
+        }
+        .tpl-suggest__list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--space-3);
+        }
+        .tpl-card {
+            background: rgba(10, 14, 31, 0.5);
+            border: 1px solid rgba(77, 208, 255, 0.35);
+            border-radius: var(--radius-lg);
+            padding: var(--space-3) var(--space-4);
+            box-shadow: 0 4px 16px rgba(77, 208, 255, 0.15);
+            transition: all 0.25s var(--ease);
+        }
+        .tpl-card:hover {
+            border-color: var(--accent-cool);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(77, 208, 255, 0.25);
+        }
+        .tpl-card__head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: var(--space-3);
+            margin-bottom: var(--space-2);
+        }
+        .tpl-card__name {
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+        .tpl-card__tags { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+        .tpl-tag {
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 122, 69, 0.15);
+            color: var(--primary-bright);
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .tpl-tag--mute {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-muted);
+        }
+        .tpl-card__desc {
+            font-size: var(--font-size-sm);
+            color: var(--text-muted);
+            margin-bottom: var(--space-3);
+            line-height: 1.5;
+            max-height: 4.5em;
+            overflow: hidden;
+        }
+        .tpl-card__foot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-3);
+        }
+        .tpl-card__meta {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+        }
+        .tpl-card__btn {
+            padding: 6px 14px;
+            background: linear-gradient(135deg, var(--primary-bright), var(--primary));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-xs);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tpl-card__btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 16px var(--primary-glow);
+        }
+        .tpl-card__btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .chat-input-bar {
+            padding: var(--space-3);
+            border-top: 1px solid var(--border-subtle);
+            background: rgba(10, 14, 31, 0.4);
+            display: flex;
+            gap: var(--space-2);
+        }
+        .chat-input-bar textarea {
+            flex: 1;
+            padding: var(--space-3);
+            background: rgba(10, 14, 31, 0.6);
+            color: var(--text-primary);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .chat-input-bar textarea:focus {
+            border-color: var(--accent-cool);
+            box-shadow: 0 0 0 3px rgba(77, 208, 255, 0.12);
+        }
+        .btn-send {
+            padding: 0 var(--space-5);
+            background: linear-gradient(135deg, var(--primary-bright), var(--primary));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 0 12px var(--primary-glow);
+            transition: all 0.2s;
+        }
+        .btn-send:hover { transform: translateY(-1px); box-shadow: 0 0 20px var(--primary-glow); }
+        .btn-send:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        @media (max-width: 768px) {
+            .chat-pane { grid-template-columns: 200px 1fr; }
+            .chat-sidebar__title { font-size: var(--font-size-xs); }
+            .chat-main__hint { display: none; }
+            .chat-main__head { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <a href="/c/" class="navbar__brand">
+            <span class="navbar__logo">💪</span>
+            <span class="navbar__title">FitHub</span>
+        </a>
+        <nav class="navbar__nav">
+            <a href="/c/" class="navbar__link">动作库</a>
+            <a href="/c/plans.html" class="navbar__link navbar__link--active">训练计划</a>
+            <a href="/c/templates.html" class="navbar__link">模板市场</a>
+            <a href="#" class="navbar__link" data-requires-auth>个人中心</a>
+        </nav>
+        <div class="navbar__auth">
+            <a href="/admin/login.html" class="btn btn--ghost">⚙️ 后台</a>
+            <a href="/c/login.html" class="btn btn--ghost" id="navLogin">登录</a>
+            <a href="/c/register.html" class="btn btn--primary" id="navRegister">注册</a>
+            <button class="btn btn--ghost" id="navLogout" style="display:none">退出</button>
+        </div>
+    </header>
+
+    <main class="plans-page">
+        <!-- 标题 + 操作 -->
+        <div class="plans-header">
+            <div>
+                <h1>训练计划</h1>
+                <p class="plans-header__sub">定制训练节奏，记录每一次打卡</p>
+            </div>
+            <a href="/c/plan-create.html" class="btn btn--primary">+ 新建计划</a>
+        </div>
+
+        <!-- 统计概览 -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card" style="--accent-color: var(--accent-cool);">
+                <div class="stat-card__label">总计划数</div>
+                <div class="stat-card__value" id="statTotal">—<span class="stat-card__unit">份</span></div>
+                <div class="stat-card__trend" id="statTotalTrend">暂无计划</div>
+            </div>
+            <div class="stat-card" style="--accent-color: var(--primary);">
+                <div class="stat-card__label">本周完成</div>
+                <div class="stat-card__value" id="statWeek">—<span class="stat-card__unit">天</span></div>
+                <div class="stat-card__trend" id="statWeekTrend">本周已训练</div>
+            </div>
+            <div class="stat-card" style="--accent-color: var(--accent-mint);">
+                <div class="stat-card__label">累计打卡</div>
+                <div class="stat-card__value" id="statRecords">—<span class="stat-card__unit">次</span></div>
+                <div class="stat-card__trend">所有计划汇总</div>
+            </div>
+            <div class="stat-card" style="--accent-color: var(--accent-purple);">
+                <div class="stat-card__label">平均完成率</div>
+                <div class="stat-card__value" id="statAvg">—<span class="stat-card__unit">%</span></div>
+                <div class="stat-card__trend" id="statAvgTrend">—</div>
+            </div>
+            <div class="stat-card" style="--accent-color: var(--accent-mint);">
+                <div class="stat-card__label">连续打卡</div>
+                <div class="stat-card__value" id="statStreak">—<span class="stat-card__unit">天</span></div>
+                <div class="stat-card__trend" id="statStreakTrend">连续坚持</div>
+            </div>
+            <div class="stat-card" style="--accent-color: var(--primary);">
+                <div class="stat-card__label">坚持周数</div>
+                <div class="stat-card__value" id="statWeeks">—<span class="stat-card__unit">周</span></div>
+                <div class="stat-card__trend" id="statWeeksTrend">累计训练</div>
+            </div>
+        </div>
+
+        <!-- 统计图表：近 4 周趋势 + 部位分布 -->
+        <div class="charts-row" id="chartsRow" style="display:none;">
+            <div class="chart-card">
+                <div class="chart-card__title">📈 近 4 周完成率</div>
+                <canvas id="trendChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card__title">🥧 最常练部位</div>
+                <canvas id="bodyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 顶部 Tab：我的计划 / AI 教练 -->
+        <div class="tabs-bar" id="tabsBar">
+            <button class="tab tab--active" data-tab="my">📋 我的计划</button>
+            <button class="tab" data-tab="ai">🤖 AI 教练</button>
+            <a href="/c/templates.html" class="tab" style="text-decoration:none;">模板市场</a>
+        </div>
+
+        <!-- 我的计划：筛选 -->
+        <div class="tab-pane tab-pane--active" data-pane="my">
+            <div class="filter-bar">
+                <input type="text" class="filter-bar__search" id="filterSearch" placeholder="🔍 搜索计划名称...">
+                <div class="filter-chip-group" id="filterGoal">
+                    <button class="filter-chip filter-chip--active" data-goal="">全部</button>
+                    <button class="filter-chip" data-goal="muscle_gain">增肌</button>
+                    <button class="filter-chip" data-goal="fat_loss">减脂</button>
+                    <button class="filter-chip" data-goal="body_shape">塑形</button>
+                    <button class="filter-chip" data-goal="endurance">体能</button>
+                </div>
+                <select class="filter-bar__select" id="filterStatus">
+                    <option value="">全部状态</option>
+                    <option value="current">当前使用</option>
+                <option value="in_progress">进行中</option>
+                <option value="archived">已归档</option>
+            </select>
+        </div>
+
+            <!-- 计划列表 -->
+            <div class="plans-grid" id="plansGrid">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+
+        <!-- AI 教练 Tab -->
+        <div class="tab-pane" data-pane="ai" id="aiTabPane">
+            <div class="chat-pane">
+                <!-- 左侧会话列表 -->
+                <aside class="chat-sidebar">
+                    <div class="chat-sidebar__head">
+                        <div class="chat-sidebar__title">💬 会话</div>
+                        <button class="btn-new-chat" id="btnNewChat">+ 新建</button>
+                    </div>
+                    <div id="convList"></div>
+                </aside>
+
+                <!-- 主聊天区 -->
+                <section class="chat-main">
+                    <div class="chat-main__head">
+                        <div class="chat-main__title" id="chatTitle">AI 教练 FitCoach</div>
+                        <div class="chat-main__hint">💡 问健身问题、让 AI 帮你调整计划、找动作替代方案</div>
+                        <button class="btn-stop" id="btnStop" hidden>停止生成</button>
+                        <button class="btn-find-trainer" id="btnFindTrainer" title="找专业教练">🏋️ 找教练</button>
+                        <button class="btn-transfer" id="btnTransfer" title="转人工客服">转人工</button>
+                    </div>
+                    <div class="chat-status" id="chatStatus" hidden></div>
+
+                    <div class="chat-messages" id="messages">
+                        <div class="chat-empty">
+                            <div class="chat-empty__art">💬</div>
+                            <div class="chat-empty__title">开始你的对话</div>
+                            <div class="chat-empty__desc">问健身问题、让 AI 帮你生成计划、找动作替代方案，或咨询饮食建议。</div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-bar">
+                        <textarea id="msgInput" placeholder="输入消息，Enter 发送，Shift+Enter 换行..." rows="1"></textarea>
+                        <button class="btn-send" id="btnSend" disabled>发送</button>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>动作媒体 © Gym visual · <a href="https://gymvisual.com/" target="_blank" rel="noopener">来源</a></p>
+        <p>FitHub · v0.2.0</p>
+    </footer>
+
+    <script type="module">
+        import { api, tokenStore } from './js/api.js';
+        import { t } from './js/translations.js';
+
+        const GOAL_NAMES = {
+            muscle_gain: '增肌',
+            fat_loss: '减脂',
+            body_shape: '塑形',
+            endurance: '体能',
+        };
+
+        // ============ State ============
+        let allPlans = [];
+        let allRecords = [];
+        const filters = { keyword: '', goal: '', status: '' };
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+        }
+
+        function updateAuthUI() {
+            const loggedIn = tokenStore.isLoggedIn;
+            document.getElementById('navLogin').style.display = loggedIn ? 'none' : 'inline-flex';
+            document.getElementById('navRegister').style.display = loggedIn ? 'none' : 'inline-flex';
+            const lo = document.getElementById('navLogout');
+            if (loggedIn) {
+                lo.style.display = 'inline-flex';
+                lo.textContent = `退出（${tokenStore.user?.nickname || tokenStore.user?.username}）`;
+                lo.onclick = () => { if (confirm('确定退出？')) { tokenStore.clear(); location.reload(); } };
+            } else lo.style.display = 'none';
+        }
+
+        // ============ 渲染：统计概览 ============
+        function renderStats() {
+            const totalPlans = allPlans.length;
+            const currentPlans = allPlans.filter(p => p.is_current === 1);
+
+            // 本周完成天数（从所有记录的 plan_week/day 计算）
+            const completedDays = new Set();
+            allRecords.forEach(r => completedDays.add(`${r.plan_week}-${r.plan_day}-${r.plan_id}`));
+            const weekCount = completedDays.size;
+
+            // 平均完成率
+            const avgPct = totalPlans > 0
+                ? allPlans.reduce((acc, p) => acc + p.progress_pct, 0) / totalPlans
+                : 0;
+
+            document.getElementById('statTotal').innerHTML = `${totalPlans}<span class="stat-card__unit">份</span>`;
+            document.getElementById('statTotalTrend').textContent = totalPlans > 0
+                ? `当前 ${currentPlans.length} 份在用`
+                : '暂无计划';
+
+            document.getElementById('statWeek').innerHTML = `${weekCount}<span class="stat-card__unit">天</span>`;
+            document.getElementById('statWeekTrend').textContent = weekCount > 0
+                ? `已坚持训练`
+                : '本周还没开始';
+
+            document.getElementById('statRecords').innerHTML = `${allRecords.length}<span class="stat-card__unit">次</span>`;
+
+            document.getElementById('statAvg').innerHTML = `${Math.round(avgPct)}<span class="stat-card__unit">%</span>`;
+            document.getElementById('statAvgTrend').textContent = totalPlans > 0
+                ? `${allPlans.filter(p => p.progress_pct === 100).length} 份已完成`
+                : '—';
+
+            // 连续打卡天数（基于所有打卡记录的日期，去重排序后计算连续天数）
+            const streak = calcStreak(allRecords);
+            document.getElementById('statStreak').innerHTML = `${streak}<span class="stat-card__unit">天</span>`;
+            document.getElementById('statStreakTrend').textContent = streak > 0
+                ? '保持势头 💪'
+                : '还没开始';
+
+            // 坚持周数（有打卡记录的不数同 ISO 周）
+            const weeksCount = calcWeeksCount(allRecords);
+            document.getElementById('statWeeks').innerHTML = `${weeksCount}<span class="stat-card__unit">周</span>`;
+            document.getElementById('statWeeksTrend').textContent = weeksCount > 0
+                ? `本周 ${currentWeekRecords(allRecords)} 次`
+                : '—';
+        }
+
+        function currentWeekRecords(records) {
+            const wk = getWeekKey(new Date());
+            return records.filter(r => getDateKey(r.recorded_at) && getWeekKey(new Date(r.recorded_at)) === wk).length;
+        }
+
+        function calcStreak(records) {
+            if (!records.length) return 0;
+            const days = new Set(records.map(r => getDateKey(r.recorded_at)).filter(Boolean));
+            if (!days.size) return 0;
+            let streak = 0;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            for (let i = 0; i < 365; i++) {
+                const d = new Date(today);
+                d.setDate(today.getDate() - i);
+                const k = getDateKey(d);
+                if (days.has(k)) streak++;
+                else if (i > 0) break;  // 容忍今天没打卡
+                else continue;  // 今天还没打卡，从昨天开始算
+            }
+            return streak;
+        }
+
+        function calcWeeksCount(records) {
+            const weeks = new Set();
+            records.forEach(r => {
+                if (r.recorded_at) {
+                    try { weeks.add(getWeekKey(new Date(r.recorded_at))); } catch (e) {}
+                }
+            });
+            return weeks.size;
+        }
+
+        function getDateKey(d) {
+            if (!d) return null;
+            try { return new Date(d).toISOString().slice(0, 10); } catch { return null; }
+        }
+
+        // ============ 渲染：计划卡片 ============
+        function getDayPreview(plan) {
+            if (!plan.weeks || plan.weeks.length === 0) return [];
+            const days = plan.weeks[0].days || [];
+            // 显示前 7 天
+            const preview = [];
+            for (let i = 1; i <= 7; i++) {
+                const d = days.find(x => x.day === i);
+                if (d) {
+                    preview.push({
+                        day: i,
+                        name: d.name || '训练',
+                        done: isDayCompleted(plan.id, 1, i),
+                    });
+                } else {
+                    preview.push({ day: i, name: '休息', done: false, rest: true });
+                }
+            }
+            return preview;
+        }
+
+        function isDayCompleted(planId, week, day) {
+            return allRecords.some(r => r.plan_id === planId && r.plan_week === week && r.plan_day === day);
+        }
+
+        function getPlanStatus(plan) {
+            if (plan.progress_pct === 100) return { key: 'done', label: '已完成' };
+            if (plan.progress_pct === 0) return { key: 'not_started', label: '未开始' };
+            if (plan.is_current === 1) return { key: 'in_progress', label: '进行中' };
+            return { key: 'paused', label: '已暂停' };
+        }
+
+        function matchesFilters(plan) {
+            if (filters.keyword && !plan.name.toLowerCase().includes(filters.keyword.toLowerCase())) return false;
+            if (filters.goal && plan.goal !== filters.goal) return false;
+            if (filters.status) {
+                const status = getPlanStatus(plan);
+                if (filters.status === 'current' && plan.is_current !== 1) return false;
+                if (filters.status === 'in_progress' && status.key !== 'in_progress') return false;
+                if (filters.status === 'archived' && plan.is_current === 1) return false;
+            }
+            return true;
+        }
+
+        function renderPlanCard(plan) {
+            const status = getPlanStatus(plan);
+            const dayPreview = getDayPreview(plan);
+            const thumbs = plan.thumbnails || [];
+
+            const card = document.createElement('div');
+            card.className = 'plan-card';
+            if (plan.is_current === 1) card.classList.add('plan-card--current');
+
+            card.innerHTML = `
+                <div class="plan-card__badges">
+                    ${plan.is_current === 1 ? '<span class="badge badge--current">CURRENT</span>' : ''}
+                    <span class="badge badge--status">${escapeHtml(status.label)}</span>
+                </div>
+
+                <div class="plan-card__name">${escapeHtml(plan.name)}</div>
+                <div class="plan-card__desc">🎯 ${GOAL_NAMES[plan.goal] || plan.goal} · ${(plan.weeks ? plan.weeks.length : 0)} 周完整周期</div>
+
+                ${thumbs.length > 0 ? `
+                <div class="plan-card__thumbs">
+                    ${thumbs.map(t => `
+                        <img class="plan-card__thumb"
+                             src="${t.image || ''}"
+                             data-gif="${t.gif || ''}"
+                             data-id="${escapeHtml(t.id)}"
+                             loading="lazy"
+                             title="${escapeHtml(t.id)}"
+                             onmouseenter="if(this.dataset.gif){const o=this.src;this.src=this.dataset.gif;this.dataset.o=o;}"
+                             onmouseleave="if(this.dataset.o){this.src=this.dataset.o;}"
+                             onerror="this.style.display='none'">
+                    `).join('')}
+                </div>
+                ` : ''}
+
+                <div class="day-preview">
+                    ${dayPreview.map(d => `
+                        <span class="day-chip ${d.rest ? 'day-chip--rest' : ''} ${d.done ? 'day-chip--done' : ''}">
+                            D${d.day} ${escapeHtml(d.name)}
+                        </span>
+                    `).join('')}
+                </div>
+
+                <div class="plan-card__progress">
+                    <div class="plan-card__progress-text">
+                        <span>进度</span>
+                        <span class="plan-card__progress-pct">${plan.progress_pct}%</span>
+                    </div>
+                    <div class="plan-card__progress-bar">
+                        <div class="plan-card__progress-fill" style="width:${plan.progress_pct}%"></div>
+                    </div>
+                    <div class="plan-card__stats">
+                        <span>${plan.completed_days} / ${plan.total_days} 天</span>
+                        <span>${plan.days_per_week} 天/周</span>
+                    </div>
+                </div>
+
+                <div class="plan-card__actions">
+                    <div class="plan-card__action plan-card__action--primary" data-act="start">
+                        ▶ 开始训练
+                    </div>
+                    <div class="plan-card__action" data-act="copy">
+                        📋 复制
+                    </div>
+                    <div class="plan-card__action plan-card__action--danger" data-act="delete">
+                        🗑 删除
+                    </div>
+                </div>
+            `;
+
+            // 卡片整体点击 → 详情
+            card.addEventListener('click', (e) => {
+                const actEl = e.target.closest('[data-act]');
+                if (actEl) return handleAction(plan, actEl.dataset.act, card);
+                location.href = `/c/plan-detail.html?id=${plan.id}`;
+            });
+
+            return card;
+        }
+
+        async function handleAction(plan, act, card) {
+            if (act === 'start') {
+                location.href = `/c/plan-detail.html?id=${plan.id}`;
+                return;
+            }
+            if (act === 'delete') {
+                if (!confirm(`确定删除计划「${plan.name}」？此操作不可撤销。`)) return;
+                try {
+                    await api.delete(`/plans/${plan.id}`);
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        allPlans = allPlans.filter(p => p.id !== plan.id);
+                        renderAll();
+                    }, 300);
+                } catch (err) {
+                    alert('删除失败：' + err.message);
+                }
+                return;
+            }
+            if (act === 'copy') {
+                 try {
+                     // 如果列表数据中没有 weeks，需要先获取完整计划数据
+                     let weeks = plan.weeks;
+                     if (!weeks || weeks.length === 0) {
+                         const fullPlan = await api.get(`/plans/${plan.id}`);
+                         weeks = fullPlan.weeks;
+                     }
+                     const newPlan = await api.post('/plans', {
+                         name: `${plan.name} (副本)`,
+                         goal: plan.goal,
+                         weeks: weeks,
+                         days_per_week: plan.days_per_week,
+                         equipment: plan.equipment || [],
+                     });
+                    alert(`✅ 已复制为「${newPlan.name}」`);
+                    location.reload();
+                } catch (err) {
+                    alert('复制失败：' + err.message);
+                }
+                return;
+            }
+        }
+
+        function renderEmpty() {
+            return `
+                <div class="empty-state">
+                    <div class="empty-state__art">📋</div>
+                    <div class="empty-state__title">你还没有训练计划</div>
+                    <div class="empty-state__desc">从上方模板一键开始，或自定义属于你的专属计划</div>
+                </div>
+            `;
+        }
+
+        function renderPlans() {
+            const wrap = document.getElementById('plansGrid');
+            const filtered = allPlans.filter(matchesFilters);
+
+            if (allPlans.length === 0) {
+                wrap.innerHTML = renderEmpty();
+                return;
+            }
+            if (filtered.length === 0) {
+                wrap.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state__art">🔍</div>
+                        <div class="empty-state__title">没有匹配的计划</div>
+                        <div class="empty-state__desc">试试调整筛选条件</div>
+                    </div>
+                `;
+                return;
+            }
+            wrap.innerHTML = '';
+            filtered.forEach(p => wrap.appendChild(renderPlanCard(p)));
+        }
+
+        function renderAll() {
+            renderStats();
+            renderPlans();
+            renderCharts();
+        }
+
+        // ============ 图表渲染 ============
+        let trendChart = null, bodyChart = null;
+        function renderCharts() {
+            // 没数据就不显示图表区
+            if (allPlans.length === 0) {
+                document.getElementById('chartsRow').style.display = 'none';
+                return;
+            }
+            document.getElementById('chartsRow').style.display = 'grid';
+
+            // 1) 近 4 周完成率（按周聚合 completed_days / total_days）
+            const weeks = {};  // key = ISO 周（如 2026-W36）
+            allPlans.forEach(p => {
+                const total = sumTotalDays(p);
+                const completed = computeCompletedDays(p);
+                const pct = total > 0 ? completed / total * 100 : 0;
+                // 简化：每个计划贡献到当前周
+                const w = getWeekKey(new Date());
+                if (!weeks[w]) weeks[w] = { total: 0, completed: 0 };
+                weeks[w].total += total;
+                weeks[w].completed += completed;
+            });
+
+            // 构造 4 周序列
+            const labels = [], data = [];
+            for (let i = 3; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i * 7);
+                const k = getWeekKey(d);
+                const wk = weeks[k] || { total: 0, completed: 0 };
+                labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+                data.push(wk.total > 0 ? Math.round(wk.completed / wk.total * 100) : 0);
+            }
+
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            if (trendChart) trendChart.destroy();
+            trendChart = new Chart(ctxTrend, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: '完成率 %',
+                        data,
+                        borderColor: '#4dd0ff',
+                        backgroundColor: 'rgba(77, 208, 255, 0.15)',
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#4dd0ff',
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1c2148',
+                            titleColor: '#f0f4ff',
+                            bodyColor: '#b4b4c8',
+                            borderColor: '#4dd0ff',
+                            borderWidth: 1,
+                        },
+                    },
+                    scales: {
+                        y: { min: 0, max: 100, ticks: { color: '#8b8b9e' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        x: { ticks: { color: '#8b8b9e' }, grid: { display: false } },
+                    },
+                },
+            });
+
+            // 2) 最常练部位（基于打卡记录 + Exercise 表的 body_part）
+            const bodyMap = {};
+            const bpLookup = window._bodyPartByExId || {};
+            allRecords.forEach(r => {
+                // 直接用 exercise_id 查 body_part，不再依赖 plan.weeks
+                const bp = bpLookup[r.exercise_id] || '其他';
+                bodyMap[bp] = (bodyMap[bp] || 0) + 1;
+            });
+
+            // 数据为空时不画饼图
+            if (Object.keys(bodyMap).length === 0) {
+                document.getElementById('bodyChart').style.display = 'none';
+                return;
+            }
+            document.getElementById('bodyChart').style.display = 'block';
+
+            const ctxBody = document.getElementById('bodyChart').getContext('2d');
+            if (bodyChart) bodyChart.destroy();
+            const bodyColors = ['#ff7a45', '#4dd0ff', '#4eecc8', '#a78bff', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+            bodyChart = new Chart(ctxBody, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(bodyMap).map(k => k === '其他' ? '未分类' : t.bodyPart(k)),
+                    datasets: [{
+                        data: Object.values(bodyMap),
+                        backgroundColor: bodyColors.slice(0, Object.keys(bodyMap).length),
+                        borderColor: '#0a0e1f',
+                        borderWidth: 2,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#b4b4c8', font: { size: 11 } },
+                        },
+                    },
+                },
+            });
+        }
+
+        function sumTotalDays(plan) {
+            return (plan.weeks || []).reduce((acc, w) => acc + (w.days?.length || 0), 0);
+        }
+
+        function computeCompletedDays(plan) {
+            return (plan.weeks || []).reduce(
+                (acc, w) => acc + (w.days || []).filter(d =>
+                    allRecords.some(r => r.plan_id === plan.id && r.plan_week === w.week && r.plan_day === d.day)
+                ).length,
+                0
+            );
+        }
+
+        function getWeekKey(d) {
+            const year = d.getFullYear();
+            const start = new Date(year, 0, 1);
+            const diff = (d - start) / 86400000;
+            const week = Math.ceil((diff + start.getDay() + 1) / 7);
+            return `${year}-W${week}`;
+        }
+
+        // ============ 筛选事件 ============
+        document.getElementById('filterSearch').addEventListener('input', (e) => {
+            filters.keyword = e.target.value;
+            renderPlans();
+        });
+        document.querySelectorAll('#filterGoal .filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('#filterGoal .filter-chip').forEach(c => c.classList.remove('filter-chip--active'));
+                chip.classList.add('filter-chip--active');
+                filters.goal = chip.dataset.goal;
+                renderPlans();
+            });
+        });
+        document.getElementById('filterStatus').addEventListener('change', (e) => {
+            filters.status = e.target.value;
+            renderPlans();
+        });
+
+        // ============ 数据加载 ============
+        async function load() {
+            const grid = document.getElementById('plansGrid');
+
+            if (!tokenStore.isLoggedIn) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state__art">🔒</div>
+                        <div class="empty-state__title">登录后才能管理训练计划</div>
+                        <div class="empty-state__desc">登录后可创建计划、记录打卡、查看进度</div>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                const plans = await api.get('/plans');
+                allPlans = plans;
+
+                // 加载所有记录（用于统计概览）
+                const recordPromises = allPlans.map(p =>
+                    api.get(`/plans/${p.id}/records`).catch(() => [])
+                );
+                const recordsArr = await Promise.all(recordPromises);
+                allRecords = recordsArr.flat();
+
+                // 加载所有动作的 body_part（带 localStorage 缓存，24h 过期）
+                const CACHE_KEY = 'fithub_bodypart_v1';
+                const CACHE_TTL = 24 * 60 * 60 * 1000;
+                const cached = (() => {
+                    try {
+                        const c = JSON.parse(localStorage.getItem(CACHE_KEY));
+                        if (c && Date.now() - c.t < CACHE_TTL) return c.map;
+                    } catch {}
+                    return null;
+                })();
+                if (cached) {
+                    window._bodyPartByExId = cached;
+                } else {
+                    try {
+                        const exData = await api.get('/exercises?page_size=1324');
+                        const map = {};
+                        exData.items.forEach(e => { map[e.id] = e.body_part; });
+                        window._bodyPartByExId = map;
+                        localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), map }));
+                    } catch (e) {
+                        console.warn('加载动作列表失败：', e);
+                    }
+                }
+
+                renderAll();
+            } catch (err) {
+                grid.innerHTML = `<div class="empty-state"><div class="empty-state__art">❌</div><div class="empty-state__title">加载失败</div><div class="empty-state__desc">${escapeHtml(err.message)}</div></div>`;
+            }
+        }
+
+        updateAuthUI();
+        load();
+
+        // ============ Tab 切换 ============
+        document.querySelectorAll('#tabsBar .tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.dataset.tab;
+                document.querySelectorAll('#tabsBar .tab').forEach(t => t.classList.remove('tab--active'));
+                tab.classList.add('tab--active');
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('tab-pane--active'));
+                document.querySelector(`.tab-pane[data-pane="${target}"]`).classList.add('tab-pane--active');
+                // 进入 AI Tab 时锁全局滚动，仅中间消息区滚动；切回其他 tab 恢复
+                document.body.classList.toggle('chat-fullscreen', target === 'ai');
+                // 进入 AI Tab 时自动聚焦输入框
+                if (target === 'ai') {
+                    setTimeout(() => document.getElementById('msgInput')?.focus(), 50);
+                }
+            });
+        });
+
+        // 页面初次加载时若 URL 带 #ai，也切到 AI tab（同时锁滚动）
+                if (location.hash === '#ai') {
+                    document.body.classList.add('chat-fullscreen');
+                }
+
+        // ============ AI 教练模块（详见 js/chat-tab.js） ============
+        import('./js/chat-tab.js?v=' + Date.now()).then(({ mountChat }) => {
+            mountChat({ escapeHtml });
+            if (location.hash === '#ai') {
+                document.querySelector('[data-tab="ai"]')?.click();
+            }
+        });
+    </script>
+</body>
+</html>

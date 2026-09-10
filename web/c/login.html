@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 · FitHub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* 登录/注册页：垂直居中 + 中心光圈 */
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        /* 中心冷色光晕作为登录页氛围 */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle,
+                rgba(0, 212, 255, 0.15) 0%,
+                rgba(139, 92, 246, 0.08) 30%,
+                transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        .auth-card {
+            width: 100%;
+            max-width: 440px;
+            background: rgba(18, 18, 28, 0.7);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            padding: var(--space-6);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-subtle);
+            box-shadow:
+                0 24px 64px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+        /* 卡片顶部受光高光带 */
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: var(--space-5); right: var(--space-5);
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), var(--accent-cool), transparent);
+            opacity: 0.6;
+        }
+        .auth-card__title {
+            font-size: var(--font-size-2xl);
+            font-weight: 800;
+            margin-bottom: var(--space-2);
+            text-align: center;
+            background: linear-gradient(135deg, #ffffff 0%, var(--primary-bright) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 24px var(--primary-glow);
+        }
+        .auth-card__subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--space-5);
+            letter-spacing: 2px;
+        }
+        .auth-card__form-group { margin-bottom: var(--space-4); }
+        .auth-card__form-group label {
+            display: block;
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            margin-bottom: var(--space-2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        .auth-card__error {
+            color: var(--primary-bright);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--space-3);
+            min-height: 20px;
+            text-shadow: 0 0 8px var(--primary-glow);
+        }
+        .auth-card__submit {
+            width: 100%;
+            justify-content: center;
+            margin-top: var(--space-2);
+            padding: var(--space-3) var(--space-4);
+            font-size: var(--font-size-base);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .auth-card__footer {
+            text-align: center;
+            margin-top: var(--space-5);
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+        }
+        .auth-card__footer a {
+            color: var(--accent-cool);
+            text-shadow: 0 0 6px var(--accent-cool-glow);
+            transition: text-shadow 0.3s var(--ease);
+        }
+        .auth-card__footer a:hover {
+            text-shadow: 0 0 12px var(--accent-cool-glow);
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <h1 class="auth-card__title">💪 FitHub 登录</h1>
+        <p class="auth-card__subtitle">FITNESS INTELLIGENCE</p>
+        <form id="loginForm">
+            <div class="auth-card__form-group">
+                <label class="sidebar__label">用户名</label>
+                <input type="text" id="username" class="input" required autocomplete="username" placeholder="3-32 字符">
+            </div>
+            <div class="auth-card__form-group">
+                <label class="sidebar__label">密码</label>
+                <input type="password" id="password" class="input" required autocomplete="current-password" placeholder="8-20 字符">
+            </div>
+            <div class="auth-card__error" id="errorMsg"></div>
+            <button type="submit" class="btn btn--primary auth-card__submit">登录</button>
+        </form>
+        <div class="auth-card__footer">
+            还没有账号？<a href="/c/register.html">立即注册</a><br>
+            <a href="/c/">← 返回首页</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { api, tokenStore } from './js/api.js';
+
+        const form = document.getElementById('loginForm');
+        const errorMsg = document.getElementById('errorMsg');
+
+        // next 参数：登录后跳回原页面（用于登录过期场景）
+        const nextUrl = new URLSearchParams(location.search).get('next') || '/c/';
+        // 仅允许跳到 /c/ 开头的相对路径，防开放重定向
+        const safeNext = nextUrl.startsWith('/c/') ? nextUrl : '/c/';
+
+        // 如果带 expired=1，显示顶部提示
+        if (new URLSearchParams(location.search).get('expired') === '1') {
+            const tip = document.createElement('div');
+            tip.style.cssText = 'background:#fef3c7;color:#92400e;padding:10px;border-radius:6px;margin-bottom:12px;font-size:13px;text-align:center;';
+            tip.textContent = '⏰ 登录已过期，请重新登录';
+            form.parentElement.insertBefore(tip, form);
+        }
+
+        // 已登录则直接回 next
+        if (tokenStore.isLoggedIn) {
+            window.location.href = safeNext;
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMsg.textContent = '';
+
+            const submitBtn = form.querySelector('button');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '登录中...';
+
+            try {
+                const data = await api.auth.login({
+                    username: document.getElementById('username').value.trim(),
+                    password: document.getElementById('password').value,
+                    remember_me: false,
+                });
+                tokenStore.set(data.access_token, data.refresh_token, data.user);
+                window.location.href = safeNext;
+            } catch (err) {
+                errorMsg.textContent = err.message || '登录失败';
+                submitBtn.disabled = false;
+                submitBtn.textContent = '登录';
+            }
+        });
+    </script>
+</body>
+</html>

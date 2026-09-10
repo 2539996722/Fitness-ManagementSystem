@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模板市场 · FitHub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .market-page {
+            position: relative; z-index: 1;
+            max-width: 1280px; margin: 0 auto;
+            padding: var(--space-6) var(--space-5);
+        }
+        .market-header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: var(--space-5); padding-bottom: var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .market-header h1 {
+            font-size: var(--font-size-3xl); font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, var(--primary-bright) 50%, var(--accent-purple) 100%);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+            text-shadow: 0 0 32px var(--primary-glow);
+        }
+        .market-header__sub { color: var(--text-muted); font-size: var(--font-size-sm); margin-top: var(--space-2); }
+
+        .filter-bar {
+            display: flex; gap: var(--space-3); margin-bottom: var(--space-5);
+            padding: var(--space-4); background: var(--bg-card);
+            backdrop-filter: blur(16px); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg); align-items: center; flex-wrap: wrap;
+        }
+        .filter-bar__search {
+            flex: 1; min-width: 200px; padding: var(--space-2) var(--space-3);
+            background: rgba(10, 14, 31, 0.5); color: var(--text-primary);
+            border: 1px solid var(--border-base); border-radius: var(--radius-md);
+            font-size: var(--font-size-base);
+        }
+        .filter-bar__search:focus { outline: none; border-color: var(--accent-cool); box-shadow: 0 0 0 3px rgba(77,208,255,0.12); }
+        .filter-chip-group { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+        .filter-chip {
+            padding: var(--space-1) var(--space-3); background: transparent;
+            color: var(--text-secondary); border: 1px solid var(--border-base);
+            border-radius: var(--radius-pill, 999px); font-size: var(--font-size-xs);
+            font-weight: 500; cursor: pointer; transition: all 0.2s var(--ease); white-space: nowrap;
+        }
+        .filter-chip:hover { border-color: var(--accent-cool); color: var(--accent-cool-bright); }
+        .filter-chip--active { background: var(--accent-cool); color: var(--bg-void); border-color: var(--accent-cool); box-shadow: 0 0 12px var(--accent-cool-glow); }
+        .filter-bar__select {
+            padding: var(--space-2) var(--space-3); background: rgba(10, 14, 31, 0.5);
+            color: var(--text-primary); border: 1px solid var(--border-base);
+            border-radius: var(--radius-md); font-size: var(--font-size-sm); cursor: pointer;
+        }
+        .filter-bar__select option { background: var(--bg-elevated); }
+
+        .market-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: var(--space-4);
+        }
+        .market-card {
+            position: relative; background: var(--bg-card-solid);
+            border: 1px solid var(--border-base); border-radius: var(--radius-lg);
+            padding: var(--space-5); cursor: pointer; overflow: hidden;
+            transition: all 0.3s var(--ease);
+            display: flex; flex-direction: column; min-height: 220px;
+        }
+        .market-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: 0.5;
+        }
+        .market-card:hover {
+            transform: translateY(-3px); border-color: var(--primary);
+            box-shadow: 0 12px 32px rgba(255, 122, 69, 0.18);
+        }
+        .market-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-3); }
+        .market-card__name { font-size: var(--font-size-lg); font-weight: 700; color: var(--text-primary); flex: 1; line-height: 1.4; }
+        .market-card__desc { color: var(--text-secondary); font-size: var(--font-size-sm); line-height: 1.6; margin-bottom: var(--space-3); flex: 1; }
+        .market-card__tags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
+        .tag { padding: 4px 10px; border-radius: var(--radius-sm); font-size: var(--font-size-xs); font-weight: 500; }
+        .tag--goal { background: rgba(255, 122, 69, 0.12); color: var(--primary-bright); border: 1px solid rgba(255, 122, 69, 0.3); }
+        .tag--level-beginner { background: rgba(78, 236, 200, 0.12); color: var(--accent-mint); border: 1px solid rgba(78, 236, 200, 0.3); }
+        .tag--level-intermediate { background: rgba(77, 208, 255, 0.12); color: var(--accent-cool-bright); border: 1px solid rgba(77, 208, 255, 0.3); }
+        .tag--level-advanced { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .market-card__stats { display: flex; justify-content: space-between; align-items: center; padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); font-size: var(--font-size-xs); color: var(--text-muted); }
+        .market-card__stat { display: flex; align-items: center; gap: 4px; }
+        .market-card__stat strong { color: var(--text-primary); font-weight: 600; }
+        .market-card__rating { color: var(--primary-bright); font-weight: 700; }
+
+        .pagination {
+            display: flex; justify-content: center; align-items: center;
+            gap: var(--space-3); margin-top: var(--space-5);
+        }
+        .pagination button {
+            padding: 6px 14px; background: var(--bg-card-solid); color: var(--text-primary);
+            border: 1px solid var(--border-base); border-radius: var(--radius-sm); cursor: pointer; font-size: var(--font-size-sm);
+        }
+        .pagination button:hover:not(:disabled) { border-color: var(--accent-cool); color: var(--accent-cool-bright); }
+        .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .pagination__info { color: var(--text-muted); font-size: var(--font-size-sm); }
+
+        .empty-state {
+            grid-column: 1 / -1; text-align: center; padding: var(--space-8) var(--space-5);
+            background: var(--bg-card); border: 1px dashed var(--border-base);
+            border-radius: var(--radius-lg); position: relative; overflow: hidden;
+        }
+        .empty-state::before {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(77, 208, 255, 0.08), transparent 70%);
+            pointer-events: none;
+        }
+        .empty-state__art { font-size: 80px; margin-bottom: var(--space-4); filter: drop-shadow(0 0 16px var(--accent-cool-glow)); }
+        .empty-state__title { font-size: var(--font-size-xl); color: var(--text-primary); margin-bottom: var(--space-2); }
+        .empty-state__desc { color: var(--text-muted); }
+        .loading { grid-column: 1 / -1; text-align: center; padding: var(--space-8); color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <a href="/c/" class="navbar__brand">
+            <span class="navbar__logo">💪</span>
+            <span class="navbar__title">FitHub</span>
+        </a>
+        <nav class="navbar__nav">
+            <a href="/c/" class="navbar__link">动作库</a>
+            <a href="/c/plans.html" class="navbar__link">训练计划</a>
+            <a href="/c/templates.html" class="navbar__link navbar__link--active">模板市场</a>
+            <a href="#" class="navbar__link" data-requires-auth>个人中心</a>
+        </nav>
+        <div class="navbar__auth">
+            <a href="/admin/login.html" class="btn btn--ghost">⚙️ 后台</a>
+            <a href="/c/login.html" class="btn btn--ghost" id="navLogin">登录</a>
+            <a href="/c/register.html" class="btn btn--primary" id="navRegister">注册</a>
+            <button class="btn btn--ghost" id="navLogout" style="display:none">退出</button>
+        </div>
+    </header>
+
+    <main class="market-page">
+        <div class="market-header">
+            <div>
+                <h1>🚀 模板市场</h1>
+                <p class="market-header__sub">教练精选训练模板，一键套用生成专属计划</p>
+            </div>
+        </div>
+
+        <div class="filter-bar">
+            <input type="text" class="filter-bar__search" id="filterKeyword" placeholder="🔍 搜索模板名称...">
+            <div class="filter-chip-group" id="filterGoal">
+                <button class="filter-chip filter-chip--active" data-goal="">全部目标</button>
+                <button class="filter-chip" data-goal="muscle_gain">增肌</button>
+                <button class="filter-chip" data-goal="fat_loss">减脂</button>
+                <button class="filter-chip" data-goal="body_shape">塑形</button>
+                <button class="filter-chip" data-goal="endurance">体能</button>
+            </div>
+            <select class="filter-bar__select" id="filterLevel">
+                <option value="">全部等级</option>
+                <option value="beginner">新手</option>
+                <option value="intermediate">有基础</option>
+                <option value="advanced">老手</option>
+            </select>
+            <select class="filter-bar__select" id="filterSort">
+                <option value="hot">🔥 最热</option>
+                <option value="new">🆕 最新</option>
+                <option value="rating">⭐ 高分</option>
+            </select>
+        </div>
+
+        <div class="market-grid" id="marketGrid">
+            <div class="loading">加载中...</div>
+        </div>
+
+        <div class="pagination" id="pagination" style="display:none;">
+            <button id="btnPrev">← 上一页</button>
+            <span class="pagination__info" id="pageInfo">第 1 页</span>
+            <button id="btnNext">下一页 →</button>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>动作媒体 © Gym visual · <a href="https://gymvisual.com/" target="_blank" rel="noopener">来源</a></p>
+        <p>FitHub · v0.2.0</p>
+    </footer>
+
+    <script type="module">
+        import { api, tokenStore } from './js/api.js';
+
+        const GOAL_NAMES = { muscle_gain: '增肌', fat_loss: '减脂', body_shape: '塑形', endurance: '体能' };
+        const LEVEL_NAMES = { beginner: '新手', intermediate: '有基础', advanced: '老手' };
+        const LEVEL_CLASS = { beginner: 'tag--level-beginner', intermediate: 'tag--level-intermediate', advanced: 'tag--level-advanced' };
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+        }
+
+        function updateAuthUI() {
+            const loggedIn = tokenStore.isLoggedIn;
+            document.getElementById('navLogin').style.display = loggedIn ? 'none' : 'inline-flex';
+            document.getElementById('navRegister').style.display = loggedIn ? 'none' : 'inline-flex';
+            const lo = document.getElementById('navLogout');
+            if (loggedIn) {
+                lo.style.display = 'inline-flex';
+                lo.textContent = `退出（${tokenStore.user?.nickname || tokenStore.user?.username}）`;
+                lo.onclick = () => { if (confirm('确定退出？')) { tokenStore.clear(); location.reload(); } };
+            } else lo.style.display = 'none';
+        }
+
+        const state = { page: 1, pageSize: 20, total: 0, filters: { goal: '', level: '', keyword: '', sort: 'hot' } };
+
+        async function load() {
+            const grid = document.getElementById('marketGrid');
+            grid.innerHTML = `<div class="loading">加载中...</div>`;
+            try {
+                const params = new URLSearchParams({
+                    page: state.page,
+                    page_size: state.pageSize,
+                    sort: state.filters.sort,
+                });
+                if (state.filters.goal) params.set('goal', state.filters.goal);
+                if (state.filters.level) params.set('level', state.filters.level);
+                if (state.filters.keyword) params.set('keyword', state.filters.keyword);
+
+                const data = await api.get(`/plan-templates?${params}`);
+                state.total = data.total;
+                render(data);
+            } catch (err) {
+                grid.innerHTML = `<div class="empty-state"><div class="empty-state__art">❌</div><div class="empty-state__title">加载失败</div><div class="empty-state__desc">${escapeHtml(err.message)}</div></div>`;
+                document.getElementById('pagination').style.display = 'none';
+            }
+        }
+
+        function render(data) {
+            const grid = document.getElementById('marketGrid');
+            if (data.items.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state__art">📭</div>
+                        <div class="empty-state__title">暂无符合条件的模板</div>
+                        <div class="empty-state__desc">试试调整筛选条件</div>
+                    </div>
+                `;
+                document.getElementById('pagination').style.display = 'none';
+                return;
+            }
+            grid.innerHTML = '';
+            data.items.forEach(t => {
+                const card = document.createElement('div');
+                card.className = 'market-card';
+                const weekCount = (t.weeks || []).length;
+                const rating = t.avg_rating != null ? Number(t.avg_rating).toFixed(1) : '—';
+                card.innerHTML = `
+                    <div class="market-card__head">
+                        <div class="market-card__name">${escapeHtml(t.name)}</div>
+                    </div>
+                    <div class="market-card__desc">${escapeHtml(t.description || '（暂无描述）')}</div>
+                    <div class="market-card__tags">
+                        <span class="tag tag--goal">🎯 ${GOAL_NAMES[t.goal] || t.goal}</span>
+                        <span class="tag ${LEVEL_CLASS[t.level] || ''}">👤 ${LEVEL_NAMES[t.level] || t.level}</span>
+                        <span class="tag" style="background:rgba(255,255,255,0.05);color:var(--text-muted);border:1px solid var(--border-subtle);">📅 ${weekCount} 周</span>
+                    </div>
+                    <div class="market-card__stats">
+                        <span class="market-card__stat">👥 <strong>${t.use_count}</strong> 人采用</span>
+                        <span class="market-card__stat">⭐ <strong class="market-card__rating">${rating}</strong> ${t.review_count ? `(${t.review_count}评)` : ''}</span>
+                    </div>
+                `;
+                card.addEventListener('click', () => {
+                    location.href = `/c/template-detail.html?id=${t.id}`;
+                });
+                grid.appendChild(card);
+            });
+
+            // 分页
+            const pg = document.getElementById('pagination');
+            if (data.total <= data.page_size) {
+                pg.style.display = 'none';
+            } else {
+                pg.style.display = 'flex';
+                document.getElementById('pageInfo').textContent = `第 ${data.page} 页 / 共 ${data.total} 条`;
+                document.getElementById('btnPrev').disabled = data.page <= 1;
+                document.getElementById('btnNext').disabled = !data.has_more;
+            }
+        }
+
+        // ===== 筛选事件 =====
+        let kwTimer;
+        document.getElementById('filterKeyword').addEventListener('input', (e) => {
+            clearTimeout(kwTimer);
+            kwTimer = setTimeout(() => { state.filters.keyword = e.target.value; state.page = 1; load(); }, 300);
+        });
+        document.querySelectorAll('#filterGoal .filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('#filterGoal .filter-chip').forEach(c => c.classList.remove('filter-chip--active'));
+                chip.classList.add('filter-chip--active');
+                state.filters.goal = chip.dataset.goal;
+                state.page = 1; load();
+            });
+        });
+        document.getElementById('filterLevel').addEventListener('change', (e) => {
+            state.filters.level = e.target.value; state.page = 1; load();
+        });
+        document.getElementById('filterSort').addEventListener('change', (e) => {
+            state.filters.sort = e.target.value; state.page = 1; load();
+        });
+        document.getElementById('btnPrev').addEventListener('click', () => { if (state.page > 1) { state.page--; load(); } });
+        document.getElementById('btnNext').addEventListener('click', () => { state.page++; load(); });
+
+        updateAuthUI();
+        load();
+    </script>
+</body>
+</html>

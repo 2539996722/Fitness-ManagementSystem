@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据看板 · FitHub 管理后台</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="css/soft-ui.css">
+    <script type="module" src="js/admin-layout.js"></script>
+</head>
+<body>
+    <aside class="sidebar" id="appSidebar"></aside>
+
+    <main class="main">
+        <div class="header">
+            <div class="header__title">数据看板</div>
+            <div class="header__user">
+                <span class="header__role" id="userRole">-</span>
+                <span id="userName">-</span>
+                <button class="btn btn--sm" id="btnRefresh">↻ 刷新</button>
+                <button class="header__btn" id="logoutBtn">退出登录</button>
+            </div>
+        </div>
+
+        <div id="alert" class="alert alert--hidden"></div>
+
+        <div class="dashboard-stats">
+        <!-- 6 KPI -->
+        <div class="kpi-grid" id="kpiGrid" data-requires-roles="admin,trainer">
+            <div class="kpi kpi--users">
+                <div class="kpi__label">总用户数</div>
+                <div class="kpi__value" id="kpiUsers">—</div>
+                <div class="kpi__sub" id="kpiUsersSub"></div>
+            </div>
+            <div class="kpi kpi--users">
+                <div class="kpi__label">今日新增</div>
+                <div class="kpi__value" id="kpiNew">—</div>
+                <div class="kpi__sub">DAU <span id="kpiDau">—</span></div>
+            </div>
+            <div class="kpi kpi--ai">
+                <div class="kpi__label">AI 对话总数</div>
+                <div class="kpi__value" id="kpiAiTotal">—</div>
+                <div class="kpi__sub">今日 <span id="kpiAiToday">—</span></div>
+            </div>
+            <div class="kpi kpi--human">
+                <div class="kpi__label">人工会话数</div>
+                <div class="kpi__value" id="kpiHuman">—</div>
+                <div class="kpi__sub">待接入 <span id="kpiPending">—</span></div>
+            </div>
+        </div>
+
+        <!-- 趋势 + 目标 -->
+        <div class="chart-row" data-requires-roles="admin,trainer">
+            <div class="chart-card">
+                <div class="chart-card__title">
+                    📈 近 30 天新增用户
+                </div>
+                <canvas id="trendChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card__title">
+                    🥧 训练目标分布
+                </div>
+                <canvas id="goalChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 部位 + 意图 -->
+        <div class="chart-row chart-row--two" data-requires-roles="admin,trainer">
+            <div class="chart-card">
+                <div class="chart-card__title">
+                    💪 部位偏好 TOP10
+                </div>
+                <canvas id="bodyChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card__title">
+                    🤖 AI 场景调用分布
+                </div>
+                <canvas id="intentChart"></canvas>
+            </div>
+        </div>
+
+        <!-- AI 用量（admin 专属） -->
+        <div class="chart-row" data-requires-roles="admin">
+            <div class="chart-card">
+                <div class="chart-card__title">
+                    📊 近 7 天 AI 调用 Token / 成本
+                    <span id="aiCostTotal" style="font-size: 12px; color: var(--color-text-muted); font-weight: 400;"></span>
+                </div>
+                <canvas id="aiCostChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card__title">
+                    🎯 按意图累计 Token 占比
+                </div>
+                <canvas id="aiIntentCostChart"></canvas>
+            </div>
+        </div>
+        </div>
+    </main>
+
+    <script type="module">
+        const API_BASE = '/api/v1';
+        const TOKEN_KEY = 'fithub_admin_access';
+        const USER_KEY = 'fithub_admin_user';
+
+        const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+        if (!localStorage.getItem(TOKEN_KEY) || !user) {
+            window.location.href = '/admin/login.html';
+        }
+        if (!['admin', 'trainer'].includes(user?.role)) {
+            alert('仅管理员/教练可访问此页面');
+            window.location.href = '/admin/';
+        }
+
+        document.querySelectorAll('[data-requires-roles]').forEach((el) => {
+            const allowed = el.dataset.requiresRoles.split(',');
+            if (!allowed.includes(user.role)) el.style.display = 'none';
+        });
+
+        async function api(path) {
+            const headers = {};
+            const token = localStorage.getItem(TOKEN_KEY);
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const resp = await fetch(`${API_BASE}${path}`, { headers });
+            if (resp.status === 401) {
+                localStorage.clear();
+                window.location.href = '/admin/login.html';
+                return;
+            }
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+                throw new Error(err.detail || `HTTP ${resp.status}`);
+            }
+            return resp.json();
+        }
+
+        function showAlert(msg, type = 'info') {
+            const el = document.getElementById('alert');
+            el.className = `alert alert--${type}`;
+            el.textContent = msg;
+            el.classList.remove('alert--hidden');
+        }
+
+        // Chart 实例缓存（避免 canvas 复用报错）
+        const charts = {};
+        function destroyChart(key) {
+            if (charts[key]) { charts[key].destroy(); charts[key] = null; }
+        }
+
+        const PALETTE = ['#ff7a45', '#4dd0ff', '#4eecc8', '#a78bff', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#10b981', '#ef4444'];
+
+        async function loadOverview() {
+            try {
+                const m = await api('/admin/dashboard/overview');
+                document.getElementById('kpiUsers').textContent = m.total_users;
+                document.getElementById('kpiNew').textContent = m.today_new_users;
+                document.getElementById('kpiDau').textContent = m.dau;
+                document.getElementById('kpiAiTotal').textContent = m.ai_total;
+                document.getElementById('kpiAiToday').textContent = m.ai_today;
+                document.getElementById('kpiHuman').textContent = m.human_total;
+                document.getElementById('kpiPending').textContent = m.human_pending;
+            } catch (e) {
+                showAlert('加载总览失败：' + e.message, 'error');
+            }
+        }
+
+        async function loadTrend() {
+            try {
+                const data = await api('/admin/dashboard/user-trend?days=30');
+                destroyChart('trend');
+                const ctx = document.getElementById('trendChart');
+                charts.trend = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.points.map((p) => p.date.slice(5)),
+                        datasets: [{
+                            label: '新增用户',
+                            data: data.points.map((p) => p.count),
+                            borderColor: '#ff6b35',
+                            backgroundColor: 'rgba(255,107,53,0.15)',
+                            tension: 0.35,
+                            fill: true,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#ff6b35',
+                            borderWidth: 2,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1c2148',
+                                padding: 10,
+                                callbacks: {
+                                    title: (items) => data.points[items[0].dataIndex].date,
+                                },
+                            },
+                        },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { precision: 0 } },
+                            x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
+                        },
+                    },
+                });
+            } catch (e) {
+                document.getElementById('trendChart').parentElement.innerHTML += `<div class="empty-tip">加载失败：${e.message}</div>`;
+            }
+        }
+
+        async function loadGoal() {
+            try {
+                const data = await api('/admin/dashboard/goal-distribution');
+                destroyChart('goal');
+                if (data.items.length === 0) {
+                    document.getElementById('goalChart').parentElement.innerHTML += `<div class="empty-tip">暂无数据</div>`;
+                    return;
+                }
+                charts.goal = new Chart(document.getElementById('goalChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.items.map((i) => i.name),
+                        datasets: [{ data: data.items.map((i) => i.count), backgroundColor: PALETTE }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { font: { size: 12 } } } },
+                    },
+                });
+            } catch (e) {
+                document.getElementById('goalChart').parentElement.innerHTML += `<div class="empty-tip">加载失败：${e.message}</div>`;
+            }
+        }
+
+        async function loadBody() {
+            try {
+                const data = await api('/admin/dashboard/body-part-top');
+                destroyChart('body');
+                if (data.items.length === 0) {
+                    document.getElementById('bodyChart').parentElement.innerHTML += `<div class="empty-tip">暂无训练记录</div>`;
+                    return;
+                }
+                charts.body = new Chart(document.getElementById('bodyChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: data.items.map((i) => i.name),
+                        datasets: [{
+                            label: '打卡次数',
+                            data: data.items.map((i) => i.count),
+                            backgroundColor: '#4dd0ff',
+                            borderRadius: 4,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: { legend: { display: false } },
+                        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+                    },
+                });
+            } catch (e) {
+                document.getElementById('bodyChart').parentElement.innerHTML += `<div class="empty-tip">加载失败：${e.message}</div>`;
+            }
+        }
+
+        async function loadIntent() {
+            try {
+                const data = await api('/admin/dashboard/intent-distribution');
+                destroyChart('intent');
+                if (data.items.length === 0) {
+                    document.getElementById('intentChart').parentElement.innerHTML += `<div class="empty-tip">暂无 AI 对话</div>`;
+                    return;
+                }
+                charts.intent = new Chart(document.getElementById('intentChart'), {
+                    type: 'pie',
+                    data: {
+                        labels: data.items.map((i) => i.name),
+                        datasets: [{ data: data.items.map((i) => i.count), backgroundColor: PALETTE }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { font: { size: 12 } } } },
+                    },
+                });
+            } catch (e) {
+                document.getElementById('intentChart').parentElement.innerHTML += `<div class="empty-tip">加载失败：${e.message}</div>`;
+            }
+        }
+
+        async function loadAiCost() {
+            try {
+                const data = await api('/admin/dashboard/ai-cost?days=7');
+                destroyChart('aiCost');
+                destroyChart('aiIntentCost');
+
+                const t = data.total || {};
+                document.getElementById('aiCostTotal').textContent =
+                    `${t.calls || 0} 次 · ${(t.total_tokens || 0).toLocaleString()} tokens · ¥${Number(t.cost_cny || 0).toFixed(4)}`;
+
+                charts.aiCost = new Chart(document.getElementById('aiCostChart'), {
+                    data: {
+                        labels: data.points.map((p) => p.date.slice(5)),
+                        datasets: [
+                            {
+                                type: 'bar',
+                                label: 'Token 数',
+                                data: data.points.map((p) => p.total_tokens),
+                                backgroundColor: 'rgba(77, 208, 255, 0.5)',
+                                borderColor: '#4dd0ff',
+                                borderWidth: 1,
+                                yAxisID: 'y',
+                                borderRadius: 3,
+                            },
+                            {
+                                type: 'line',
+                                label: '成本 (¥)',
+                                data: data.points.map((p) => p.cost_cny),
+                                borderColor: '#ff6b35',
+                                backgroundColor: 'rgba(255, 107, 53, 0.15)',
+                                tension: 0.35,
+                                fill: true,
+                                pointRadius: 3,
+                                pointBackgroundColor: '#ff6b35',
+                                borderWidth: 2,
+                                yAxisID: 'y1',
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top', labels: { font: { size: 12 } } },
+                            tooltip: { backgroundColor: '#1c2148', padding: 10 },
+                        },
+                        scales: {
+                            y: { beginAtZero: true, position: 'left', title: { display: true, text: 'Token' } },
+                            y1: { beginAtZero: true, position: 'right', title: { display: true, text: '¥' }, grid: { drawOnChartArea: false } },
+                            x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
+                        },
+                    },
+                });
+
+                const intentMap = {};
+                data.points.forEach((p) => {
+                    Object.entries(p.by_intent_tokens || {}).forEach(([k, v]) => {
+                        intentMap[k] = (intentMap[k] || 0) + v;
+                    });
+                });
+                const intentLabels = { qa: '健身问答', plan: '计划生成', substitute: '动作替代', diet: '饮食建议' };
+                const entries = Object.entries(intentMap);
+                if (entries.length === 0) {
+                    document.getElementById('aiIntentCostChart').parentElement.innerHTML +=
+                        `<div class="empty-tip">近 7 天暂无 AI 调用</div>`;
+                    return;
+                }
+                charts.aiIntentCost = new Chart(document.getElementById('aiIntentCostChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: entries.map(([k]) => intentLabels[k] || k),
+                        datasets: [{ data: entries.map(([, v]) => v), backgroundColor: PALETTE }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { font: { size: 12 } } } },
+                    },
+                });
+            } catch (e) {
+                document.getElementById('aiCostChart').parentElement.innerHTML +=
+                    `<div class="empty-tip">加载失败：${e.message}</div>`;
+            }
+        }
+
+        async function loadAll() {
+            if (user?.role === 'customer_service') return;
+            const tasks = [loadOverview(), loadTrend(), loadGoal(), loadBody(), loadIntent()];
+            if (user?.role === 'admin') tasks.push(loadAiCost());
+            await Promise.all(tasks);
+        }
+
+        document.getElementById('btnRefresh').addEventListener('click', loadAll);
+        if (user?.role === 'customer_service') {
+            const r = document.getElementById('btnRefresh');
+            if (r) r.style.display = 'none';
+        }
+        loadAll();
+    </script>
+</body>
+</html>

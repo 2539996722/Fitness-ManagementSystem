@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库 · FitHub 管理后台</title>
+    <link rel="stylesheet" href="css/soft-ui.css">
+    <style>
+        /* 私有样式 */
+        .kb-grid { display: grid; grid-template-columns: 280px 1fr; gap: var(--sp-4); align-items: stretch; min-height: 600px; }
+        .kb-list { background: var(--bg-2); border-radius: var(--r-md); padding: var(--sp-3); overflow-y: auto; max-height: 70vh; }
+        .kb-card {
+            background: var(--bg-0);
+            border-radius: var(--r-md);
+            padding: var(--sp-3);
+            margin-bottom: var(--sp-2);
+            box-shadow: var(--shadow-flat);
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .kb-card:hover { box-shadow: var(--shadow-out-sm); }
+        .kb-card--active { border-color: var(--accent); box-shadow: var(--shadow-out-md); }
+        .kb-card__name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+        .kb-card__meta { font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; }
+        .kb-card__disabled { opacity: 0.5; }
+
+        .kb-main { background: var(--bg-0); border-radius: var(--r-md); padding: var(--sp-4); box-shadow: var(--shadow-in-sm); }
+        .kb-empty { padding: var(--sp-6); text-align: center; color: var(--text-muted); }
+
+        /* 文档表 */
+        .doc-table { width: 100%; border-collapse: collapse; margin-top: var(--sp-3); font-size: 13px; }
+        .doc-table th { background: var(--bg-2); padding: 8px 12px; text-align: left; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid rgba(163,177,198,0.18); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+        .doc-table td { padding: 10px 12px; border-bottom: 1px solid rgba(163,177,198,0.18); }
+        .doc-table tbody tr:hover { background: var(--bg-1); }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: var(--r-pill); font-size: 11px; font-weight: 700; }
+        .status-badge--ready { background: var(--success-soft); color: var(--success); }
+        .status-badge--processing { background: #fef3c7; color: #d97706; }
+        .status-badge--failed { background: #fee2e2; color: #dc2626; }
+
+        /* 设置表单 */
+        .kb-settings { background: var(--bg-1); border-radius: var(--r-md); padding: var(--sp-4); margin-top: var(--sp-4); }
+        .kb-settings h4 { margin-bottom: var(--sp-3); }
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-3); }
+        .form-row { display: flex; flex-direction: column; gap: 4px; }
+        .form-row label { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+        .form-row input, .form-row textarea { padding: 8px 10px; border: 1px solid rgba(163,177,198,0.3); border-radius: var(--r-sm); font-size: 13px; background: var(--bg-0); color: var(--text); font-family: inherit; }
+        .form-row input:focus, .form-row textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+        .form-row--narrow { max-width: 200px; }
+
+        .btn-row { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); }
+        .btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid rgba(220,38,38,0.3); }
+        .btn-danger:hover { background: #fecaca; }
+        .file-input-wrap { display: flex; gap: var(--sp-2); align-items: center; }
+        .file-input-wrap input[type="file"] { flex: 1; padding: 8px; background: var(--bg-0); border: 1px dashed rgba(163,177,198,0.4); border-radius: var(--r-sm); font-size: 13px; }
+
+        .alert { padding: 10px 14px; border-radius: var(--r-sm); margin-bottom: var(--sp-3); font-size: 13px; box-shadow: var(--shadow-out-sm); transition: opacity 0.2s; }
+        .alert--success { background: var(--success-soft); color: var(--success); }
+        .alert--error { background: #fee2e2; color: #dc2626; }
+        .alert--hidden { opacity: 0; pointer-events: none; }
+
+        .pagination { display: flex; justify-content: space-between; align-items: center; margin-top: var(--sp-3); font-size: 13px; color: var(--text-muted); }
+        .pagination__btns { display: flex; gap: var(--sp-2); }
+    </style>
+</head>
+<body>
+    <aside id="appSidebar" class="sidebar sidebar--admin"></aside>
+    <main class="main">
+        <header class="main__header">
+            <h1 class="main__title">📚 知识库</h1>
+            <div class="main__user">
+                <span id="userName" class="main__user-name"></span>
+                <span id="userRole" class="main__user-role"></span>
+                <button id="logoutBtn" class="main__logout">退出</button>
+            </div>
+        </header>
+
+        <section class="content">
+            <div id="alert" class="alert alert--hidden"></div>
+
+            <!-- 顶部：新建 KB 按钮 -->
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-size:14px; color: var(--text-muted);">
+                        上传 txt/md 文档 → 自动分片 → 向量化入库。C 端用户提问时检索相关内容作为 LLM 上下文。
+                    </div>
+                    <button class="btn btn--primary" id="btnNewKb">➕ 新建知识库</button>
+                </div>
+            </div>
+
+            <div class="kb-grid">
+                <!-- 左侧：KB 列表 -->
+                <div class="kb-list" id="kbList">
+                    <div class="kb-empty">加载中…</div>
+                </div>
+
+                <!-- 右侧：KB 详情 -->
+                <div class="kb-main" id="kbMain">
+                    <div class="kb-empty">👈 从左侧选择一个知识库</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 新建 KB 模态 -->
+    <div class="drawer-mask" id="newMask" style="display:none;"></div>
+    <div class="modal-mask" id="newKbMask">
+        <div class="modal" style="width: 560px;">
+            <div class="modal__head">📚 新建知识库</div>
+            <div class="modal__body">
+                <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <div class="form-row">
+                        <label>名称（必填，唯一）</label>
+                        <input id="newKbName" maxlength="64" placeholder="如 增肌饮食指南">
+                    </div>
+                    <div class="form-row">
+                        <label>描述（可选）</label>
+                        <textarea id="newKbDesc" maxlength="255" rows="2" placeholder="这个知识库用来…"></textarea>
+                    </div>
+                </div>
+                <details style="margin-top: var(--sp-3);">
+                    <summary style="cursor:pointer;font-size:12px;color:var(--text-muted);">⚙️ 高级设置</summary>
+                    <div class="form-grid" style="margin-top:var(--sp-2);">
+                        <div class="form-row form-row--narrow">
+                            <label>chunk_size</label>
+                            <input type="number" id="newKbChunkSize" value="500" min="100" max="4000">
+                        </div>
+                        <div class="form-row form-row--narrow">
+                            <label>chunk_overlap</label>
+                            <input type="number" id="newKbChunkOverlap" value="80" min="0" max="1000">
+                        </div>
+                        <div class="form-row form-row--narrow">
+                            <label>top_k</label>
+                            <input type="number" id="newKbTopK" value="5" min="1" max="20">
+                        </div>
+                        <div class="form-row form-row--narrow">
+                            <label>相似度阈值</label>
+                            <input type="number" id="newKbThreshold" value="0" min="0" max="1" step="0.05">
+                        </div>
+                    </div>
+                </details>
+            </div>
+            <div class="modal__foot">
+                <button class="btn btn--ghost" id="newKbCancel">取消</button>
+                <button class="btn btn--primary" id="newKbOk">📚 创建</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const API_BASE = '/api/v1';
+        const TOKEN_KEY = 'fithub_admin_access';
+        const USER_KEY = 'fithub_admin_user';
+
+        const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+        if (!localStorage.getItem(TOKEN_KEY) || !user) {
+            window.location.href = '/admin/login.html';
+        }
+        if (user?.role !== 'admin') {
+            alert('仅管理员可访问');
+            window.location.href = '/admin/';
+        }
+
+        async function api(method, path, body, isForm = false) {
+            const headers = { 'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}` };
+            if (!isForm) headers['Content-Type'] = 'application/json';
+            const opts = { method, headers };
+            if (body !== undefined) opts.body = isForm ? body : JSON.stringify(body);
+            const resp = await fetch(API_BASE + path, opts);
+            const text = await resp.text();
+            if (!resp.ok) throw new Error(text || `HTTP ${resp.status}`);
+            return text ? JSON.parse(text) : null;
+        }
+
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+        function fmtSize(b) {
+            if (b < 1024) return b + ' B';
+            if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+            return (b/1024/1024).toFixed(2) + ' MB';
+        }
+        function fmtDt(s) {
+            return s ? new Date(s).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+        }
+
+        function showAlert(msg, type = 'info') {
+            const el = document.getElementById('alert');
+            el.textContent = msg;
+            el.className = `alert alert--${type}`;
+            el.classList.remove('alert--hidden');
+            if (type === 'success') setTimeout(() => el.classList.add('alert--hidden'), 3500);
+        }
+
+        const state = { kbs: [], selectedKbId: null, docs: [], docsOffset: 0 };
+
+        async function loadKbs() {
+            try {
+                const d = await api('GET', '/admin/knowledge-bases');
+                state.kbs = d.items || [];
+                renderKbList();
+                if (!state.selectedKbId && state.kbs.length > 0) {
+                    selectKb(state.kbs[0].id);
+                } else if (state.selectedKbId) {
+                    // 保持选中
+                    const found = state.kbs.find(k => k.id === state.selectedKbId);
+                    if (found) renderKbMain(found);
+                }
+                if (state.kbs.length === 0) {
+                    document.getElementById('kbMain').innerHTML = '<div class="kb-empty">还没有知识库。点右上「➕ 新建知识库」开始。</div>';
+                }
+            } catch (e) {
+                showAlert('加载 KB 列表失败：' + e.message, 'error');
+            }
+        }
+
+        function renderKbList() {
+            const wrap = document.getElementById('kbList');
+            if (state.kbs.length === 0) {
+                wrap.innerHTML = '<div class="kb-empty">还没有 KB</div>';
+                return;
+            }
+            wrap.innerHTML = state.kbs.map(kb => {
+                const cls = ['kb-card'];
+                if (kb.id === state.selectedKbId) cls.push('kb-card--active');
+                if (!kb.enabled) cls.push('kb-card--disabled');
+                return `
+                    <div class="${cls.join(' ')}" data-kb-id="${kb.id}">
+                        <div class="kb-card__name">${esc(kb.name)} ${!kb.enabled ? '<span style="color:var(--text-muted);font-size:11px;">（已禁用）</span>' : ''}</div>
+                        ${kb.description ? `<div style="font-size:12px;color:var(--text-muted);margin:4px 0;">${esc(kb.description)}</div>` : ''}
+                        <div class="kb-card__meta">
+                            <span>📄 ${kb.document_count} 文档</span>
+                            <span>✂️ ${kb.chunk_count} 分片</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function selectKb(kbId) {
+            state.selectedKbId = kbId;
+            renderKbList();
+            const kb = state.kbs.find(k => k.id === kbId);
+            if (kb) renderKbMain(kb);
+            await loadDocs();
+        }
+
+        function renderKbMain(kb) {
+            const wrap = document.getElementById('kbMain');
+            wrap.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div>
+                        <h2 style="margin-bottom:4px;">${esc(kb.name)}</h2>
+                        <div style="font-size:13px;color:var(--text-muted);">${esc(kb.description || '')}</div>
+                    </div>
+                    <div style="display:flex; gap: var(--sp-2);">
+                        <span class="status-badge ${kb.enabled ? 'status-badge--ready' : 'status-badge--failed'}">${kb.enabled ? '启用' : '禁用'}</span>
+                        <button class="btn btn--sm btn-danger" data-delete-kb="${kb.id}">🗑 删除</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid rgba(163,177,198,0.18);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="font-size:15px;">📁 上传文档</h3>
+                        <span style="font-size:11px;color:var(--text-muted);">支持 .txt / .md · 最大 10 MB</span>
+                    </div>
+                    <div class="file-input-wrap" style="margin-top: var(--sp-2);">
+                        <input type="file" id="fileInput" accept=".txt,.md">
+                        <button class="btn btn--primary" id="btnUpload">📤 上传</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: var(--sp-4);">
+                    <h3 style="font-size:15px; margin-bottom: var(--sp-2);">📚 文档列表</h3>
+                    <div id="docsWrap">
+                        <div class="kb-empty">加载中…</div>
+                    </div>
+                </div>
+
+                <div class="kb-settings">
+                    <h4>⚙️ 知识库设置</h4>
+                    <div class="form-grid">
+                        <div class="form-row form-row--narrow">
+                            <label>名称</label>
+                            <input id="setName" value="${esc(kb.name)}" maxlength="64">
+                        </div>
+                        <div class="form-row form-row--narrow">
+                            <label>启用</label>
+                            <select id="setEnabled" style="padding:8px 10px; border-radius: var(--r-sm); border: 1px solid rgba(163,177,198,0.3); background: var(--bg-0);">
+                                <option value="true" ${kb.enabled ? 'selected' : ''}>启用</option>
+                                <option value="false" ${!kb.enabled ? 'selected' : ''}>禁用</option>
+                            </select>
+                        </div>
+                        <div class="form-row" style="grid-column: 1/-1;">
+                            <label>描述</label>
+                            <textarea id="setDesc" rows="2" maxlength="255">${esc(kb.description || '')}</textarea>
+                        </div>
+                        <div class="form-row form-row--narrow">
+                            <label>chunk_size</label>
+                            <input type="number" id="setChunkSize" value="${kb.chunk_size}" min="100" max="4000">
+                        </div>
+                        <div class="form-row form-row--narrow">
+                            <label>chunk_overlap</label>
+                            <input type="number" id="setChunkOverlap" value="${kb.chunk_overlap}" min="0" max="1000">
+                        </div>
+                        <div class="form-row form-row--narrow">
+                            <label>top_k</label>
+                            <input type="number" id="setTopK" value="${kb.top_k}" min="1" max="20">
+                        </div>
+                        <div class="form-row form-row--narrow">
+                            <label>相似度阈值 (0=不过滤)</label>
+                            <input type="number" id="setThreshold" value="${kb.similarity_threshold}" min="0" max="1" step="0.05">
+                        </div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn--primary" id="btnSaveKb">💾 保存设置</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadDocs() {
+            if (!state.selectedKbId) return;
+            try {
+                const d = await api('GET', `/admin/knowledge-bases/${state.selectedKbId}/documents`);
+                state.docs = d.items || [];
+                renderDocs();
+            } catch (e) {
+                document.getElementById('docsWrap').innerHTML =
+                    `<div class="kb-empty">加载失败：${esc(e.message)}</div>`;
+            }
+        }
+
+        function renderDocs() {
+            const wrap = document.getElementById('docsWrap');
+            if (state.docs.length === 0) {
+                wrap.innerHTML = '<div class="kb-empty">还没有文档</div>';
+                return;
+            }
+            wrap.innerHTML = `
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>文件名</th>
+                            <th>大小</th>
+                            <th>分片</th>
+                            <th>状态</th>
+                            <th>上传时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${state.docs.map(d => `
+                            <tr>
+                                <td>${esc(d.filename)}</td>
+                                <td>${fmtSize(d.size_bytes)}</td>
+                                <td>${d.chunk_count}</td>
+                                <td><span class="status-badge status-badge--${d.status}">${esc(d.status)}</span>${d.error_message ? `<div style="color:#dc2626;font-size:11px;margin-top:4px;">${esc(d.error_message)}</div>` : ''}</td>
+                                <td>${fmtDt(d.created_at)}</td>
+                                <td>
+                                    <button class="btn btn--sm" data-rebuild="${d.id}" ${d.status === 'processing' ? 'disabled' : ''}>🔄 重建</button>
+                                    <button class="btn btn--sm btn-danger" data-delete-doc="${d.id}" style="margin-left:4px;">🗑</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // ============ 事件绑定 ============
+
+        document.getElementById('kbList').addEventListener('click', (e) => {
+            const card = e.target.closest('[data-kb-id]');
+            if (card) selectKb(+card.dataset.kbId);
+        });
+
+        document.addEventListener('click', async (e) => {
+            const delKb = e.target.closest('[data-delete-kb]');
+            if (delKb) {
+                if (!confirm('确认删除这个 KB？所有文档和向量数据将一起删除。')) return;
+                try {
+                    await api('DELETE', `/admin/knowledge-bases/${delKb.dataset.deleteKb}`);
+                    showAlert('KB 已删除', 'success');
+                    state.selectedKbId = null;
+                    await loadKbs();
+                } catch (err) {
+                    showAlert('删除失败：' + err.message, 'error');
+                }
+                return;
+            }
+            const rebuild = e.target.closest('[data-rebuild]');
+            if (rebuild) {
+                if (!confirm('确认重建该文档的索引？旧分片将删除后重新生成。')) return;
+                try {
+                    await api('POST', `/admin/knowledge-bases/${state.selectedKbId}/documents/${rebuild.dataset.rebuild}/rebuild`);
+                    showAlert('重建任务已启动', 'success');
+                    setTimeout(loadDocs, 1500);
+                } catch (err) {
+                    showAlert('重建失败：' + err.message, 'error');
+                }
+                return;
+            }
+            const delDoc = e.target.closest('[data-delete-doc]');
+            if (delDoc) {
+                if (!confirm('确认删除这个文档？')) return;
+                try {
+                    await api('DELETE', `/admin/knowledge-bases/${state.selectedKbId}/documents/${delDoc.dataset.deleteDoc}`);
+                    showAlert('文档已删除', 'success');
+                    await loadDocs();
+                } catch (err) {
+                    showAlert('删除失败：' + err.message, 'error');
+                }
+                return;
+            }
+        });
+
+        // 上传文档
+        document.addEventListener('click', async (e) => {
+            if (e.target.id === 'btnUpload') {
+                const fi = document.getElementById('fileInput');
+                if (!fi.files.length) {
+                    showAlert('请先选择文件', 'error');
+                    return;
+                }
+                const f = fi.files[0];
+                const fd = new FormData();
+                fd.append('file', f);
+                try {
+                    const resp = await fetch(`${API_BASE}/admin/knowledge-bases/${state.selectedKbId}/documents`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}` },
+                        body: fd,
+                    });
+                    const text = await resp.text();
+                    if (!resp.ok) throw new Error(text);
+                    const d = JSON.parse(text);
+                    showAlert(`已上传「${d.document.filename}」· ${d.chunk_count} 个分片（首次预览）`, 'success');
+                    fi.value = '';
+                    setTimeout(loadDocs, 1500);
+                } catch (err) {
+                    showAlert('上传失败：' + err.message, 'error');
+                }
+            }
+        });
+
+        // 保存 KB 设置
+        document.addEventListener('click', async (e) => {
+            if (e.target.id === 'btnSaveKb') {
+                const body = {
+                    name: document.getElementById('setName').value.trim(),
+                    description: document.getElementById('setDesc').value.trim() || null,
+                    enabled: document.getElementById('setEnabled').value === 'true',
+                    chunk_size: +document.getElementById('setChunkSize').value,
+                    chunk_overlap: +document.getElementById('setChunkOverlap').value,
+                    top_k: +document.getElementById('setTopK').value,
+                    similarity_threshold: +document.getElementById('setThreshold').value,
+                };
+                if (!body.name) { showAlert('名称必填', 'error'); return; }
+                try {
+                    await api('PATCH', `/admin/knowledge-bases/${state.selectedKbId}`, body);
+                    showAlert('设置已保存', 'success');
+                    await loadKbs();
+                } catch (err) {
+                    showAlert('保存失败：' + err.message, 'error');
+                }
+            }
+        });
+
+        // 新建 KB 模态
+        document.getElementById('btnNewKb').addEventListener('click', () => {
+            document.getElementById('newKbMask').classList.add('modal-mask--open');
+        });
+        document.getElementById('newKbCancel').addEventListener('click', () => {
+            document.getElementById('newKbMask').classList.remove('modal-mask--open');
+        });
+        document.getElementById('newKbOk').addEventListener('click', async () => {
+            const name = document.getElementById('newKbName').value.trim();
+            if (!name) { showAlert('请填写名称', 'error'); return; }
+            const body = {
+                name,
+                description: document.getElementById('newKbDesc').value.trim() || null,
+                chunk_size: +document.getElementById('newKbChunkSize').value,
+                chunk_overlap: +document.getElementById('newKbChunkOverlap').value,
+                top_k: +document.getElementById('newKbTopK').value,
+                similarity_threshold: +document.getElementById('newKbThreshold').value,
+            };
+            try {
+                const kb = await api('POST', '/admin/knowledge-bases', body);
+                showAlert(`KB「${kb.name}」已创建`, 'success');
+                document.getElementById('newKbMask').classList.remove('modal-mask--open');
+                document.getElementById('newKbName').value = '';
+                document.getElementById('newKbDesc').value = '';
+                await loadKbs();
+                selectKb(kb.id);
+            } catch (err) {
+                showAlert('创建失败：' + err.message, 'error');
+            }
+        });
+
+        // 挂载布局 + 首次加载
+        import { renderSidebar, renderUserBadge, bindLogout } from '/admin/js/admin-layout.js';
+        renderSidebar();
+        renderUserBadge(user);
+        bindLogout();
+        loadKbs();
+    </script>
+</body>
+</html>

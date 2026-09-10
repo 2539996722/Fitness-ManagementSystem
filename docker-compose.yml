@@ -1,0 +1,226 @@
+# ============================================
+# FitHub 一键启动
+# ============================================
+# 使用：
+#   docker-compose up -d                     # M1-M3: MySQL + Backend + Frontend
+#   docker-compose --profile full up -d      # M4: 加上 Redis + Milvus Standalone
+#   docker-compose --profile tools up -d     # 可选: Adminer 数据库管理 UI
+#   docker-compose --profile full --profile tools up -d  # 全栈
+#   docker-compose logs -f backend           # 查看后端日志
+#   docker-compose down                      # 停止并移除容器
+#   docker-compose down -v                   # 同时清理数据卷（⚠️ 会删数据）
+#
+# 三层存储：
+#   - MySQL  ：结构化数据（默认启动）
+#   - Milvus Lite：嵌入式向量库（默认随 backend 进程启动，无需独立服务）
+#   - Redis  ：短期会话缓存（profile=full 启动，独立服务）
+# ============================================
+
+services:
+
+  # ---------- MySQL 数据库 ----------
+  mysql:
+    image: mysql:8.0
+    container_name: fithub-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${MYSQL_DB:-fithub}
+      MYSQL_USER: ${MYSQL_USER:-fithub_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-fithub_pass}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --default-time-zone=+08:00
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/alembic:/docker-entrypoint-initdb.d/alembic:ro   # 首次启动自动建表（可选）
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-rootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - fithub-net
+
+  # ---------- FastAPI 后端 ----------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fithub-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+        required: false   # Redis 仅在 M4 阶段启用
+      milvus:
+        condition: service_started
+        required: false   # Milvus Standalone 可选，Linux/macOS 默认用 Milvus Lite 嵌入式
+    environment:
+      # 应用
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TZ: Asia/Shanghai
+
+      # 数据库（用容器内服务名 fithub-mysql）
+      MYSQL_DSN: mysql+aiomysql://${MYSQL_USER:-fithub_user}:${MYSQL_PASSWORD:-fithub_pass}@mysql:3306/${MYSQL_DB:-fithub}?charset=utf8mb4
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-secure-random-string-at-least-32-characters-long}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-120}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+
+      # 默认管理员
+      DEFAULT_ADMIN_USERNAME: ${DEFAULT_ADMIN_USERNAME:-admin}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-admin123}
+
+      # CORS
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost}
+
+      # LLM
+      LLM_API_BASE: ${LLM_API_BASE:-https://api.openai.com/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-sk-your-key-here}
+      LLM_MODEL_CHAT: ${LLM_MODEL_CHAT:-gpt-4o-mini}
+      LLM_MODEL_EMBED: ${LLM_MODEL_EMBED:-text-embedding-3-small}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-60}
+
+      # Chroma
+      CHROMA_PERSIST_DIR: /app/data/chroma
+
+      # 数据集路径（容器内）
+      EXERCISES_DATA_DIR: /app/data/exercises-dataset-zh
+
+      # 限流
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
+      RATE_LIMIT_AI_PER_USER_PER_DAY: ${RATE_LIMIT_AI_PER_USER_PER_DAY:-50}
+
+      # Redis 缓存（M4 启用，连接 docker-compose 中的 redis 服务）
+      REDIS_URL: redis://redis:6379/0
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_MAX_CONNECTIONS: ${REDIS_MAX_CONNECTIONS:-20}
+      REDIS_SESSION_CACHE_ROUNDS: ${REDIS_SESSION_CACHE_ROUNDS:-5}
+      REDIS_SESSION_TTL_SECONDS: ${REDIS_SESSION_TTL_SECONDS:-3600}
+
+      # Milvus 向量库
+      # 默认嵌入式模式（数据写到 /app/data/milvus_lite.db）
+      MILVUS_URI: ${MILVUS_URI:-/app/data/milvus_lite.db}
+      MILVUS_COLLECTION: ${MILVUS_COLLECTION:-exercises_chunks}
+      MILVUS_EMBED_DIM: ${MILVUS_EMBED_DIM:-1536}
+      MILVUS_TOP_K: ${MILVUS_TOP_K:-5}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      # 数据持久化
+      - backend_data:/app/data
+      # 开发模式：代码热挂载（生产请注释掉）
+      - ./backend:/app
+      - /app/.venv  # 避免覆盖虚拟环境
+      # 动作数据集（首次需手动 clone 或后续挂载）
+      # - ./data/exercises-dataset-zh:/app/data/exercises-dataset-zh:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - fithub-net
+
+  # ---------- 前端（静态文件）----------
+  frontend:
+    image: nginx:1.25-alpine
+    container_name: fithub-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - fithub-net
+
+  # ---------- Redis（短期会话缓存，M4 必需）----------
+  redis:
+    image: redis:7-alpine
+    container_name: fithub-redis
+    restart: unless-stopped
+    profiles: ["full"]  # 默认不启动，加 --profile full 启动（M4 阶段启用）
+    command: >
+      redis-server
+      --maxmemory ${REDIS_MAXMEM:-256mb}
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - fithub-net
+
+  # ---------- Milvus Standalone（可选，Windows 用户用）----------
+  milvus:
+    image: milvusdb/milvus:latest
+    container_name: fithub-milvus
+    restart: unless-stopped
+    profiles: ["full"]
+    ports:
+      - "${MILVUS_PORT:-19530}:19530"
+      - "${MILVUS_ADMIN_PORT:-9091}:9091"
+    volumes:
+      - milvus_data:/var/lib/milvus
+    environment:
+      MILVUS_LOG_LEVEL: info
+    networks:
+      - fithub-net
+    # 仅当 .env 中 MILVUS_URI=http://milvus:19530 时使用
+    # Linux/macOS 默认用嵌入式 Milvus Lite（无需此服务）
+
+  # ---------- 数据库管理（可选）----------
+  adminer:
+    image: adminer:latest
+    container_name: fithub-adminer
+    restart: unless-stopped
+    profiles: ["tools"]  # 默认不启动，加 --profile tools 启动
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
+    depends_on:
+      - mysql
+    networks:
+      - fithub-net
+
+# ============================================
+# 网络 & 数据卷
+# ============================================
+networks:
+  fithub-net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  backend_data:
+    driver: local
+  redis_data:
+    driver: local
+  milvus_data:
+    driver: local

@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计划模板 · FitHub 管理后台</title>
+    <link rel="stylesheet" href="css/soft-ui.css">
+    <style>
+        /* —— 页面私有（共享部分见 soft-ui.css） —— */
+        .filters { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: flex-end; margin-bottom: var(--sp-4); }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
+        .filter-label { font-size: 12px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.3px; }
+        /* 表格（轻量化，按行可点击） */
+        .table-wrap { overflow-x: auto; border-radius: var(--r-md); box-shadow: var(--shadow-out-sm); padding: var(--sp-2); background: var(--bg-0); }
+        table.data { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+        table.data th { background: var(--bg-2); text-align: left; padding: 10px 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.6px; white-space: nowrap; }
+        table.data td { padding: 12px; border-bottom: 1px solid rgba(163, 177, 198, 0.18); vertical-align: middle; }
+        table.data tbody tr { cursor: pointer; }
+        table.data tbody tr:hover td { background: var(--bg-1); }
+        table.data tbody tr:last-child td { border-bottom: none; }
+        .cell-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+        /* 拒绝原因 */
+        .reject-reason { font-size: 12px; color: var(--warn); margin-top: var(--sp-2); padding: var(--sp-2) var(--sp-3); background: var(--warn-soft); border-left: 3px solid var(--warn); border-radius: var(--r-sm); }
+        /* 模板审批 Tab（顶部导航条） */
+        .tabs { display: flex; gap: 4px; border-bottom: 1px solid rgba(163, 177, 198, 0.25); margin-bottom: var(--sp-5); background: transparent; box-shadow: none; padding: 0; border-radius: 0; }
+        .tabs .tab { padding: var(--sp-3) var(--sp-5); cursor: pointer; border: none; background: none; font-size: 14px; color: var(--text-muted); border-bottom: 3px solid transparent; border-radius: 0; box-shadow: none; transition: all var(--t-base); font-weight: 600; }
+        .tabs .tab:hover { color: var(--text); transform: none; }
+        .tabs .tab--active { color: var(--accent); border-bottom-color: var(--accent); background: none; box-shadow: none; transform: none; }
+        /* ============ 周训练结构化编辑器 ============ */
+        .weeks-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 200px;
+            gap: var(--sp-4);
+            align-items: stretch;
+            width: 100%;
+        }
+        .weeks-rail {
+            display: flex;
+            flex-direction: column;
+            gap: var(--sp-3);
+            align-items: stretch;
+        }
+        .weeks-rail .add-btn { width: 100%; min-height: 120px; font-size: 14px; }
+        .weeks-editor {
+            border-radius: var(--r-md);
+            background: var(--bg-2);
+            padding: 0;
+            max-height: 70vh;
+            min-height: 480px;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: var(--shadow-in-sm);
+        }
+        .weeks-editor > .week-block {
+            width: 100%;
+        }
+        .weeks-editor__empty {
+            position: absolute;
+            inset: var(--sp-5);
+            min-height: 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--sp-3);
+            color: var(--text-muted);
+            font-size: 14px;
+            border: 2px dashed rgba(163, 177, 198, 0.45);
+            border-radius: var(--r-md);
+            background: var(--bg-0);
+            box-sizing: border-box;
+        }
+        .weeks-editor__empty-icon { font-size: 40px; opacity: 0.55; }
+        .week-block {
+            background: var(--bg-0);
+            border-radius: 0;
+            margin-bottom: 0;
+            padding: var(--sp-5);
+            box-shadow: none;
+            border-bottom: 1px solid rgba(163, 177, 198, 0.25);
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        .week-block:last-child { border-bottom: none; }
+        .week-block__head {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: var(--sp-4);
+            padding-bottom: var(--sp-4);
+            border-bottom: 1px dashed rgba(163, 177, 198, 0.3);
+        }
+        .week-block__title { font-weight: 700; color: var(--accent); font-size: 15px; }
+        .week-block__days { padding-left: var(--sp-4); }
+        .day-block {
+            background: var(--bg-1);
+            border-left: 4px solid var(--accent);
+            border-radius: var(--r-sm);
+            padding: var(--sp-3);
+            margin-bottom: var(--sp-3);
+        }
+        .day-block__head {
+            display: flex; gap: var(--sp-2); align-items: center;
+            margin-bottom: var(--sp-2);
+        }
+        .day-block__no { font-weight: 700; color: var(--accent); min-width: 32px; }
+        .day-block__exs { padding-left: var(--sp-3); }
+        .ex-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--sp-2);
+            margin-bottom: var(--sp-2);
+            padding: var(--sp-3);
+            background: var(--bg-0);
+            border-radius: var(--r-sm);
+            box-shadow: var(--shadow-flat);
+        }
+        .ex-row__top { display: grid; grid-template-columns: 1fr auto; gap: var(--sp-2); align-items: start; }
+        .ex-row__params { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: var(--sp-2); align-items: center; }
+        .ex-row__id-wrap { position: relative; }
+        .ex-row__id-wrap input { width: 100%; }
+        .ex-row__name { font-size: 11px; color: var(--text-muted); margin-top: 2px; min-height: 14px; }
+        .ex-row__dropdown {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: var(--bg-0); border-radius: var(--r-md);
+            max-height: 200px; overflow-y: auto;
+            z-index: 50; display: none;
+            box-shadow: var(--shadow-out-md);
+            border: none;
+        }
+        .ex-row__opt { padding: 8px 12px; cursor: pointer; font-size: 12px; border-bottom: 1px solid rgba(163, 177, 198, 0.18); }
+        .ex-row__opt:last-child { border-bottom: none; }
+        .ex-row__opt:hover { background: var(--accent-soft); color: var(--accent); }
+        .ex-row__opt strong { color: var(--accent); }
+        .ex-row input { padding: 6px 10px; font-size: 12px; }
+        .add-btn {
+            padding: 10px 14px; font-size: 12px; cursor: pointer;
+            background: var(--bg-0); border: 1px dashed rgba(163, 177, 198, 0.4);
+            border-radius: var(--r-md); color: var(--text-muted);
+            width: 100%; transition: all var(--t-base); font-family: inherit; font-weight: 600;
+            box-shadow: none;
+        }
+        .add-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); box-shadow: var(--shadow-out-sm); transform: none; }
+        /* ============ 详情模态（只读）============ */
+        .detail-meta {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: var(--sp-3); margin-bottom: var(--sp-4);
+            padding-bottom: var(--sp-4);
+            border-bottom: 1px solid rgba(163, 177, 198, 0.2);
+        }
+        .detail-meta__item { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+        .detail-meta__val { font-size: 18px; font-weight: 700; color: var(--text); margin-top: 4px; font-variant-numeric: tabular-nums; }
+        .detail-desc {
+            background: var(--bg-1); padding: var(--sp-3) var(--sp-4);
+            border-radius: var(--r-md); margin-bottom: var(--sp-4);
+            font-size: 13px; color: var(--text); line-height: 1.6;
+            box-shadow: var(--shadow-in-sm);
+        }
+        .detail-week-block {
+            border-radius: var(--r-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-3);
+            background: var(--bg-1);
+            box-shadow: var(--shadow-flat);
+        }
+        .detail-week-title { font-weight: 700; color: var(--accent); margin-bottom: var(--sp-3); }
+        .detail-day-block {
+            background: var(--bg-0); padding: var(--sp-3) var(--sp-4);
+            border-left: 4px solid var(--accent);
+            margin-bottom: var(--sp-2);
+            border-radius: var(--r-sm);
+            box-shadow: var(--shadow-flat);
+        }
+        .detail-day-head { font-weight: 600; margin-bottom: 6px; }
+        .detail-day-head span { color: var(--accent); margin-right: var(--sp-2); }
+        .detail-ex {
+            display: inline-block;
+            background: var(--bg-1);
+            padding: 4px 10px; margin: 2px;
+            border-radius: var(--r-pill); font-size: 12px;
+            box-shadow: var(--shadow-flat);
+        }
+        .detail-ex strong { color: var(--accent); }
+        /* 分页 */
+        .pagination { display: flex; justify-content: space-between; align-items: center; margin-top: var(--sp-4); font-size: 13px; color: var(--text-muted); }
+        .pagination__btns { display: flex; gap: var(--sp-2); }
+    </style>
+    <script type="module" src="js/admin-layout.js"></script>
+</head>
+<body>
+    <aside class="sidebar" id="appSidebar"></aside>
+
+    <main class="main">
+        <div class="header">
+            <div class="header__title" id="pageTitle">计划模板</div>
+            <div class="header__user">
+                <span class="header__role" id="userRole">-</span>
+                <span id="userName">-</span>
+                <button class="header__btn" id="logoutBtn">退出登录</button>
+            </div>
+        </div>
+
+        <div id="alert" class="alert alert--hidden"></div>
+
+        <div class="card">
+            <div class="tabs" id="tabs"></div>
+            <div class="filters" style="margin-top:var(--space-3);">
+                <div class="filter-group">
+                    <label class="filter-label">状态</label>
+                    <select id="fStatus" class="form-select">
+                        <option value="">全部</option>
+                        <option value="draft">草稿</option>
+                        <option value="pending_review">待审核</option>
+                        <option value="published">已发布</option>
+                        <option value="offline">已下架</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="btnSearch">🔍 查询</button>
+                <button class="btn btn--ghost" id="btnReset">重置</button>
+                <span style="margin-left:auto;"></span>
+                <button class="btn btn-primary" id="btnNew" style="display:none;">➕ 新建模板</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card__title">
+                <span id="listTitle">模板列表</span>
+                <span id="totalLabel" style="font-weight: normal; font-size: 13px; color: var(--color-text-muted);"></span>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>名称</th>
+                            <th>目标</th>
+                            <th>人群</th>
+                            <th>状态</th>
+                            <th>采用次数</th>
+                            <th>评分</th>
+                            <th>更新时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody">
+                        <tr><td colspan="9" class="empty">加载中…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <span id="pageInfo">第 1 页 / 共 0 条</span>
+                <div class="pagination__btns">
+                    <button class="btn btn--sm" id="btnPrev">← 上一页</button>
+                    <button class="btn btn--sm" id="btnNext">下一页 →</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 详情（只读）模态 -->
+    <div class="modal-mask" id="detailMask">
+        <div class="modal modal--detail">
+            <div class="modal__head">
+                <span id="detailTitle">模板详情</span>
+                <button class="btn btn--xs btn--ghost" id="detailCloseBtn">✕</button>
+            </div>
+            <div class="modal__body" id="detailBody">
+                <div class="empty">加载中…</div>
+            </div>
+            <div class="modal__foot">
+                <button class="btn btn--ghost" id="detailClose">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑 / 新建 模态 -->
+    <div class="modal-mask" id="editMask">
+        <div class="modal modal--xwide">
+            <div class="modal__head" id="editTitle">新建模板</div>
+            <div class="modal__body">
+                <div class="form-row">
+                    <label class="filter-label">模板名（必填，≤64 字）</label>
+                    <input id="edName" class="form-input" maxlength="64">
+                </div>
+                <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+                    <div>
+                        <label class="filter-label">目标</label>
+                        <select id="edGoal" class="form-select">
+                            <option value="muscle_gain">增肌</option>
+                            <option value="fat_loss">减脂</option>
+                            <option value="body_shape">塑形</option>
+                            <option value="endurance">体能</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="filter-label">适用人群</label>
+                        <select id="edLevel" class="form-select">
+                            <option value="beginner">新手</option>
+                            <option value="intermediate">有基础</option>
+                            <option value="advanced">老手</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label class="filter-label">简介（≤500 字）</label>
+                    <textarea id="edDescription" class="form-textarea" rows="2" maxlength="500"></textarea>
+                </div>
+
+                <div class="form-row" style="display:block;">
+                    <label class="filter-label">周训练结构</label>
+                    <div class="weeks-layout">
+                        <div class="weeks-editor" id="weeksEditor"></div>
+                        <div class="weeks-rail">
+                            <button class="add-btn" id="btnAddWeek">➕ 添加周</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="reject-reason" id="edRejectReason" style="display:none;"></div>
+            </div>
+            <div class="modal__foot">
+                <button class="btn btn--ghost" id="edCancel">取消</button>
+                <button class="btn btn-primary" id="edSave">💾 保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 审核理由 模态 -->
+    <div class="modal-mask" id="reviewMask">
+        <div class="modal">
+            <div class="modal__head" id="reviewTitle">操作</div>
+            <div class="modal__body">
+                <div class="form-row">
+                    <label class="filter-label" id="reviewLabel">理由</label>
+                    <textarea id="reviewReason" class="form-textarea" rows="3" maxlength="255"></textarea>
+                </div>
+            </div>
+            <div class="modal__foot">
+                <button class="btn btn--ghost" id="reviewCancel">取消</button>
+                <button class="btn btn-primary" id="reviewOk">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const API_BASE = '/api/v1';
+        const TOKEN_KEY = 'fithub_admin_access';
+        const USER_KEY = 'fithub_admin_user';
+
+        const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+        if (!localStorage.getItem(TOKEN_KEY) || !user) {
+            window.location.href = '/admin/login.html';
+        }
+        if (!['admin', 'trainer'].includes(user?.role)) {
+            alert('无权限访问');
+            window.location.href = '/admin/';
+        }
+
+        document.querySelectorAll('[data-requires-roles]').forEach((el) => {
+            const allowed = el.dataset.requiresRoles.split(',');
+            if (!allowed.includes(user.role)) el.style.display = 'none';
+        });
+
+        const isAdmin = user.role === 'admin';
+        const TABS = isAdmin
+            ? [
+                { key: 'all', label: '📚 全部', status: '' },
+                { key: 'queue', label: '📥 待处理', status: '' },
+                { key: 'published', label: '✅ 已发布', status: 'published' },
+                { key: 'offline', label: '⛔ 已下架', status: 'offline' },
+              ]
+            : [
+                { key: 'all', label: '📚 全部', status: '' },
+                { key: 'queue', label: '📥 待处理', status: '' },
+                { key: 'published', label: '✅ 已发布', status: 'published' },
+                { key: 'offline', label: '⛔ 已下架', status: 'offline' },
+              ];
+
+        const tabsEl = document.getElementById('tabs');
+        tabsEl.innerHTML = TABS.map((t) =>
+            `<button class="tab" data-key="${t.key}" data-status="${t.status}">${t.label}</button>`
+        ).join('');
+        if (['admin', 'trainer'].includes(user.role)) document.getElementById('btnNew').style.display = '';
+
+        let currentTab = TABS[0];
+
+        const state = {
+            page: 1, pageSize: 20, total: 0, filters: {},
+            editingId: null, editingWeeks: [], editingAsAdmin: false,
+            reviewAction: null, reviewTargetId: null,
+            detailId: null,
+            exerciseMap: new Map(),  // id -> { id, name_zh }
+        };
+
+        function selectTab(key) {
+            currentTab = TABS.find((t) => t.key === key) || TABS[0];
+            document.querySelectorAll('#tabs .tab').forEach((b) => {
+                b.classList.toggle('tab--active', b.dataset.key === currentTab.key);
+            });
+            state.page = 1;
+            state.filters = {};  // 切 tab 清掉旧的筛选
+            document.getElementById('fStatus').value = '';
+            loadList();
+        }
+        tabsEl.addEventListener('click', (e) => {
+            const btn = e.target.closest('.tab');
+            if (btn) selectTab(btn.dataset.key);
+        });
+        selectTab(TABS[0].key);
+
+        // ===== API =====
+        async function api(method, path, body) {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem(TOKEN_KEY);
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const resp = await fetch(`${API_BASE}${path}`, {
+                method, headers,
+                body: body ? JSON.stringify(body) : undefined,
+            });
+            if (resp.status === 401) {
+                localStorage.clear();
+                window.location.href = '/admin/login.html';
+                return;
+            }
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+                throw new Error(err.detail || `HTTP ${resp.status}`);
+            }
+            if (resp.status === 204) return null;
+            return resp.json();
+        }
+
+        function escapeHtml(s) {
+            if (s == null) return '';
+            return String(s).replace(/[&<>"']/g, (c) =>
+                ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+            );
+        }
+        function fmtDt(s) { if (!s) return '—'; const d = new Date(s); return d.toLocaleString('zh-CN', { hour12: false }); }
+
+        function showAlert(msg, type = 'info') {
+            const el = document.getElementById('alert');
+            el.className = `alert alert--${type}`;
+            el.textContent = msg;
+            el.classList.remove('alert--hidden');
+            if (type === 'success') setTimeout(() => el.classList.add('alert--hidden'), 3500);
+        }
+
+        const STATUS_BADGE = {
+            draft: '<span class="badge badge--muted">草稿</span>',
+            pending_review: '<span class="badge badge--warn">待审核</span>',
+            published: '<span class="badge badge--success">已发布</span>',
+            offline: '<span class="badge badge--error">已下架</span>',
+        };
+        const GOAL_LABEL = { muscle_gain: '增肌', fat_loss: '减脂', body_shape: '塑形', endurance: '体能' };
+        const LEVEL_LABEL = { beginner: '新手', intermediate: '有基础', advanced: '老手' };
+
+        // ===== 动作库（按需懒加载）=====
+        async function ensureExercisesLoaded() {
+            if (state.exerciseMap.size > 0) return;
+            try {
+                // 1324 个动作，分 14 页拉完，每页 100
+                const first = await api('GET', '/exercises?page=1&page_size=100');
+                state.exerciseMap = new Map(first.items.map((e) => [e.id, e]));
+                const total = first.total;
+                const pages = Math.ceil(total / 100);
+                for (let p = 2; p <= pages; p++) {
+                    const r = await api('GET', `/exercises?page=${p}&page_size=100`);
+                    r.items.forEach((e) => state.exerciseMap.set(e.id, e));
+                }
+            } catch (e) {
+                console.warn('动作库加载失败：', e);
+            }
+        }
+
+        // ===== 列表 =====
+        async function loadList() {
+            const tbody = document.getElementById('tbody');
+            tbody.innerHTML = `<tr><td colspan="9" class="empty"><span class="loading"></span> 加载中…</td></tr>`;
+            const params = new URLSearchParams({ page: state.page, page_size: state.pageSize, ...state.filters });
+            delete params.get('keyword');
+            const base = isAdmin ? '/admin/templates' : '/trainer/templates';
+            let url = base;
+            if (isAdmin) {
+                if (currentTab.key === 'queue') url = '/admin/templates/queue';
+                else if (currentTab.key === 'published') params.set('status', 'published');
+                else if (currentTab.key === 'offline') params.set('status', 'offline');
+                // 'all' tab 不加 status 约束
+            } else {
+                // 教练视角：4 个 tab 各自对应不同状态
+                if (currentTab.key === 'queue') url = '/trainer/templates/queue';
+                else if (currentTab.key === 'published') params.set('status', 'published');
+                else if (currentTab.key === 'offline') params.set('status', 'offline');
+                // 'all' tab 不加 status 约束（拉全部）
+            }
+            url += '?' + params;
+
+            try {
+                const data = await api('GET', url);
+                state.total = data.total;
+                if (data.items.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" class="empty">暂无数据</td></tr>`;
+                } else {
+                    tbody.innerHTML = data.items.map((t) => `
+                        <tr data-id="${t.id}">
+                            <td>${t.id}</td>
+                            <td><strong>${escapeHtml(t.name)}</strong>${t.reject_reason ? `<div class="reject-reason" style="margin-top:4px;">驳回：${escapeHtml(t.reject_reason)}</div>` : ''}</td>
+                            <td>${GOAL_LABEL[t.goal] || t.goal}</td>
+                            <td>${LEVEL_LABEL[t.level] || t.level}</td>
+                            <td>${STATUS_BADGE[t.status] || t.status}</td>
+                            <td>${t.use_count}</td>
+                            <td>${t.avg_rating != null ? Number(t.avg_rating).toFixed(1) + ' (' + t.review_count + ')' : '—'}</td>
+                            <td>${fmtDt(t.updated_at)}</td>
+                            <td><div class="cell-actions">${renderRowActions(t)}</div></td>
+                        </tr>
+                    `).join('');
+                }
+                document.getElementById('totalLabel').textContent = `共 ${data.total} 条`;
+                document.getElementById('pageInfo').textContent = `第 ${data.page} 页 / 共 ${data.total} 条`;
+                document.getElementById('btnPrev').disabled = data.page <= 1;
+                document.getElementById('btnNext').disabled = !data.has_more;
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="9" class="empty">加载失败：${escapeHtml(e.message)}</td></tr>`;
+            }
+        }
+
+        function renderRowActions(t) {
+            // 所有角色、所有状态都能查看
+            const viewBtn = `<button class="btn btn--sm" data-act="view">👁 查看</button>`;
+            if (!isAdmin) {
+                if (t.status === 'draft') {
+                    return viewBtn + `
+                        <button class="btn btn--sm" data-act="edit">✏️ 编辑</button>
+                        <button class="btn btn--sm btn--primary" data-act="submit">📤 提交</button>
+                        <button class="btn btn--sm btn--danger" data-act="delete">🗑</button>
+                    `;
+                }
+                if (t.status === 'offline') {
+                    return viewBtn + `
+                        <button class="btn btn--sm" data-act="edit">✏️ 编辑</button>
+                        <button class="btn btn--sm btn--danger" data-act="delete">🗑</button>
+                    `;
+                }
+                if (t.status === 'pending_review') return viewBtn + `<span style="color:var(--color-text-muted);font-size:12px;">审核中…</span>`;
+                if (t.status === 'published') return viewBtn + `<span style="color:var(--color-success);font-size:12px;">✓ 已上线</span>`;
+                return viewBtn;
+            } else {
+                // admin 视角（每个状态都有查看 + 删除）
+                const delBtn = `<button class="btn btn--sm btn--danger" data-act="delete-admin">🗑</button>`;
+                if (t.status === 'pending_review') {
+                    return viewBtn + `
+                        <button class="btn btn--sm btn--success" data-act="approve">✓ 通过</button>
+                        <button class="btn btn--sm btn--danger" data-act="reject">✕ 驳回</button>
+                        ${delBtn}
+                    `;
+                }
+                if (t.status === 'published') {
+                    return viewBtn + `
+                        <button class="btn btn--sm btn--warn" data-act="offline">⏬ 下架</button>
+                        ${delBtn}
+                    `;
+                }
+                if (t.status === 'offline') {
+                    return viewBtn + `
+                        <button class="btn btn--sm btn--success" data-act="republish">↻ 上架</button>
+                        ${delBtn}
+                    `;
+                }
+                if (t.status === 'draft') {
+                    return viewBtn + `
+                        <button class="btn btn--sm btn--success" data-act="publish">🆙 上架</button>
+                        <button class="btn btn--sm" data-act="edit-admin">✏️</button>
+                        ${delBtn}
+                    `;
+                }
+                return viewBtn;
+            }
+        }
+
+        // 行点击：动作按钮 vs 行本身（行点击=查看）
+        document.getElementById('tbody').addEventListener('click', async (e) => {
+            const btn = e.target.closest('button[data-act]');
+            const tr = e.target.closest('tr[data-id]');
+            if (btn) {
+                e.stopPropagation();
+                const id = +btn.closest('tr').dataset.id;
+                const act = btn.dataset.act;
+                try {
+                    if (act === 'view') return openDetail(id);
+                    if (act === 'edit') return openEdit(id);
+                    if (act === 'edit-admin') { state.editingAsAdmin = true; return openEdit(id); }
+                    if (act === 'submit') await doAction(`/trainer/templates/${id}/submit`, 'POST', null, '已提交审核');
+                    if (act === 'delete') {
+                        if (!confirm('确定删除此草稿？')) return;
+                        await doAction(`/trainer/templates/${id}`, 'DELETE', null, '已删除');
+                    }
+                    if (act === 'delete-admin') {
+                        if (!confirm('确定删除该模板？此操作不可撤销！')) return;
+                        await doAction(`/admin/templates/${id}`, 'DELETE', null, '已删除');
+                    }
+                    if (act === 'approve') await doAction(`/admin/templates/${id}/approve`, 'POST', null, '已通过');
+                    if (act === 'publish') {
+                        if (!confirm('确认直接上架该草稿？将立即在 C 端市场可见。')) return;
+                        await doAction(`/admin/templates/${id}/publish`, 'POST', null, '已上架');
+                    }
+                    if (act === 'reject') return openReview('reject', id);
+                    if (act === 'offline') return openReview('offline', id);
+                    if (act === 'republish') await doAction(`/admin/templates/${id}/republish`, 'POST', null, '已重新上架');
+                } catch (err) {
+                    showAlert(err.message, 'error');
+                }
+                return;
+            }
+            if (tr) {
+                openDetail(+tr.dataset.id);
+            }
+        });
+
+        async function doAction(path, method, body, successMsg) {
+            await api(method, path, body);
+            showAlert(successMsg, 'success');
+            loadList();
+        }
+
+        // ===== 筛选 =====
+        document.getElementById('btnSearch').addEventListener('click', () => {
+            state.page = 1;
+            state.filters = { status: document.getElementById('fStatus').value };
+            loadList();
+        });
+        document.getElementById('btnReset').addEventListener('click', () => {
+            document.getElementById('fStatus').value = '';
+            state.filters = {};
+            state.page = 1;
+            loadList();
+        });
+        document.getElementById('btnPrev').addEventListener('click', () => { if (state.page > 1) { state.page--; loadList(); } });
+        document.getElementById('btnNext').addEventListener('click', () => { state.page++; loadList(); });
+
+        // ===== 详情（只读）=====
+        document.getElementById('detailClose').addEventListener('click', closeDetail);
+        document.getElementById('detailCloseBtn').addEventListener('click', closeDetail);
+        document.getElementById('detailMask').addEventListener('click', (e) => {
+            if (e.target.id === 'detailMask') closeDetail();
+        });
+        function closeDetail() {
+            document.getElementById('detailMask').classList.remove('modal-mask--open');
+            state.detailId = null;
+        }
+        async function openDetail(id) {
+            state.detailId = id;
+            document.getElementById('detailTitle').textContent = '模板详情';
+            document.getElementById('detailBody').innerHTML = `<div class="empty"><span class="loading"></span> 加载中…</div>`;
+            document.getElementById('detailMask').classList.add('modal-mask--open');
+            try {
+                const t = await api('GET', `/admin/templates/${id}`);
+                renderDetail(t);
+            } catch (err) {
+                document.getElementById('detailBody').innerHTML = `<div class="empty">加载失败：${escapeHtml(err.message)}</div>`;
+            }
+        }
+        function renderDetail(t) {
+            const weekCount = (t.weeks || []).length;
+            const rating = t.avg_rating != null ? Number(t.avg_rating).toFixed(1) : '—';
+            const html = `
+                <div class="form-row">
+                    <label class="filter-label">模板名</label>
+                    <div style="font-weight:600;font-size:16px;">${escapeHtml(t.name)}</div>
+                </div>
+                <div class="form-row" style="display:grid;grid-template-columns:auto auto auto;gap:var(--space-2);">
+                    <span class="badge ${t.status === 'published' ? 'badge--success' : t.status === 'pending_review' ? 'badge--warn' : t.status === 'offline' ? 'badge--error' : 'badge--muted'}">${({draft:'草稿',pending_review:'待审核',published:'已发布',offline:'已下架'})[t.status] || t.status}</span>
+                    <span class="badge badge--info">🎯 ${GOAL_LABEL[t.goal]}</span>
+                    <span class="badge badge--muted">👤 ${LEVEL_LABEL[t.level]}</span>
+                </div>
+                ${t.description ? `<div class="detail-desc">${escapeHtml(t.description)}</div>` : ''}
+                <div class="detail-meta">
+                    <div class="detail-meta__item">累计采用<div class="detail-meta__val">${t.use_count}</div></div>
+                    <div class="detail-meta__item">用户评分<div class="detail-meta__val">${rating}</div></div>
+                    <div class="detail-meta__item">评论数<div class="detail-meta__val">${t.review_count || 0}</div></div>
+                    <div class="detail-meta__item">训练周数<div class="detail-meta__val">${weekCount}</div></div>
+                </div>
+                ${t.published_at ? `<div class="form-row"><label class="filter-label">发布时间</label><div>${fmtDt(t.published_at)}</div></div>` : ''}
+                ${t.reject_reason ? `<div class="reject-reason" style="margin-bottom:var(--space-3);">⚠️ 驳回/下架理由：${escapeHtml(t.reject_reason)}</div>` : ''}
+                <div class="form-row">
+                    <label class="filter-label">周训练结构</label>
+                    <div class="detail-weeks" id="detailWeeks"></div>
+                </div>
+            `;
+            document.getElementById('detailBody').innerHTML = html;
+            renderDetailWeeks(t.weeks || []);
+        }
+        async function renderDetailWeeks(weeks) {
+            const wrap = document.getElementById('detailWeeks');
+            if (weeks.length === 0) {
+                wrap.innerHTML = `<div style="color:var(--color-text-muted);">（暂无周训练数据）</div>`;
+                return;
+            }
+            await ensureExercisesLoaded();
+            wrap.innerHTML = weeks.map((w) => `
+                <div class="detail-week-block">
+                    <div class="detail-week-title">第 ${w.week} 周</div>
+                    ${(w.days || []).map((d) => `
+                        <div class="detail-day-block">
+                            <div class="detail-day-head"><span>D${d.day}</span>${escapeHtml(d.name || '训练')}</div>
+                            <div>${(d.exercises || []).map((ex) => {
+                                const info = state.exerciseMap.get(ex.exercise_id);
+                                const name = info ? `${info.name_zh || info.name || ex.exercise_id}` : ex.exercise_id;
+                                return `<span class="detail-ex"><strong>${escapeHtml(ex.exercise_id)}</strong> ${escapeHtml(name)}${ex.sets ? ` · ${ex.sets}组` : ''}${ex.reps ? ` × ${ex.reps}` : ''}</span>`;
+                            }).join('') || '<span style="color:var(--color-text-muted);">（休息日）</span>'}</div>
+                        </div>
+                    `).join('') || '<div style="color:var(--color-text-muted);">（休息周）</div>'}
+                </div>
+            `).join('');
+        }
+
+        // ===== 编辑 / 新建 =====
+        document.getElementById('btnNew').addEventListener('click', () => {
+            state.editingAsAdmin = isAdmin;
+            openEdit(null);
+        });
+        document.getElementById('edCancel').addEventListener('click', closeEdit);
+        document.getElementById('editMask').addEventListener('click', (e) => {
+            if (e.target.id === 'editMask') closeEdit();
+        });
+        document.getElementById('edSave').addEventListener('click', saveEdit);
+        document.getElementById('btnAddWeek').addEventListener('click', () => {
+            state.editingWeeks.push({ week: state.editingWeeks.length + 1, days: [] });
+            renderWeeksEditor();
+        });
+
+        async function openEdit(id) {
+            state.editingId = id;
+            state.editingWeeks = [];
+            document.getElementById('edRejectReason').style.display = 'none';
+            document.getElementById('edName').value = '';
+            document.getElementById('edDescription').value = '';
+            await ensureExercisesLoaded();
+            if (id) {
+                document.getElementById('editTitle').textContent = state.editingAsAdmin ? '编辑模板（admin）' : '编辑模板';
+                try {
+                    // 复用 /admin/templates/{id}：admin 任意访问，trainer 只能拿到自己的（后端已校验）
+                    const t = await api('GET', `/admin/templates/${id}`);
+                    populateEditForm(t);
+                    if (t.reject_reason) {
+                        const rr = document.getElementById('edRejectReason');
+                        rr.textContent = '💡 ' + (state.editingAsAdmin ? '驳回理由' : '上次驳回理由') + '：' + t.reject_reason;
+                        rr.style.display = '';
+                    }
+                } catch (e) {
+                    showAlert(e.message, 'error');
+                    return;
+                }
+            } else {
+                document.getElementById('editTitle').textContent = state.editingAsAdmin ? '新建模板（admin）' : '新建模板';
+                document.getElementById('edGoal').value = 'fat_loss';
+                document.getElementById('edLevel').value = 'beginner';
+                state.editingWeeks = [];
+            }
+            renderWeeksEditor();
+            document.getElementById('editMask').classList.add('modal-mask--open');
+        }
+
+        function populateEditForm(t) {
+            document.getElementById('edName').value = t.name;
+            document.getElementById('edGoal').value = t.goal;
+            document.getElementById('edLevel').value = t.level;
+            document.getElementById('edDescription').value = t.description || '';
+            state.editingWeeks = (t.weeks || []).map((w) => ({
+                week: w.week,
+                days: (w.days || []).map((d) => ({
+                    day: d.day,
+                    name: d.name || '',
+                    exercises: (d.exercises || []).map((ex) => ({
+                        exercise_id: ex.exercise_id,
+                        sets: ex.sets ?? null,
+                        reps: ex.reps ?? null,
+                        weight_kg: ex.weight_kg ?? null,
+                        rest_sec: ex.rest_sec ?? null,
+                    })),
+                })),
+            }));
+        }
+
+        function closeEdit() {
+            document.getElementById('editMask').classList.remove('modal-mask--open');
+            state.editingId = null;
+        }
+
+        // ===== 周训练结构化编辑器 =====
+        function renderWeeksEditor() {
+            const wrap = document.getElementById('weeksEditor');
+            if (state.editingWeeks.length === 0) {
+                wrap.innerHTML = `
+                    <div class="weeks-editor__empty">
+                        <div class="weeks-editor__empty-icon">📅</div>
+                        <div>还没有训练周，点击右侧「➕ 添加周」开始</div>
+                    </div>`;
+                return;
+            }
+            wrap.innerHTML = state.editingWeeks.map((w, wi) => `
+                <div class="week-block" data-week="${wi}">
+                    <div class="week-block__head">
+                        <span class="week-block__title">第 ${w.week} 周</span>
+                        <button class="btn btn--xs btn--danger" data-rm-week="${wi}">🗑 删除整周</button>
+                    </div>
+                    <div class="week-block__days">
+                        ${(w.days || []).map((d, di) => `
+                            <div class="day-block" data-day="${di}">
+                                <div class="day-block__head">
+                                    <span class="day-block__no">D${d.day}</span>
+                                    <input class="form-input" style="flex:1;" data-day-name="${di}" value="${escapeHtml(d.name || '')}" placeholder="训练名，如「推 / 腿 / 全身」">
+                                    <button class="btn btn--xs btn--danger" data-rm-day="${di}">🗑</button>
+                                </div>
+                                <div class="day-block__exs">
+                                    ${(d.exercises || []).map((ex, ei) => renderExRow(wi, di, ei, ex)).join('')}
+                                    <button class="add-btn" data-add-ex="${di}">➕ 添加动作</button>
+                                </div>
+                            </div>
+                        `).join('') || '<div style="color:var(--color-text-muted);padding:var(--space-2);">（本周还没有训练日）</div>'}
+                        <button class="add-btn" data-add-day="${wi}" style="margin-top:var(--space-2);">➕ 添加训练日</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderExRow(wi, di, ei, ex) {
+            const info = state.exerciseMap.get(ex.exercise_id);
+            const name = info ? (info.name_zh || info.name || '') : '';
+            return `
+                <div class="ex-row" data-ex="${ei}">
+                    <div class="ex-row__top">
+                        <div class="ex-row__id-wrap">
+                            <input class="form-input" data-ex-id="${ei}" value="${escapeHtml(ex.exercise_id)}" placeholder="搜索动作ID或名称" autocomplete="off">
+                            <div class="ex-row__name">${escapeHtml(name)}</div>
+                            <div class="ex-row__dropdown" data-ex-dropdown="${ei}"></div>
+                        </div>
+                        <button class="btn btn--xs btn--danger" data-rm-ex="${ei}">✕ 删除</button>
+                    </div>
+                    <div class="ex-row__params">
+                        <input class="form-input" type="number" data-ex-sets="${ei}" placeholder="组数" value="${ex.sets ?? ''}" min="1" max="20">
+                        <input class="form-input" type="number" data-ex-reps="${ei}" placeholder="次数" value="${ex.reps ?? ''}" min="1" max="100">
+                        <input class="form-input" data-ex-weight="${ei}" placeholder="重量 kg" value="${ex.weight_kg ?? ''}">
+                        <input class="form-input" type="number" data-ex-rest="${ei}" placeholder="休息 s" value="${ex.rest_sec ?? ''}" min="0" max="600">
+                        <span></span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 编辑器内事件代理
+        document.getElementById('weeksEditor').addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-rm-week], button[data-rm-day], button[data-rm-ex], button[data-add-day], button[data-add-ex]');
+            if (!btn) return;
+            const weekEl = btn.closest('.week-block');
+            const dayEl = btn.closest('.day-block');
+            if (!weekEl) return;
+            const wi = +weekEl.dataset.week;
+            const di = dayEl ? +dayEl.dataset.day : -1;
+            const exEl = btn.closest('.ex-row');
+            const ei = exEl ? +exEl.dataset.ex : -1;
+
+            if (btn.hasAttribute('data-rm-week')) {
+                if (!confirm(`删除第 ${state.editingWeeks[wi].week} 周？`)) return;
+                state.editingWeeks.splice(wi, 1);
+                renumberWeeks();
+            } else if (btn.hasAttribute('data-rm-day')) {
+                state.editingWeeks[wi].days.splice(di, 1);
+                renumberDays(wi);
+            } else if (btn.hasAttribute('data-rm-ex')) {
+                state.editingWeeks[wi].days[di].exercises.splice(ei, 1);
+            } else if (btn.hasAttribute('data-add-day')) {
+                const nextDay = (state.editingWeeks[wi].days.at(-1)?.day ?? 0) + 1;
+                state.editingWeeks[wi].days.push({ day: nextDay, name: '', exercises: [] });
+            } else if (btn.hasAttribute('data-add-ex')) {
+                state.editingWeeks[wi].days[di].exercises.push({ exercise_id: '', sets: 3, reps: 12, weight_kg: null, rest_sec: 60 });
+            }
+            renderWeeksEditor();
+        });
+
+        // 训练日名称编辑
+        document.getElementById('weeksEditor').addEventListener('input', (e) => {
+            if (e.target.matches('[data-day-name]')) {
+                const dayEl = e.target.closest('.day-block');
+                const weekEl = e.target.closest('.week-block');
+                const wi = +weekEl.dataset.week;
+                const di = +dayEl.dataset.day;
+                state.editingWeeks[wi].days[di].name = e.target.value;
+                return;
+            }
+            // 动作字段编辑
+            const exEl = e.target.closest('.ex-row');
+            if (!exEl) return;
+            const weekEl = e.target.closest('.week-block');
+            const dayEl = e.target.closest('.day-block');
+            const wi = +weekEl.dataset.week;
+            const di = +dayEl.dataset.day;
+            const ei = +exEl.dataset.ex;
+            const ex = state.editingWeeks[wi].days[di].exercises[ei];
+            if (e.target.matches('[data-ex-sets]')) ex.sets = e.target.value === '' ? null : Number(e.target.value);
+            else if (e.target.matches('[data-ex-reps]')) ex.reps = e.target.value === '' ? null : Number(e.target.value);
+            else if (e.target.matches('[data-ex-weight]')) ex.weight_kg = e.target.value === '' ? null : Number(e.target.value);
+            else if (e.target.matches('[data-ex-rest]')) ex.rest_sec = e.target.value === '' ? null : Number(e.target.value);
+        });
+
+        // 动作搜索（防抖 + 点击外部关闭）
+        let searchTimer = null;
+        document.getElementById('weeksEditor').addEventListener('input', (e) => {
+            if (!e.target.matches('[data-ex-id]')) return;
+            const exEl = e.target.closest('.ex-row');
+            const weekEl = e.target.closest('.week-block');
+            const dayEl = e.target.closest('.day-block');
+            const wi = +weekEl.dataset.week;
+            const di = +dayEl.dataset.day;
+            const ei = +exEl.dataset.ex;
+            const ex = state.editingWeeks[wi].days[di].exercises[ei];
+            ex.exercise_id = e.target.value;
+            const nameEl = exEl.querySelector('.ex-row__name');
+            const dropdown = exEl.querySelector('.ex-row__dropdown');
+            const info = state.exerciseMap.get(e.target.value.trim());
+            nameEl.textContent = info ? (info.name_zh || info.name || '') : (e.target.value.trim() ? '（未在动作库）' : '');
+
+            clearTimeout(searchTimer);
+            const kw = e.target.value.trim();
+            if (kw.length < 1) { dropdown.style.display = 'none'; return; }
+            searchTimer = setTimeout(() => searchExercises(kw, dropdown, ex, exEl), 200);
+        });
+
+        async function searchExercises(kw, dropdown, ex, exEl) {
+            try {
+                const data = await api('GET', `/exercises?keyword=${encodeURIComponent(kw)}&page_size=8`);
+                if (data.items.length === 0) {
+                    dropdown.innerHTML = `<div class="ex-row__opt" style="color:var(--color-text-muted);">无匹配</div>`;
+                } else {
+                    dropdown.innerHTML = data.items.map((it) => `
+                        <div class="ex-row__opt" data-pick-id="${escapeHtml(it.id)}">
+                            <strong>${escapeHtml(it.id)}</strong> ${escapeHtml(it.name_zh || it.name || '')}
+                        </div>
+                    `).join('');
+                }
+                dropdown.style.display = 'block';
+            } catch (e) {
+                dropdown.innerHTML = `<div class="ex-row__opt" style="color:var(--color-error);">搜索失败</div>`;
+                dropdown.style.display = 'block';
+            }
+        }
+
+        document.getElementById('weeksEditor').addEventListener('click', (e) => {
+            const opt = e.target.closest('.ex-row__opt[data-pick-id]');
+            if (!opt) return;
+            const exEl = opt.closest('.ex-row');
+            const weekEl = exEl.closest('.week-block');
+            const dayEl = exEl.closest('.day-block');
+            const wi = +weekEl.dataset.week;
+            const di = +dayEl.dataset.day;
+            const ei = +exEl.dataset.ex;
+            const ex = state.editingWeeks[wi].days[di].exercises[ei];
+            ex.exercise_id = opt.dataset.pickId;
+            exEl.querySelector('[data-ex-id]').value = opt.dataset.pickId;
+            const info = state.exerciseMap.get(opt.dataset.pickId);
+            exEl.querySelector('.ex-row__name').textContent = info ? (info.name_zh || info.name || '') : '';
+            exEl.querySelector('.ex-row__dropdown').style.display = 'none';
+        });
+
+        // 点击外部关闭所有下拉
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.ex-row__id-wrap')) {
+                document.querySelectorAll('.ex-row__dropdown').forEach((d) => d.style.display = 'none');
+            }
+        });
+
+        function renumberWeeks() {
+            state.editingWeeks.forEach((w, i) => w.week = i + 1);
+        }
+        function renumberDays(wi) {
+            state.editingWeeks[wi].days.forEach((d, i) => d.day = i + 1);
+        }
+
+        async function saveEdit() {
+            const name = document.getElementById('edName').value.trim();
+            if (!name) { showAlert('请填写模板名', 'error'); return; }
+            const goal = document.getElementById('edGoal').value;
+            const level = document.getElementById('edLevel').value;
+            const description = document.getElementById('edDescription').value.trim();
+
+            // 校验：每个动作必须有 exercise_id
+            for (let wi = 0; wi < state.editingWeeks.length; wi++) {
+                for (let di = 0; di < state.editingWeeks[wi].days.length; di++) {
+                    for (let ei = 0; ei < state.editingWeeks[wi].days[di].exercises.length; ei++) {
+                        const ex = state.editingWeeks[wi].days[di].exercises[ei];
+                        if (!ex.exercise_id.trim()) {
+                            showAlert(`第 ${wi + 1} 周 D${di + 1} 有动作未填写动作ID`, 'error');
+                            return;
+                        }
+                    }
+                }
+            }
+
+            const body = { name, goal, level, description, weeks: state.editingWeeks };
+            try {
+                if (state.editingId) {
+                    const path = state.editingAsAdmin
+                        ? `/admin/templates/${state.editingId}`
+                        : `/trainer/templates/${state.editingId}`;
+                    await api('PATCH', path, body);
+                    showAlert('已保存', 'success');
+                } else {
+                    const path = state.editingAsAdmin ? '/admin/templates' : '/trainer/templates';
+                    await api('POST', path, body);
+                    showAlert('已创建', 'success');
+                }
+                closeEdit();
+                loadList();
+            } catch (e) {
+                showAlert(e.message, 'error');
+            }
+        }
+
+        // ===== 审核理由模态 =====
+        function openReview(action, id) {
+            state.reviewAction = action;
+            state.reviewTargetId = id;
+            const titleMap = { reject: '驳回模板', offline: '下架模板' };
+            const labelMap = { reject: '驳回理由（必填，会展示给教练）', offline: '下架理由（必填）' };
+            document.getElementById('reviewTitle').textContent = titleMap[action];
+            document.getElementById('reviewLabel').textContent = labelMap[action];
+            document.getElementById('reviewReason').value = '';
+            document.getElementById('reviewMask').classList.add('modal-mask--open');
+        }
+        document.getElementById('reviewCancel').addEventListener('click', () => {
+            document.getElementById('reviewMask').classList.remove('modal-mask--open');
+        });
+        document.getElementById('reviewMask').addEventListener('click', (e) => {
+            if (e.target.id === 'reviewMask') document.getElementById('reviewMask').classList.remove('modal-mask--open');
+        });
+        document.getElementById('reviewOk').addEventListener('click', async () => {
+            const reason = document.getElementById('reviewReason').value.trim();
+            if (!reason) { showAlert('请填写理由', 'error'); return; }
+            const path = `/admin/templates/${state.reviewTargetId}/${state.reviewAction}`;
+            try {
+                await api('POST', path, { reason });
+                showAlert(state.reviewAction === 'reject' ? '已驳回' : '已下架', 'success');
+                document.getElementById('reviewMask').classList.remove('modal-mask--open');
+                loadList();
+            } catch (e) {
+                showAlert(e.message, 'error');
+            }
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动作详情 · FitHub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/reviews.css">
+    <style>
+        .detail {
+            position: relative;
+            z-index: 1;
+            max-width: 960px;
+            margin: var(--space-6) auto;
+            padding: var(--space-6);
+            background: rgba(18, 18, 28, 0.65);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-subtle);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+        }
+        .detail::before {
+            content: '';
+            position: absolute;
+            top: 0; left: var(--space-6); right: var(--space-6);
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), var(--accent-cool), var(--primary), transparent);
+            opacity: 0.6;
+        }
+        .detail__hero {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: var(--space-6);
+            margin-bottom: var(--space-6);
+        }
+        .detail__media {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a28 0%, #0f0f1a 100%);
+            border: 1px solid var(--border-base);
+            box-shadow: 0 0 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 212, 255, 0.05);
+        }
+        .detail__gif {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: var(--radius-lg);
+        }
+        .detail__media .detail__gif-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 120px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fee2e2 100%);
+            border-radius: var(--radius-lg);
+        }
+        .detail__name-zh {
+            font-size: var(--font-size-3xl);
+            font-weight: 800;
+            margin-bottom: var(--space-2);
+            background: linear-gradient(135deg, #ffffff 0%, var(--primary-bright) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 32px var(--primary-glow);
+        }
+        .detail__name-en {
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--space-4);
+            letter-spacing: 1px;
+            text-transform: lowercase;
+        }
+        .detail__tags { display: flex; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-4) 0; }
+        .detail__meta {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: var(--space-3) var(--space-4);
+            padding: var(--space-4);
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+        }
+        .detail__meta-label {
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: var(--font-size-xs);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .detail__meta div:nth-child(even) { color: var(--text-primary); }
+        .detail__section { margin-top: var(--space-5); }
+        .detail__section-title {
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+            margin-bottom: var(--space-3);
+            color: var(--accent-cool);
+            text-shadow: 0 0 12px var(--accent-cool-glow);
+        }
+        .detail__steps {
+            background: rgba(0, 0, 0, 0.4);
+            padding: var(--space-5);
+            border-radius: var(--radius-md);
+            line-height: 1.9;
+            white-space: pre-wrap;
+            color: var(--text-secondary);
+            border-left: 2px solid var(--accent-cool);
+            box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.4);
+        }
+        @media (max-width: 600px) {
+            .detail__hero { grid-template-columns: 1fr; }
+            .detail__name-zh { font-size: var(--font-size-2xl); }
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <a href="/c/" class="navbar__brand">
+            <span class="navbar__logo">💪</span>
+            <span class="navbar__title">FitHub</span>
+        </a>
+        <a href="/c/" class="btn btn--ghost">← 返回动作库</a>
+    </header>
+
+    <main class="detail" id="detail">
+        <div class="loading">加载中...</div>
+    </main>
+
+    <footer class="footer">
+        <p>动作媒体 © Gym visual · <a href="https://gymvisual.com/" target="_blank" rel="noopener">来源</a></p>
+    </footer>
+
+    <script type="module">
+        import { api } from './js/api.js';
+        import { t } from './js/translations.js';
+
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        const detailEl = document.getElementById('detail');
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // 数据集相对路径 → /static/ 绝对路径
+        function resolveMediaUrl(path) {
+            if (!path) return '';
+            if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) {
+                return path;
+            }
+            if (path.startsWith('images/')) return '/static/' + path;
+            if (path.startsWith('videos/')) return '/static/' + path;
+            return path;
+        }
+
+        async function load() {
+            if (!id) {
+                detailEl.innerHTML = '<div class="empty">缺少动作 ID</div>';
+                return;
+            }
+
+            try {
+                const ex = await api.exercises.get(id);
+                const instructions = ex.instructions?.zh || ex.instructions?.en || '暂无说明';
+                const mediaUrl = resolveMediaUrl(ex.gif_url || ex.image);
+
+                // 数据集没有 GIF，用 emoji + 信息卡替代
+                const emojiMap = {
+                    'chest': '💪', 'back': '🏋️', 'shoulders': '🤸',
+                    'upper arms': '💪', 'lower arms': '✋',
+                    'upper legs': '🦵', 'lower legs': '🦶',
+                    'waist': '🧘', 'cardio': '🏃', 'neck': '🧎',
+                };
+                const emoji = emojiMap[ex.body_part?.toLowerCase()] || '🏃';
+
+                detailEl.innerHTML = `
+                    <div class="detail__hero">
+                        <div class="detail__media">
+                            <img class="detail__gif" src="${mediaUrl}"
+                                 alt="${escapeHtml(ex.name_zh || ex.name_en)}"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                            <div class="detail__gif-placeholder" style="display:none;font-size:120px;align-items:center;justify-content:center;background:linear-gradient(135deg,#fef3c7 0%,#fee2e2 100%);border-radius:var(--radius-md);">${emoji}</div>
+                        </div>
+                        <div>
+                            <div class="detail__name-zh">${escapeHtml(ex.name_zh || ex.name_en)}</div>
+                            <div class="detail__name-en">${escapeHtml(ex.name_en)}</div>
+                            <div class="detail__tags">
+                                <span class="tag">${escapeHtml(t.bodyPart(ex.body_part))}</span>
+                                <span class="tag">${escapeHtml(t.equipment(ex.equipment))}</span>
+                                <span class="tag">${escapeHtml(t.target(ex.target))}</span>
+                            </div>
+                            <div class="detail__meta">
+                                <div class="detail__meta-label">分类</div><div>${escapeHtml(t.bodyPart(ex.category))}</div>
+                                <div class="detail__meta-label">器械</div><div>${escapeHtml(t.equipment(ex.equipment))}</div>
+                                <div class="detail__meta-label">目标肌肉</div><div>${escapeHtml(t.target(ex.target))}</div>
+                                ${ex.secondary_muscles?.length ? `
+                                <div class="detail__meta-label">协同肌肉</div><div>${ex.secondary_muscles.map(escapeHtml).join('、')}</div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail__section">
+                        <div class="detail__section-title">📋 动作步骤（中文）</div>
+                        <div class="detail__steps">${escapeHtml(instructions)}</div>
+                    </div>
+
+                    ${ex.attribution ? `
+                    <div class="detail__section">
+                        <div class="detail__section-title">📌 版权说明</div>
+                        <div class="detail__steps">${escapeHtml(ex.attribution)}</div>
+                    </div>
+                    ` : ''}
+
+                    <div id="reviewsMount"></div>
+                `;
+                document.title = `${ex.name_zh || ex.name_en} · FitHub`;
+
+                // 评分概览（在标题旁显示）
+                if (ex.review_count >= 5 && ex.avg_rating != null) {
+                    const stars = Math.round(ex.avg_rating);
+                    const starHtml = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+                    const summary = document.createElement('div');
+                    summary.style.cssText = 'margin-top:var(--space-2);font-size:14px;color:var(--text-secondary);';
+                    summary.innerHTML = `<span style="color:var(--primary-bright);">${starHtml}</span> <strong>${ex.avg_rating.toFixed(1)}</strong> · ${ex.review_count} 条评论`;
+                    const nameZh = detailEl.querySelector('.detail__name-zh');
+                    if (nameZh) nameZh.parentNode.insertBefore(summary, nameZh.nextSibling);
+                }
+
+                // 挂载评论模块
+                const { mountReviews } = await import('./js/reviews.js');
+                await mountReviews('reviewsMount', { exerciseId: id });
+            } catch (err) {
+                detailEl.innerHTML = `<div class="empty">❌ 加载失败：${err.message}</div>`;
+            }
+        }
+
+        load();
+    </script>
+</body>
+</html>

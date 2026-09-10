@@ -1,0 +1,89 @@
+# ============================================
+# FitHub Backend Dependencies
+# ============================================
+# Install:
+#   pip install -r requirements.txt
+#
+# Windows + PowerShell may fail with GBK encoding on Chinese comments.
+# Use one of:
+#   PYTHONUTF8=1 pip install -r requirements.txt
+#   pip install -r requirements.txt --no-cache-dir
+# Or use English comments (this file) for safety.
+# ============================================
+
+# ---------- Web Framework ----------
+fastapi>=0.110.0,<0.120.0
+uvicorn[standard]>=0.27.0,<0.30.0
+
+# ---------- Data Validation ----------
+pydantic>=2.5.0,<3.0.0
+pydantic-settings>=2.1.0,<3.0.0
+email-validator>=2.1.0
+
+# ---------- Database (MySQL) ----------
+SQLAlchemy[asyncio]>=2.0.25,<2.1.0
+aiomysql>=0.2.0,<0.3.0
+PyMySQL>=1.1.0
+alembic>=1.13.0,<2.0.0
+
+# ---------- Auth / Security ----------
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.0,<4.1.0
+
+# ---------- LLM (OpenAI-compatible protocol) ----------
+openai>=1.10.0,<2.0.0
+
+# ---------- Vector DB (Chroma - embedded, zero deploy) ----------
+# Stores exercise embeddings for RAG retrieval (PRD §6.3).
+# Chroma runs in-process, no separate server needed.
+# CLAUDE.md preferred over Milvus (which has Linux/macOS-only constraint on Windows).
+chromadb>=0.5.0,<1.0.0
+langchain-text-splitters>=0.3,<1.0
+
+# ---------- Cache (Redis - short-term conversation buffer) ----------
+# Stores last N rounds of conversation context per user (default 5).
+# Reduces DB reads for active conversations and accelerates AI responses.
+# Async client; supports both standalone Redis and Redis Cluster.
+redis>=5.0.0,<6.0.0
+
+# ---------- Streaming Response ----------
+sse-starlette>=2.0.0,<3.0.0
+
+# ---------- File Upload ----------
+python-multipart>=0.0.9
+
+# ---------- Rate Limiting ----------
+slowapi>=0.1.9
+
+# ---------- Logging ----------
+loguru>=0.7.2
+
+# ---------- Async Utilities ----------
+httpx>=0.26.0
+aiofiles>=23.2.1
+
+# ---------- Config / Env Vars ----------
+python-dotenv>=1.0.0
+
+# ---------- Date Utilities ----------
+python-dateutil>=2.8.2
+
+# ============================================
+# Dev & Test Dependencies (optional)
+# Install: pip install -r requirements-dev.txt
+# ============================================
+
+# ---------- Testing ----------
+# pytest>=8.0.0
+# pytest-asyncio>=0.23.0
+# pytest-cov>=4.1.0
+# httpx>=0.26.0
+# testcontainers[mysql,redis]>=4.6.0
+
+# ---------- Code Quality ----------
+# ruff>=0.3.0
+# mypy>=1.8.0
+
+# ---------- Debug ----------
+# ipdb>=0.13.0

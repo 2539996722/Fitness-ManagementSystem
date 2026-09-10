@@ -1,0 +1,129 @@
+# ============================================
+# FitHub 健身管理系统 .gitignore
+# ============================================
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+.venv/
+venv/
+env/
+ENV/
+.env/
+.env.local
+.env.*.local
+
+# 测试
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# 类型检查
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# 数据库
+*.db
+*.sqlite
+*.sqlite3
+*.sql.bak
+
+# 日志
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# Alembic
+# 注意：alembic/versions/ 不忽略（迁移文件需要提交）
+# 但忽略 alembic 生成的临时文件
+alembic/versions/__pycache__/
+
+# ---------- Node（前端工具链占位） ----------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ---------- IDE / 编辑器 ----------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+*.sublime-project
+*.sublime-workspace
+
+# ---------- 数据集（按需 clone 进项目） ----------
+/data/exercises-dataset-zh/
+# 上面的注释行：如果希望数据集进 Git，把上面那行删掉
+# 数据集仓库自带 .gitignore
+
+# ---------- 动作媒体（已包含在数据集中，不重复提交） ----------
+# /web/c/assets/exercises/images/
+# /web/c/assets/exercises/videos/
+
+# ---------- Docker ----------
+# 注意：docker-compose.yml 需要提交
+# 但 .env、secrets 不要提交
+
+# ---------- Chroma 向量库持久化 ----------
+chroma/
+chroma-data/
+*.chroma
+*.vectordb
+
+# ---------- 临时文件 ----------
+tmp/
+temp/
+.cache/
+.parcel-cache/
+
+# ---------- 系统文件 ----------
+.Trashes
+.Spotlight-V100
+.fseventsd
+.AppleDouble
+.LSOverride
+
+# ---------- 部署相关 ----------
+*.pem
+*.key
+*.crt
+secrets/
+.deployment/
