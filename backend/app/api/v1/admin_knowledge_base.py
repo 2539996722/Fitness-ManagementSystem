@@ -23,6 +23,7 @@ from app.schemas.knowledge_base import (
     KnowledgeBaseListOut,
     KnowledgeBaseOut,
     KnowledgeBaseUpdate,
+    KnowledgeDocumentChunksOut,
     KnowledgeDocumentListOut,
     KnowledgeDocumentOut,
     KnowledgeDocumentUploadOut,
@@ -34,6 +35,7 @@ from app.services.kb_service import (
     delete_doc_chunks,
     delete_kb_collection,
     ingest_document,
+    list_doc_chunks,
     retrieve_from_kb,
 )
 from app.core.config import settings
@@ -246,6 +248,43 @@ async def list_documents(
     )).scalars().all()
     items = [KnowledgeDocumentOut.model_validate(r) for r in rows]
     return KnowledgeDocumentListOut(items=items, total=total)
+
+
+@admin_router.get(
+    "/{kb_id}/documents/{doc_id}/chunks",
+    response_model=KnowledgeDocumentChunksOut,
+    summary="查看文档的所有分片",
+)
+async def get_document_chunks(
+    kb_id: int,
+    doc_id: int,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> KnowledgeDocumentChunksOut:
+    """列出该文档的所有分片原文（按 chunk_index 排序）。
+
+    用于 B 端"查看分片"调试面板，看到每个 chunk 的真实内容、
+    字符数、相对 KB chunk_size 的填充比例。
+    """
+    doc = await session.get(KnowledgeDocument, doc_id)
+    if not doc or doc.kb_id != kb_id:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    kb = await session.get(KnowledgeBase, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="KB 不存在")
+
+    chunks = list_doc_chunks(kb_id, doc_id)
+    chunks_data = [
+        {"chunk_index": c.chunk_index, "text": c.text, "char_count": c.char_count}
+        for c in chunks
+    ]
+    return KnowledgeDocumentChunksOut(
+        doc_id=doc_id,
+        kb_id=kb_id,
+        filename=doc.filename,
+        chunks=chunks_data,
+        total_chars=sum(c["char_count"] for c in chunks_data),
+        chunk_size=kb.chunk_size,
+    )
 
 
 @admin_router.post(

@@ -91,6 +91,17 @@ class RetrievalTestIn(BaseModel):
     top_k: int | None = Field(None, ge=1, le=20)
 
 
+class KnowledgeDocumentChunksOut(BaseModel):
+    """文档分片预览（KB 调试用）。"""
+
+    doc_id: int
+    kb_id: int
+    filename: str
+    chunks: list[dict]  # [{chunk_index, text, char_count}, ...]
+    total_chars: int
+    chunk_size: int  # KB 配置的 chunk_size，用于前端算百分比
+
+
 class RetrievalTestOut(BaseModel):
     query: str
     chunks: list[dict]

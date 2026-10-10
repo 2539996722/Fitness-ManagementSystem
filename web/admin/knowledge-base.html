@@ -61,6 +61,77 @@
 
         .pagination { display: flex; justify-content: space-between; align-items: center; margin-top: var(--sp-3); font-size: 13px; color: var(--text-muted); }
         .pagination__btns { display: flex; gap: var(--sp-2); }
+
+        /* 分片可视化 Modal */
+        .chunk-modal__overlay {
+            position: fixed; inset: 0; background: rgba(15,23,42,0.5);
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
+            padding: 24px;
+        }
+        .chunk-modal {
+            background: var(--bg-0); border-radius: var(--r-lg);
+            width: min(960px, 100%); max-height: 88vh;
+            display: flex; flex-direction: column;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+        }
+        .chunk-modal__header {
+            padding: 16px 20px; border-bottom: 1px solid rgba(163,177,198,0.18);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .chunk-modal__title { font-weight: 700; font-size: 15px; }
+        .chunk-modal__close {
+            background: transparent; border: none; font-size: 20px;
+            color: var(--text-muted); cursor: pointer; padding: 4px 8px;
+        }
+        .chunk-modal__stats {
+            padding: 10px 20px; background: var(--bg-1); font-size: 12px;
+            color: var(--text-muted); display: flex; gap: 16px; flex-wrap: wrap;
+        }
+        .chunk-modal__body { overflow-y: auto; padding: 16px 20px; }
+        .chunk-card {
+            border: 1px solid rgba(163,177,198,0.25); border-radius: var(--r-md);
+            margin-bottom: 12px; overflow: hidden; background: var(--bg-0);
+        }
+        .chunk-card__head {
+            display: flex; align-items: center; gap: 12px;
+            padding: 8px 12px; background: var(--bg-2); border-bottom: 1px solid rgba(163,177,198,0.18);
+            font-size: 12px;
+        }
+        .chunk-card__idx {
+            background: var(--accent); color: white; font-weight: 700;
+            padding: 2px 8px; border-radius: var(--r-pill); font-size: 11px;
+        }
+        .chunk-card__idx--empty { background: var(--text-muted); }
+        .chunk-card__count { color: var(--text-muted); font-family: monospace; }
+        .chunk-card__bar {
+            flex: 1; height: 6px; background: rgba(163,177,198,0.2);
+            border-radius: 3px; overflow: hidden; min-width: 80px;
+        }
+        .chunk-card__bar-fill {
+            height: 100%; background: linear-gradient(90deg, #22c55e 0%, #eab308 70%, #ef4444 100%);
+            transition: width 0.3s;
+        }
+        .chunk-card__actions { display: flex; gap: 6px; }
+        .chunk-card__body {
+            padding: 12px 16px; font-size: 13px; line-height: 1.7;
+            white-space: pre-wrap; word-break: break-word;
+            max-height: 320px; overflow-y: auto;
+            font-family: ui-monospace, "SF Mono", Consolas, monospace;
+            color: #1f2937;
+        }
+        .chunk-card__body--collapsed { max-height: 96px; }
+        .chunk-card__toggle {
+            padding: 6px 12px; background: var(--bg-1); border: none;
+            color: var(--accent); cursor: pointer; font-size: 12px; width: 100%;
+            border-top: 1px solid rgba(163,177,198,0.12);
+        }
+        .chunk-card__toggle:hover { background: var(--bg-2); }
+
+        /* 分片空状态（KB 没有 doc / doc 还没 ingest） */
+        .chunk-empty {
+            padding: 32px; text-align: center; color: var(--text-muted);
+            background: var(--bg-1); border-radius: var(--r-md);
+        }
     </style>
 </head>
 <body>
@@ -358,6 +429,7 @@
                                 <td><span class="status-badge status-badge--${d.status}">${esc(d.status)}</span>${d.error_message ? `<div style="color:#dc2626;font-size:11px;margin-top:4px;">${esc(d.error_message)}</div>` : ''}</td>
                                 <td>${fmtDt(d.created_at)}</td>
                                 <td>
+                                    <button class="btn btn--sm" data-chunks="${d.id}" ${d.status !== 'ready' ? 'disabled' : ''} title="查看分片">✂️ ${d.chunk_count}</button>
                                     <button class="btn btn--sm" data-rebuild="${d.id}" ${d.status === 'processing' ? 'disabled' : ''}>🔄 重建</button>
                                     <button class="btn btn--sm btn-danger" data-delete-doc="${d.id}" style="margin-left:4px;">🗑</button>
                                 </td>
@@ -411,6 +483,11 @@
                 } catch (err) {
                     showAlert('删除失败：' + err.message, 'error');
                 }
+                return;
+            }
+            const chunksBtn = e.target.closest('[data-chunks]');
+            if (chunksBtn) {
+                openChunksModal(+chunksBtn.dataset.chunks);
                 return;
             }
         });
@@ -504,6 +581,84 @@
         renderUserBadge(user);
         bindLogout();
         loadKbs();
+
+        // ============ 分片可视化 Modal ============
+
+        async function openChunksModal(docId) {
+            // 创建/复用容器
+            let overlay = document.getElementById('chunksOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'chunksOverlay';
+                overlay.className = 'chunk-modal__overlay';
+                document.body.appendChild(overlay);
+            }
+            overlay.innerHTML = `
+                <div class="chunk-modal" onclick="event.stopPropagation()">
+                    <div class="chunk-modal__header">
+                        <div>
+                            <div class="chunk-modal__title">✂️ 文档分片预览</div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">doc_id = ${docId}</div>
+                        </div>
+                        <button class="chunk-modal__close" onclick="document.getElementById('chunksOverlay').remove()">×</button>
+                    </div>
+                    <div id="chunksStats" class="chunk-modal__stats">加载中…</div>
+                    <div id="chunksBody" class="chunk-modal__body">
+                        <div class="chunk-empty">加载中…</div>
+                    </div>
+                </div>
+            `;
+            overlay.onclick = () => overlay.remove();
+
+            try {
+                const data = await api('GET', `/admin/knowledge-bases/${state.selectedKbId}/documents/${docId}/chunks`);
+                renderChunks(data);
+            } catch (err) {
+                document.getElementById('chunksBody').innerHTML =
+                    `<div class="chunk-empty" style="color:#dc2626;">加载失败：${esc(err.message)}</div>`;
+            }
+        }
+
+        function renderChunks(data) {
+            const stats = document.getElementById('chunksStats');
+            const body = document.getElementById('chunksBody');
+            const avg = data.chunks.length ? Math.round(data.total_chars / data.chunks.length) : 0;
+            const maxChunk = data.chunks.reduce((m, c) => Math.max(m, c.char_count), 0);
+            stats.innerHTML = `
+                <span>📄 <b>${esc(data.filename)}</b></span>
+                <span>✂️ 共 <b>${data.chunks.length}</b> 个分片</span>
+                <span>📏 总字符 <b>${data.total_chars.toLocaleString()}</b></span>
+                <span>📐 平均 <b>${avg}</b> 字/片</span>
+                <span>🎯 KB chunk_size = <b>${data.chunk_size}</b>（最大片 ${maxChunk}）</span>
+            `;
+            if (!data.chunks.length) {
+                body.innerHTML = '<div class="chunk-empty">该文档尚未分片（status ≠ ready 或分片被删）</div>';
+                return;
+            }
+            body.innerHTML = data.chunks.map((c, i) => {
+                const pct = Math.min(100, Math.round((c.char_count / data.chunk_size) * 100));
+                const tooShort = c.char_count < data.chunk_size * 0.3;
+                return `
+                    <div class="chunk-card">
+                        <div class="chunk-card__head">
+                            <span class="chunk-card__idx ${tooShort ? 'chunk-card__idx--empty' : ''}">#${c.chunk_index}</span>
+                            <span class="chunk-card__count">${c.char_count} 字 · ${pct}% of chunk_size</span>
+                            <div class="chunk-card__bar"><div class="chunk-card__bar-fill" style="width:${pct}%;"></div></div>
+                        </div>
+                        <div class="chunk-card__body chunk-card__body--collapsed" id="chunkBody-${i}">${esc(c.text)}</div>
+                        <button class="chunk-card__toggle" onclick="toggleChunkBody(${i})">展开 / 收起</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleChunkBody(i) {
+            const el = document.getElementById(`chunkBody-${i}`);
+            if (el) el.classList.toggle('chunk-card__body--collapsed');
+        }
+
+        // 暴露到全局（onclick 用）
+        window.toggleChunkBody = toggleChunkBody;
     </script>
 </body>
 </html>

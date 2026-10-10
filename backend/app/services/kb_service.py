@@ -70,6 +70,39 @@ def delete_doc_chunks(kb_id: int, doc_id: int) -> None:
         logger.warning(f"删除 kb_{kb_id} doc={doc_id} chunks 失败：{e}")
 
 
+@dataclass
+class DocChunk:
+    """单个分片预览（按 doc_id 列出）。"""
+
+    chunk_index: int
+    text: str
+    char_count: int
+
+
+def list_doc_chunks(kb_id: int, doc_id: int) -> list[DocChunk]:
+    """列出某个文档在 collection 里的所有分片（按 chunk_index 排序）。
+
+    用于 B 端"查看分片"调试面板，看到每个分片的原文 + 字符数。
+    """
+    try:
+        coll = _get_kb_collection(kb_id)
+        res = coll.get(where={"doc_id": doc_id})
+    except Exception as e:
+        logger.warning(f"读取 doc={doc_id} chunks 失败：{e}")
+        return []
+    docs = res.get("documents") or []
+    metas = res.get("metadatas") or []
+    chunks: list[DocChunk] = []
+    for text, meta in zip(docs, metas):
+        chunks.append(DocChunk(
+            chunk_index=int((meta or {}).get("chunk_index", 0)),
+            text=text or "",
+            char_count=len(text or ""),
+        ))
+    chunks.sort(key=lambda c: c.chunk_index)
+    return chunks
+
+
 # ============ 文档分片 + ingest ============
 
 @dataclass
