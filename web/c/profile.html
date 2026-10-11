@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>个人中心 · FitHub</title>
-    <link rel="stylesheet" href="css/style.css?v=5">
+    <link rel="stylesheet" href="css/style.css?v=6">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* ============================================================
@@ -109,11 +109,12 @@
 
         /* === Section 卡片（左主栏每个 section 套这个）=== */
         .section-card {
-            background: rgba(30, 36, 70, 0.45);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(30, 36, 70, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.32);
             border-radius: var(--radius-lg);
             padding: var(--space-5);
             margin-bottom: var(--space-4);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
         }
         .section-card__head {
             display: flex;
@@ -761,7 +762,7 @@
                     <div class="ornament-rule"><span class="ornament-rule__dot"></span></div>
 
                     <!-- 体重曲线 -->
-                    <section>
+                    <section class="section-card">
                         <div class="section-card__head">
                             <h2 class="section-card__title">体重轨迹</h2>
                             <span class="section-card__link">最近 90 天</span>
@@ -788,7 +789,7 @@
                     <div class="ornament-rule"><span class="ornament-rule__dot"></span></div>
 
                     <!-- AI 历史 -->
-                    <section>
+                    <section class="section-card">
                         <div class="section-card__head">
                             <h2 class="section-card__title">AI 教练对话</h2>
                             <a href="/c/plans.html#ai" class="section-card__link">查看全部 →</a>
@@ -801,7 +802,7 @@
                     <div class="ornament-rule"><span class="ornament-rule__dot"></span></div>
 
                     <!-- 我的评论 -->
-                    <section>
+                    <section class="section-card">
                         <div class="section-card__head">
                             <h2 class="section-card__title">我的评论</h2>
                             <a href="/c/" class="section-card__link">去发现动作 →</a>
@@ -1150,8 +1151,8 @@
                             },
                         },
                         scales: {
-                            y: { beginAtZero: false, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { family: 'ui-monospace, monospace', size: 11 }, color: 'var(--text-muted)', precision: 1 } },
-                            x: { grid: { display: false }, ticks: { font: { family: 'ui-monospace, monospace', size: 11 }, color: 'var(--text-muted)', maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+                            y: { beginAtZero: false, grid: { color: 'rgba(255,255,255,0.10)' }, ticks: { font: { family: 'ui-monospace, monospace', size: 14 }, color: '#ffffff', precision: 1 } },
+                            x: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { font: { family: 'ui-monospace, monospace', size: 14 }, color: '#ffffff', maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
                         },
                     },
                 });
