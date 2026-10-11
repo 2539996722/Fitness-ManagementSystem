@@ -22,6 +22,7 @@ from app.db.models.system_config import SystemConfig
 from app.db.models.training_record import TrainingRecord
 from app.db.models.trace_span import TraceSpan
 from app.db.models.user import User
+from app.db.models.weight_log import WeightLog
 
 __all__ = [
     "AiCallLog",
@@ -39,4 +40,5 @@ __all__ = [
     "TrainingRecord",
     "TraceSpan",
     "User",
+    "WeightLog",
 ]

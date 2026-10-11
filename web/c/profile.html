@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>个人中心 · FitHub</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         .profile-page {
             position: relative;
@@ -301,6 +302,107 @@
             margin-top: var(--space-4);
         }
 
+        /* ===== 体重曲线 ===== */
+        .weight-form {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+            margin-bottom: var(--space-3);
+            flex-wrap: wrap;
+        }
+        .weight-form__field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            min-width: 120px;
+        }
+        .weight-form__field label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .weight-form__field input {
+            background: var(--bg-input);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 13px;
+        }
+        .weight-form__field input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+        .weight-chart-wrap { height: 200px; position: relative; }
+        .weight-list {
+            margin-top: var(--space-3);
+            max-height: 180px;
+            overflow-y: auto;
+            border-top: 1px solid var(--border-subtle);
+            padding-top: 8px;
+        }
+        .weight-list__item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 13px;
+            border-bottom: 1px dashed rgba(163,177,198,0.12);
+        }
+        .weight-list__item:last-child { border-bottom: none; }
+        .weight-list__time { color: var(--text-muted); font-size: 12px; }
+        .weight-list__note { color: var(--text-muted); font-size: 11px; margin-left: 8px; }
+        .weight-list__del {
+            background: transparent; border: none; color: var(--text-muted);
+            cursor: pointer; padding: 0 4px;
+        }
+        .weight-list__del:hover { color: #ef4444; }
+
+        /* ===== AI 历史 / 评论列表 ===== */
+        .list-card {
+            display: flex; align-items: center; gap: var(--space-3);
+            padding: 10px 12px; background: var(--bg-elevated);
+            border: 1px solid var(--border-base); border-radius: var(--radius-md);
+            margin-bottom: 8px; transition: all 0.2s;
+        }
+        .list-card:hover { border-color: var(--accent-color); transform: translateY(-1px); }
+        .list-card__icon {
+            font-size: 22px; width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--bg-input); border-radius: 50%; flex-shrink: 0;
+        }
+        .list-card__main { flex: 1; min-width: 0; }
+        .list-card__title {
+            font-weight: 600; font-size: 13px; margin-bottom: 2px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .list-card__sub { font-size: 11px; color: var(--text-muted); }
+        .list-card__action {
+            background: transparent; border: 1px solid var(--border-base);
+            color: var(--text-muted); padding: 4px 10px;
+            border-radius: var(--radius-sm); cursor: pointer; font-size: 12px;
+        }
+        .list-card__action:hover { color: #ef4444; border-color: #ef4444; }
+        .list-empty {
+            padding: var(--space-6); text-align: center;
+            color: var(--text-muted); font-size: 13px;
+        }
+        .rating-stars { color: #fbbf24; font-size: 13px; letter-spacing: 1px; }
+
+        /* ===== 危险区 ===== */
+        .danger-zone {
+            background: rgba(239,68,68,0.05);
+            border: 1px solid rgba(239,68,68,0.2);
+        }
+        .danger-zone .card__title { color: #ef4444; }
+        .btn--danger {
+            background: #dc2626; color: #fff; border: 1px solid #dc2626;
+        }
+        .btn--danger:hover { background: #b91c1c; }
+
         .loading {
             padding: var(--space-6);
             text-align: center;
@@ -454,6 +556,48 @@
                 </div>
             </section>
 
+            <!-- ===== 体重曲线 ===== -->
+            <section class="card">
+                <div class="card__title">📈 体重曲线</div>
+                <div class="card__hint">每天可记多次。建议早上空腹称重，更稳定。</div>
+                <form class="weight-form" id="weightForm" autocomplete="off">
+                    <div class="weight-form__field">
+                        <label>体重 (kg) *</label>
+                        <input type="number" id="wWeight" step="0.1" min="20" max="300" required>
+                    </div>
+                    <div class="weight-form__field">
+                        <label>日期</label>
+                        <input type="datetime-local" id="wDate">
+                    </div>
+                    <div class="weight-form__field">
+                        <label>备注</label>
+                        <input type="text" id="wNote" maxlength="64" placeholder="早起空腹 / 训练后">
+                    </div>
+                    <button type="submit" class="btn btn--primary">📝 记录</button>
+                </form>
+                <div class="weight-chart-wrap"><canvas id="weightChart"></canvas></div>
+                <div id="weightList" class="weight-list"></div>
+            </section>
+
+            <!-- ===== AI 教练历史 ===== -->
+            <section class="card">
+                <div class="card__title">💬 AI 教练历史</div>
+                <div class="card__hint">最近的会话，点击继续对话</div>
+                <div id="convList">
+                    <div class="list-empty">加载中...</div>
+                </div>
+                <a href="/c/plans.html#ai" class="btn btn--secondary" id="btnAllConvs" style="display:none; margin-top:8px;">查看全部 →</a>
+            </section>
+
+            <!-- ===== 我的评论 ===== -->
+            <section class="card">
+                <div class="card__title">⭐ 我的评论</div>
+                <div class="card__hint">你对动作的评分和留言（仅你自己可见删除按钮）</div>
+                <div id="reviewList">
+                    <div class="list-empty">加载中...</div>
+                </div>
+            </section>
+
             <!-- ===== 账号安全 ===== -->
             <section class="card">
                 <div class="card__title">🔒 账号安全</div>
@@ -470,6 +614,22 @@
                         <div class="safety-row__desc">清除本地 token，下次访问需重新登录</div>
                     </div>
                     <button class="btn btn--ghost" id="btnLogout">退出</button>
+                </div>
+            </section>
+
+            <!-- ===== 危险区：注销账号 ===== -->
+            <section class="card danger-zone">
+                <div class="card__title">⚠️ 危险区</div>
+                <div class="safety-row">
+                    <div>
+                        <div class="safety-row__title">注销账号</div>
+                        <div class="safety-row__desc" style="color:#dc2626;">
+                            软删账号（is_deleted=1 + 清密码）。不可逆！
+                            你的评论、计划、打卡会被保留但归属匿名；
+                            后续无法登录，需联系管理员恢复。
+                        </div>
+                    </div>
+                    <button class="btn btn--danger" id="btnDeleteMe">注销账号</button>
                 </div>
             </section>
 
@@ -574,6 +734,12 @@
                 renderProfile(me);
                 renderAuthUI();
                 await loadStats();
+                // 并行拉新区块
+                await Promise.allSettled([
+                    loadWeightLogs(),
+                    loadConversations(),
+                    loadMyReviews(),
+                ]);
             } catch (e) {
                 toast('加载失败：' + e.message, 'error');
             } finally {
@@ -773,6 +939,205 @@
                 location.reload();
             }
         });
+
+        // ============ 体重曲线 ============
+
+        let weightChart = null;
+
+        function fmtWeightDate(s) {
+            if (!s) return '';
+            const d = new Date(s);
+            return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
+
+        async function loadWeightLogs() {
+            try {
+                const data = await api.get('/users/me/weight-logs?days=90');
+                const items = data.items || [];
+                if (items.length === 0) {
+                    $('weightList').innerHTML = '<div class="list-empty">还没有体重记录</div>';
+                    if (weightChart) { weightChart.destroy(); weightChart = null; }
+                    return;
+                }
+                // 图表：按时间正序
+                const sorted = [...items].sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
+                const labels = sorted.map(it => fmtWeightDate(it.recorded_at));
+                const weights = sorted.map(it => it.weight_kg);
+                const ctx = document.getElementById('weightChart');
+                if (weightChart) weightChart.destroy();
+                weightChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: '体重 (kg)',
+                            data: weights,
+                            borderColor: '#ff6b35',
+                            backgroundColor: 'rgba(255,107,53,0.15)',
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#ff6b35',
+                            borderWidth: 2,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: false, ticks: { precision: 1 } },
+                            x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+                        },
+                    },
+                });
+                // 列表（倒序）
+                $('weightList').innerHTML = items.map(it => `
+                    <div class="weight-list__item">
+                        <div>
+                            <b>${it.weight_kg}</b> kg
+                            <span class="weight-list__time">${fmtWeightDate(it.recorded_at)}</span>
+                            ${it.note ? `<span class="weight-list__note">· ${esc(it.note)}</span>` : ''}
+                        </div>
+                        <button class="weight-list__del" data-del="${it.id}" title="删除">✕</button>
+                    </div>
+                `).join('');
+                $('weightList').querySelectorAll('[data-del]').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        if (!confirm('删除这条体重记录？')) return;
+                        try {
+                            await api.delete(`/users/me/weight-logs/${btn.dataset.del}`);
+                            toast('✅ 已删除');
+                            await loadWeightLogs();
+                        } catch (e) {
+                            toast('删除失败：' + e.message, 'error');
+                        }
+                    });
+                });
+            } catch (e) {
+                console.warn('load weight logs failed', e);
+            }
+        }
+
+        $('weightForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const body = {
+                weight_kg: parseFloat($('wWeight').value),
+                note: $('wNote').value.trim() || null,
+            };
+            const dt = $('wDate').value;
+            if (dt) {
+                body.recorded_at = new Date(dt).toISOString().slice(0, 19);
+            }
+            try {
+                await api.post('/users/me/weight-logs', body);
+                toast('✅ 体重已记录');
+                $('wWeight').value = '';
+                $('wDate').value = '';
+                $('wNote').value = '';
+                await loadWeightLogs();
+            } catch (e) {
+                toast('记录失败：' + e.message, 'error');
+            }
+        });
+
+        // ============ AI 教练历史 ============
+
+        async function loadConversations() {
+            try {
+                const list = await api.get('/conversations');
+                const items = (list || []).slice(0, 5);
+                if (items.length === 0) {
+                    $('convList').innerHTML = '<div class="list-empty">还没有对话，去 <a href="/c/plans.html#ai">和 AI 教练聊聊</a> 吧</div>';
+                    $('btnAllConvs').style.display = 'none';
+                    return;
+                }
+                $('convList').innerHTML = items.map(c => `
+                    <div class="list-card" data-conv="${c.id}" style="cursor:pointer;">
+                        <div class="list-card__icon">💬</div>
+                        <div class="list-card__main">
+                            <div class="list-card__title">${esc(c.title || '未命名会话')}</div>
+                            <div class="list-card__sub">${c.last_message ? esc(c.last_message.slice(0, 30)) : '暂无消息'} · ${fmtDt(c.updated_at)}</div>
+                        </div>
+                        <div style="font-size:11px; color: var(--text-muted);">${c.unread ? `🔴 ${c.unread}` : ''}</div>
+                    </div>
+                `).join('');
+                $('convList').querySelectorAll('[data-conv]').forEach(card => {
+                    card.addEventListener('click', () => {
+                        location.href = `/c/plans.html#ai?conv=${card.dataset.conv}`;
+                    });
+                });
+                $('btnAllConvs').style.display = 'inline-flex';
+            } catch (e) {
+                $('convList').innerHTML = `<div class="list-empty">加载失败：${esc(e.message)}</div>`;
+            }
+        }
+
+        // ============ 我的评论 ============
+
+        function renderStars(rating) {
+            return '★'.repeat(rating) + '☆'.repeat(5 - rating);
+        }
+
+        async function loadMyReviews() {
+            try {
+                const data = await api.get('/users/me/reviews?page_size=10');
+                const items = (data.items || []).filter(r => r.status === 0);
+                if (items.length === 0) {
+                    $('reviewList').innerHTML = '<div class="list-empty">还没有评论，<a href="/c/">去看看动作</a> 写下你的看法吧</div>';
+                    return;
+                }
+                $('reviewList').innerHTML = items.map(r => `
+                    <div class="list-card">
+                        <div class="list-card__icon">⭐</div>
+                        <div class="list-card__main">
+                            <div class="list-card__title">${esc(r.exercise_name_zh || r.exercise_id)}</div>
+                            <div class="list-card__sub">
+                                <span class="rating-stars">${renderStars(r.rating)}</span>
+                                · ${fmtDt(r.created_at)}
+                                ${r.content ? `· ${esc(r.content.slice(0, 40))}${r.content.length > 40 ? '...' : ''}` : ''}
+                            </div>
+                        </div>
+                        <button class="list-card__action" data-del-review="${r.id}">删除</button>
+                        <a href="/c/detail.html?id=${r.exercise_id}" class="list-card__action" style="margin-right:4px;">查看</a>
+                    </div>
+                `).join('');
+                $('reviewList').querySelectorAll('[data-del-review]').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        if (!confirm('删除这条评论？')) return;
+                        try {
+                            await api.delete(`/users/me/reviews/${btn.dataset.delReview}`);
+                            toast('✅ 评论已删除');
+                            await loadMyReviews();
+                        } catch (e) {
+                            toast('删除失败：' + e.message, 'error');
+                        }
+                    });
+                });
+            } catch (e) {
+                $('reviewList').innerHTML = `<div class="list-empty">加载失败：${esc(e.message)}</div>`;
+            }
+        }
+
+        // ============ 危险：注销账号 ============
+
+        $('btnDeleteMe').addEventListener('click', async () => {
+            const ok = prompt('⚠️ 真的要注销账号吗？此操作不可逆！\n\n输入 "DELETE" 确认：');
+            if (ok !== 'DELETE') {
+                toast('已取消', 'success');
+                return;
+            }
+            try {
+                await api.delete('/users/me');
+                tokenStore.clear();
+                toast('账号已注销', 'success');
+                setTimeout(() => location.href = '/c/login.html', 1500);
+            } catch (e) {
+                toast('注销失败：' + e.message, 'error');
+            }
+        });
+
+        // ===== 触发所有加载 =====
 
         loadProfile();
     </script>
