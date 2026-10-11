@@ -7,420 +7,518 @@
     <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
+        /* ============================================================
+           个人中心 — 杂志式非对称布局
+           思路：编辑设计（editorial），不用 dashboard 套路
+           ============================================================ */
+
         .profile-page {
             position: relative;
             z-index: 1;
-            max-width: 1100px;
+            max-width: 1240px;
             margin: 0 auto;
-            padding: var(--space-6) var(--space-5);
+            padding: var(--space-7) var(--space-5) var(--space-8);
         }
 
-        .profile-header {
-            margin-bottom: var(--space-5);
-            padding-bottom: var(--space-4);
-            border-bottom: 1px solid var(--border-subtle);
-        }
-        .profile-header h1 {
-            font-size: var(--font-size-3xl);
-            font-weight: 800;
-            background: linear-gradient(135deg, #ffffff 0%, var(--primary-bright) 50%, var(--accent-purple) 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            text-shadow: 0 0 32px var(--primary-glow);
-        }
-        .profile-header__sub {
-            color: var(--text-muted);
-            font-size: var(--font-size-sm);
-            margin-top: var(--space-2);
-        }
-
-        /* ===== 通用卡片 ===== */
-        .card {
-            background: var(--bg-card-solid);
-            border: 1px solid var(--border-base);
-            border-radius: var(--radius-lg);
-            padding: var(--space-5);
-            margin-bottom: var(--space-4);
-        }
-        .card__title {
-            font-size: var(--font-size-lg);
-            font-weight: 700;
-            margin-bottom: var(--space-4);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .card__hint {
-            color: var(--text-muted);
-            font-size: var(--font-size-sm);
-            margin-top: -8px;
-            margin-bottom: var(--space-4);
-        }
-
-        /* ===== 资料卡 ===== */
+        /* 页面整体：左主 + 右 sticky 侧栏 */
         .profile-grid {
             display: grid;
-            grid-template-columns: 120px 1fr;
-            gap: var(--space-5);
-            align-items: flex-start;
+            grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr);
+            gap: var(--space-7);
+            align-items: start;
         }
-        .avatar-box {
-            position: relative;
-            width: 120px;
-            height: 120px;
+        @media (max-width: 980px) {
+            .profile-grid { grid-template-columns: 1fr; }
+        }
+
+        /* === 纸张纹理（极淡噪点）=== */
+        .profile-page::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+            opacity: 0.55;
+            mix-blend-mode: overlay;
+        }
+
+        /* === 通用排印 === */
+        .tnum { font-feature-settings: 'tnum' 1, 'lnum' 1; font-variant-numeric: tabular-nums lining-nums; }
+        .serif-display {
+            font-family: 'Times New Roman', 'Songti SC', 'STSong', Georgia, serif;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        /* === 装饰分割线（中心圆点）=== */
+        .ornament-rule {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin: var(--space-5) 0;
+            color: var(--text-faint);
+            font-size: 10px;
+        }
+        .ornament-rule::before,
+        .ornament-rule::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-base), transparent);
+        }
+        .ornament-rule__dot {
+            width: 4px; height: 4px;
+            background: var(--accent-purple);
             border-radius: 50%;
+            box-shadow: 0 0 12px var(--accent-purple-glow);
+        }
+
+        /* === HERO（杂志封面式）=== */
+        .hero {
+            display: grid;
+            grid-template-columns: 96px 1fr;
+            gap: var(--space-5);
+            align-items: start;
+            padding-bottom: var(--space-3);
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            left: 0; bottom: 0;
+            width: 32px; height: 1px;
+            background: var(--primary);
+        }
+        .hero__avatar {
+            width: 96px; height: 96px;
             background: var(--bg-elevated);
-            border: 2px solid var(--border-base);
+            border: 1px solid var(--border-base);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            font-size: 56px;
-            cursor: pointer;
-            transition: border-color 0.2s;
-        }
-        .avatar-box:hover { border-color: var(--accent-color); }
-        .avatar-box__img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .avatar-box__upload {
-            position: absolute;
-            bottom: -6px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--accent-color);
-            color: #fff;
-            font-size: 11px;
+            font-size: 36px;
             font-weight: 700;
+            color: var(--text-secondary);
+            letter-spacing: 0.05em;
+            position: relative;
+        }
+        .hero__avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .hero__avatar::after {
+            content: '';
+            position: absolute;
+            left: -6px; top: 16px; bottom: 16px;
+            width: 2px;
+            background: var(--primary);
+            opacity: 0.7;
+        }
+        .hero__meta-row {
+            display: flex;
+            align-items: baseline;
+            gap: var(--space-3);
+            margin-bottom: 6px;
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        .hero__username { color: var(--accent-cool); }
+        .hero__meta-sep { color: var(--text-faint); }
+        .hero__role-pill {
+            display: inline-block;
             padding: 2px 10px;
-            border-radius: 10px;
-            white-space: nowrap;
-            opacity: 0;
-            transition: opacity 0.2s;
+            border: 1px solid var(--border-base);
+            border-radius: 99px;
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            color: var(--accent-purple);
+            background: rgba(167, 139, 255, 0.08);
         }
-        .avatar-box:hover .avatar-box__upload { opacity: 1; }
+        .hero__name {
+            font-family: 'Times New Roman', 'Songti SC', 'STSong', Georgia, serif;
+            font-size: 56px;
+            line-height: 1.05;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            margin-bottom: 14px;
+        }
+        .hero__name-accent { color: var(--primary); font-style: italic; }
+        .hero__stats {
+            display: flex;
+            gap: var(--space-5);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+        .hero__stat { display: flex; gap: 6px; align-items: baseline; }
+        .hero__stat-val {
+            font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .hero__stat-label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
 
-        .form-grid {
+        /* === 表单（紧凑）=== */
+        .profile-form {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: var(--space-3) var(--space-4);
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px var(--space-4);
         }
-        .form-row {
+        @media (max-width: 720px) { .profile-form { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 480px) { .profile-form { grid-template-columns: 1fr; } }
+        .field {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
         }
-        .form-row--full { grid-column: 1 / -1; }
-        .form-row label {
-            font-size: var(--font-size-xs);
-            font-weight: 600;
+        .field--full { grid-column: 1 / -1; }
+        .field label {
+            font-size: 10px;
             color: var(--text-muted);
-            letter-spacing: 0.5px;
             text-transform: uppercase;
+            letter-spacing: 1.2px;
+            font-weight: 600;
         }
-        .form-row input, .form-row select {
-            background: var(--bg-input);
-            border: 1px solid var(--border-base);
-            border-radius: var(--radius-md);
-            padding: 8px 12px;
-            font-size: var(--font-size-sm);
+        .field input,
+        .field select,
+        .field textarea {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border-base);
+            padding: 6px 0;
+            font-size: 14px;
             color: var(--text-primary);
             font-family: inherit;
-            transition: border-color 0.15s;
+            transition: border-color 0.2s;
         }
-        .form-row input:focus, .form-row select:focus {
+        .field input:focus,
+        .field select:focus,
+        .field textarea:focus {
             outline: none;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 3px rgba(124,131,255,0.15);
+            border-bottom-color: var(--primary);
         }
-        .form-row input[readonly], .form-row input:disabled {
-            background: var(--bg-elevated);
+        .field input[readonly] {
             color: var(--text-muted);
             cursor: not-allowed;
         }
-
+        .field select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12'><path d='M2 4l4 4 4-4' fill='none' stroke='%238a92b3' stroke-width='1.5'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 0 center;
+            padding-right: 16px;
+        }
         .form-actions {
             display: flex;
-            gap: var(--space-3);
+            gap: var(--space-2);
             margin-top: var(--space-4);
-            padding-top: var(--space-4);
-            border-top: 1px solid var(--border-subtle);
         }
 
-        /* ===== 身体指标 ===== */
-        .bmi-row {
+        /* === 训练数字块（杂志 data viz 风）=== */
+        .stats-strip {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: var(--space-4);
+            grid-template-columns: repeat(4, 1fr);
+            border-top: 1px solid var(--border-subtle);
+            border-bottom: 1px solid var(--border-subtle);
         }
-        .bmi-stat {
-            background: var(--bg-elevated);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-4);
-            text-align: center;
+        @media (max-width: 600px) { .stats-strip { grid-template-columns: repeat(2, 1fr); } }
+        .stats-strip__cell {
+            padding: var(--space-4) var(--space-3);
+            border-right: 1px solid var(--border-subtle);
         }
-        .bmi-stat__label {
-            font-size: var(--font-size-xs);
-            color: var(--text-muted);
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-bottom: 8px;
+        .stats-strip__cell:last-child { border-right: none; }
+        @media (max-width: 600px) {
+            .stats-strip__cell:nth-child(2n) { border-right: none; }
         }
-        .bmi-stat__value {
-            font-size: var(--font-size-2xl);
+        .stats-strip__num {
+            font-family: ui-monospace, 'SF Mono', monospace;
+            font-size: 32px;
             font-weight: 800;
             line-height: 1;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
         }
-        .bmi-stat__sub {
-            font-size: var(--font-size-xs);
+        .stats-strip__num--accent { color: var(--primary); }
+        .stats-strip__label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
             color: var(--text-muted);
             margin-top: 6px;
         }
-        .bmi-stat__bar {
-            margin-top: 12px;
-            height: 6px;
-            background: var(--bg-input);
-            border-radius: 3px;
+        .stats-strip__sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* === 体重曲线 === */
+        .chart-wrap {
+            height: 240px;
+            position: relative;
+        }
+        .weight-form {
+            display: grid;
+            grid-template-columns: 1fr 1.4fr 1.6fr auto;
+            gap: var(--space-4);
+            align-items: end;
+            margin-bottom: var(--space-4);
+        }
+        @media (max-width: 720px) {
+            .weight-form { grid-template-columns: 1fr 1fr; }
+            .weight-form > .weight-form__submit { grid-column: 1 / -1; }
+        }
+        .weight-form .field input { width: 100%; }
+        .weight-list {
+            margin-top: var(--space-3);
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 1px solid var(--border-subtle);
+            padding-top: 4px;
+        }
+        .weight-list__item {
+            display: grid;
+            grid-template-columns: 1fr auto auto auto;
+            align-items: center;
+            gap: var(--space-3);
+            padding: 8px 0;
+            font-size: 13px;
+            border-bottom: 1px dashed rgba(255,255,255,0.04);
+        }
+        .weight-list__val {
+            font-family: ui-monospace, monospace;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .weight-list__time { color: var(--text-muted); font-size: 12px; }
+        .weight-list__note { color: var(--text-muted); font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .weight-list__del {
+            background: transparent; border: none;
+            color: var(--text-faint); cursor: pointer;
+            font-size: 14px; padding: 0 4px;
+            transition: color 0.15s;
+        }
+        .weight-list__del:hover { color: #ef4444; }
+
+        /* === 时间线（AI 历史 / 评论）=== */
+        .timeline { list-style: none; padding: 0; margin: 0; }
+        .timeline__item {
+            display: grid;
+            grid-template-columns: 90px 1fr auto;
+            gap: var(--space-3);
+            padding: var(--space-3) 0;
+            border-bottom: 1px dashed rgba(255,255,255,0.05);
+            align-items: start;
+            cursor: pointer;
+            transition: padding 0.15s;
+        }
+        .timeline__item:hover { padding-left: 8px; }
+        .timeline__item:last-child { border-bottom: none; }
+        .timeline__date {
+            font-family: ui-monospace, monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            padding-top: 2px;
+        }
+        .timeline__date-day { color: var(--accent-cool); font-size: 14px; font-weight: 700; display: block; }
+        .timeline__main { min-width: 0; }
+        .timeline__title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .timeline__sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .timeline__rating { color: #fbbf24; letter-spacing: 2px; font-size: 12px; }
+        .timeline__action {
+            background: transparent; border: none;
+            color: var(--text-faint); cursor: pointer;
+            font-size: 12px;
+            padding: 4px 8px;
+            transition: color 0.15s;
+        }
+        .timeline__action:hover { color: #ef4444; }
+
+        /* === 右栏 sticky 卡片 === */
+        .sidebar {
+            position: sticky;
+            top: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-5);
+        }
+        @media (max-width: 980px) {
+            .sidebar { position: static; }
+        }
+
+        /* === BMI 半圆 gauge === */
+        .bmi-card {
+            background: linear-gradient(180deg, rgba(77,208,255,0.04) 0%, transparent 100%);
+            border: 1px solid var(--border-base);
+            padding: var(--space-5) var(--space-4) var(--space-4);
             position: relative;
             overflow: hidden;
         }
-        .bmi-stat__bar-fill {
+        .bmi-card::before {
+            content: 'BMI';
             position: absolute;
-            top: 0; left: 0; bottom: 0;
-            background: linear-gradient(90deg, #38bdf8, #818cf8);
-            transition: width 0.4s ease;
+            top: 12px; right: 16px;
+            font-family: ui-monospace, monospace;
+            font-size: 10px;
+            color: var(--text-faint);
+            letter-spacing: 3px;
         }
-        .bmi-cat--under { color: #38bdf8; }
-        .bmi-cat--normal { color: #4ade80; }
-        .bmi-cat--over { color: #f59e0b; }
-        .bmi-cat--obese { color: #ef4444; }
-        .bmi-cat--unknown { color: var(--text-muted); }
-
-        /* ===== 训练统计 ===== */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: var(--space-3);
-        }
-        .stat-card {
-            background: var(--bg-elevated);
-            border: 1px solid var(--border-base);
-            border-radius: var(--radius-md);
-            padding: var(--space-4);
-        }
-        .stat-card__label {
-            font-size: var(--font-size-xs);
+        .bmi-card__label {
+            font-size: 10px;
             color: var(--text-muted);
-            font-weight: 600;
-            letter-spacing: 1px;
             text-transform: uppercase;
-            margin-bottom: 8px;
+            letter-spacing: 2px;
+            margin-bottom: var(--space-3);
         }
-        .stat-card__value {
-            font-size: var(--font-size-2xl);
+        .bmi-gauge {
+            position: relative;
+            width: 100%;
+            height: 140px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .bmi-gauge__svg { width: 100%; height: 100%; }
+        .bmi-gauge__value {
+            position: absolute;
+            bottom: 4px; left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+        .bmi-gauge__num {
+            font-family: ui-monospace, monospace;
+            font-size: 38px;
             font-weight: 800;
             line-height: 1;
+            letter-spacing: -0.02em;
         }
-        .stat-card__sub {
-            font-size: var(--font-size-xs);
-            color: var(--text-muted);
-            margin-top: 6px;
+        .bmi-gauge__cat {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 4px;
         }
-        .stat-card--accent {
-            border-color: var(--accent-color);
-            background: linear-gradient(135deg, var(--bg-elevated), rgba(124,131,255,0.08));
+        .bmi-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-3);
+            margin-top: var(--space-4);
+            padding-top: var(--space-3);
+            border-top: 1px solid var(--border-subtle);
         }
+        .bmi-meta__cell { display: flex; flex-direction: column; gap: 2px; }
+        .bmi-meta__label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .bmi-meta__val { font-family: ui-monospace, monospace; font-size: 18px; font-weight: 700; }
 
-        /* ===== 账号安全 ===== */
-        .safety-row {
+        /* === 快捷操作（垂直菜单风）=== */
+        .quick-actions {
+            border: 1px solid var(--border-base);
+        }
+        .quick-actions__title {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 12px var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .quick-actions__list { list-style: none; padding: 0; margin: 0; }
+        .quick-actions__btn {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: var(--space-3) 0;
+            width: 100%;
+            padding: 14px var(--space-4);
+            background: transparent;
+            border: none;
             border-bottom: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.15s;
+            font-family: inherit;
         }
-        .safety-row:last-child { border-bottom: none; }
-        .safety-row__title {
-            font-weight: 600;
-            margin-bottom: 2px;
+        .quick-actions__btn:last-child { border-bottom: none; }
+        .quick-actions__btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            padding-left: calc(var(--space-4) + 4px);
         }
-        .safety-row__desc {
-            font-size: var(--font-size-sm);
-            color: var(--text-muted);
+        .quick-actions__btn-label { display: flex; align-items: center; gap: 10px; }
+        .quick-actions__btn-kbd {
+            font-family: ui-monospace, monospace;
+            font-size: 10px;
+            color: var(--text-faint);
+            padding: 2px 6px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
         }
+        .quick-actions__btn--danger { color: #fca5a5; }
+        .quick-actions__btn--danger:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
 
-        /* ===== Toast ===== */
+        /* === Toast === */
         .toast {
             position: fixed;
             bottom: 24px;
             left: 50%;
-            transform: translateX(-50%);
-            background: var(--bg-elevated);
+            transform: translateX(-50%) translateY(20px);
+            background: var(--bg-card-solid);
             border: 1px solid var(--border-base);
             border-radius: var(--radius-md);
-            padding: 12px 20px;
+            padding: 10px 18px;
             z-index: 1000;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
             opacity: 0;
-            transform: translate(-50%, 20px);
             transition: all 0.3s ease;
+            font-size: 13px;
         }
-        .toast--show { opacity: 1; transform: translate(-50%, 0); }
-        .toast--success { border-color: #4ade80; color: #4ade80; }
+        .toast--show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast--success { border-color: var(--accent-mint); color: var(--accent-mint); }
         .toast--error { border-color: #ef4444; color: #ef4444; }
 
-        /* ===== Modal ===== */
+        /* === Modal === */
         .modal-mask {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.6);
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.65);
             display: none;
-            align-items: center;
-            justify-content: center;
+            align-items: center; justify-content: center;
             z-index: 999;
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(8px);
         }
         .modal-mask--open { display: flex; }
         .modal {
             background: var(--bg-card-solid);
             border: 1px solid var(--border-base);
-            border-radius: var(--radius-lg);
             padding: var(--space-5);
-            max-width: 480px;
-            width: 92%;
+            max-width: 460px; width: 92%;
         }
         .modal__title {
-            font-size: var(--font-size-lg);
+            font-family: 'Times New Roman', 'Songti SC', Georgia, serif;
+            font-size: 20px;
             font-weight: 700;
             margin-bottom: var(--space-4);
         }
         .modal__actions {
-            display: flex;
-            gap: var(--space-2);
+            display: flex; gap: var(--space-2);
             justify-content: flex-end;
             margin-top: var(--space-4);
-        }
-
-        /* ===== 体重曲线 ===== */
-        .weight-form {
-            display: flex;
-            gap: 8px;
-            align-items: flex-end;
-            margin-bottom: var(--space-3);
-            flex-wrap: wrap;
-        }
-        .weight-form__field {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            flex: 1;
-            min-width: 120px;
-        }
-        .weight-form__field label {
-            font-size: 11px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        .weight-form__field input {
-            background: var(--bg-input);
-            border: 1px solid var(--border-base);
-            border-radius: var(--radius-md);
-            padding: 8px 12px;
-            color: var(--text-primary);
-            font-family: inherit;
-            font-size: 13px;
-        }
-        .weight-form__field input:focus {
-            outline: none;
-            border-color: var(--accent-color);
-        }
-        .weight-chart-wrap { height: 200px; position: relative; }
-        .weight-list {
-            margin-top: var(--space-3);
-            max-height: 180px;
-            overflow-y: auto;
-            border-top: 1px solid var(--border-subtle);
-            padding-top: 8px;
-        }
-        .weight-list__item {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            font-size: 13px;
-            border-bottom: 1px dashed rgba(163,177,198,0.12);
-        }
-        .weight-list__item:last-child { border-bottom: none; }
-        .weight-list__time { color: var(--text-muted); font-size: 12px; }
-        .weight-list__note { color: var(--text-muted); font-size: 11px; margin-left: 8px; }
-        .weight-list__del {
-            background: transparent; border: none; color: var(--text-muted);
-            cursor: pointer; padding: 0 4px;
-        }
-        .weight-list__del:hover { color: #ef4444; }
-
-        /* ===== AI 历史 / 评论列表 ===== */
-        .list-card {
-            display: flex; align-items: center; gap: var(--space-3);
-            padding: 10px 12px; background: var(--bg-elevated);
-            border: 1px solid var(--border-base); border-radius: var(--radius-md);
-            margin-bottom: 8px; transition: all 0.2s;
-        }
-        .list-card:hover { border-color: var(--accent-color); transform: translateY(-1px); }
-        .list-card__icon {
-            font-size: 22px; width: 36px; height: 36px;
-            display: flex; align-items: center; justify-content: center;
-            background: var(--bg-input); border-radius: 50%; flex-shrink: 0;
-        }
-        .list-card__main { flex: 1; min-width: 0; }
-        .list-card__title {
-            font-weight: 600; font-size: 13px; margin-bottom: 2px;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .list-card__sub { font-size: 11px; color: var(--text-muted); }
-        .list-card__action {
-            background: transparent; border: 1px solid var(--border-base);
-            color: var(--text-muted); padding: 4px 10px;
-            border-radius: var(--radius-sm); cursor: pointer; font-size: 12px;
-        }
-        .list-card__action:hover { color: #ef4444; border-color: #ef4444; }
-        .list-empty {
-            padding: var(--space-6); text-align: center;
-            color: var(--text-muted); font-size: 13px;
-        }
-        .rating-stars { color: #fbbf24; font-size: 13px; letter-spacing: 1px; }
-
-        /* ===== 危险区 ===== */
-        .danger-zone {
-            background: rgba(239,68,68,0.05);
-            border: 1px solid rgba(239,68,68,0.2);
-        }
-        .danger-zone .card__title { color: #ef4444; }
-        .btn--danger {
-            background: #dc2626; color: #fff; border: 1px solid #dc2626;
-        }
-        .btn--danger:hover { background: #b91c1c; }
-
-        .loading {
-            padding: var(--space-6);
-            text-align: center;
-            color: var(--text-muted);
-        }
-
-        @media (max-width: 720px) {
-            .profile-grid { grid-template-columns: 1fr; }
-            .avatar-box { margin: 0 auto; }
-            .form-grid { grid-template-columns: 1fr; }
-            .form-row--full { grid-column: 1; }
-            .bmi-row { grid-template-columns: 1fr; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
-    <!-- 顶部导航 -->
     <header class="navbar">
         <div class="navbar__brand">
             <span class="navbar__logo">💪</span>
@@ -443,221 +541,243 @@
     <main class="main">
         <div class="profile-page">
 
-            <div class="profile-header">
-                <h1>👤 个人中心</h1>
-                <div class="profile-header__sub">管理你的资料、查看训练统计</div>
-            </div>
+            <div class="profile-grid">
 
-            <!-- ===== 资料卡 ===== -->
-            <section class="card" id="profileCard">
-                <div class="card__title">📝 个人资料</div>
-                <div class="card__hint">所有资料仅用于个性化训练推荐，不会被分享</div>
-                <div class="profile-grid">
-                    <div>
-                        <div class="avatar-box" id="avatarBox" title="点击更换头像">
-                            <span id="avatarDefault">💪</span>
-                            <img class="avatar-box__img" id="avatarImg" style="display:none" alt="头像">
-                            <div class="avatar-box__upload">更换</div>
+                <!-- ======== 左主栏 ======== -->
+                <div class="main-col">
+
+                    <!-- HERO -->
+                    <section class="hero" id="heroBlock">
+                        <div class="hero__avatar" id="heroAvatar">
+                            <span id="heroInitial">·</span>
+                            <img id="heroImg" style="display:none" alt="">
                         </div>
-                        <input type="file" id="avatarInput" accept="image/*" style="display:none">
-                    </div>
-                    <form class="form-grid" id="profileForm" autocomplete="off">
-                        <div class="form-row">
+                        <div>
+                            <div class="hero__meta-row">
+                                <span class="hero__username" id="heroUsername">@—</span>
+                                <span class="hero__meta-sep">·</span>
+                                <span id="heroJoined">JOINED —</span>
+                                <span class="hero__role-pill" id="heroRole">USER</span>
+                            </div>
+                            <h1 class="hero__name">
+                                <span id="heroNickname" class="hero__name-accent">—</span>
+                            </h1>
+                            <div class="hero__stats" id="heroStats">
+                                <div class="hero__stat"><span class="hero__stat-val" id="heroHeightStat">—</span><span class="hero__stat-label">cm</span></div>
+                                <div class="hero__stat"><span class="hero__stat-val" id="heroWeightStat">—</span><span class="hero__stat-label">kg</span></div>
+                                <div class="hero__stat"><span class="hero__stat-val" id="heroAgeStat">—</span><span class="hero__stat-label">y</span></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="ornament-rule"><span class="ornament-rule__dot"></span></div>
+
+                    <!-- 编辑表单 -->
+                    <form class="profile-form" id="profileForm" autocomplete="off">
+                        <div class="field">
                             <label>用户名</label>
-                            <input type="text" id="username" readonly>
+                            <input type="text" id="fUsername" readonly>
                         </div>
-                        <div class="form-row">
-                            <label>昵称 *</label>
-                            <input type="text" id="nickname" maxlength="32" placeholder="给自己起个名字">
+                        <div class="field">
+                            <label>昵称</label>
+                            <input type="text" id="fNickname" maxlength="32">
                         </div>
-                        <div class="form-row">
+                        <div class="field">
                             <label>性别</label>
-                            <select id="gender">
+                            <select id="fGender">
                                 <option value="0">未设置</option>
                                 <option value="1">男</option>
                                 <option value="2">女</option>
                             </select>
                         </div>
-                        <div class="form-row">
+                        <div class="field">
                             <label>年龄</label>
-                            <input type="number" id="age" min="0" max="150" step="1" placeholder="岁">
+                            <input type="number" id="fAge" min="0" max="150">
                         </div>
-                        <div class="form-row">
-                            <label>身高</label>
-                            <input type="number" id="height_cm" min="0" max="300" step="0.1" placeholder="cm">
+                        <div class="field">
+                            <label>身高 (cm)</label>
+                            <input type="number" id="fHeight" min="0" max="300" step="0.1">
                         </div>
-                        <div class="form-row">
-                            <label>体重</label>
-                            <input type="number" id="weight_kg" min="0" max="500" step="0.1" placeholder="kg">
+                        <div class="field">
+                            <label>体重 (kg)</label>
+                            <input type="number" id="fWeight" min="0" max="500" step="0.1">
                         </div>
-                        <div class="form-row form-row--full">
+                        <div class="field field--full">
                             <label>头像 URL</label>
-                            <input type="url" id="avatar_url" maxlength="255" placeholder="https://...">
+                            <input type="url" id="fAvatarUrl" maxlength="255" placeholder="https://...">
                         </div>
-                        <div class="form-row form-row--full form-actions">
-                            <button type="button" class="btn btn--ghost" id="btnCancel">取消</button>
-                            <button type="submit" class="btn btn--primary" id="btnSaveProfile">💾 保存修改</button>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn--ghost" id="btnCancel">重置</button>
+                            <button type="submit" class="btn btn--primary" id="btnSave">保存</button>
                         </div>
                     </form>
-                </div>
-            </section>
 
-            <!-- ===== 身体指标 ===== -->
-            <section class="card">
-                <div class="card__title">📊 身体指标</div>
-                <div class="card__hint">BMI = 体重(kg) / 身高(m)²。填入身高体重后自动计算。</div>
-                <div class="bmi-row">
-                    <div class="bmi-stat">
-                        <div class="bmi-stat__label">身高</div>
-                        <div class="bmi-stat__value" id="bmiHeight">—</div>
-                        <div class="bmi-stat__sub">cm</div>
-                    </div>
-                    <div class="bmi-stat">
-                        <div class="bmi-stat__label">体重</div>
-                        <div class="bmi-stat__value" id="bmiWeight">—</div>
-                        <div class="bmi-stat__sub">kg</div>
-                    </div>
-                    <div class="bmi-stat">
-                        <div class="bmi-stat__label">BMI</div>
-                        <div class="bmi-stat__value" id="bmiValue">—</div>
-                        <div class="bmi-stat__sub" id="bmiCategory">填入身高体重后查看</div>
-                        <div class="bmi-stat__bar">
-                            <div class="bmi-stat__bar-fill" id="bmiBar" style="width:0%"></div>
+                    <div class="ornament-rule"><span class="ornament-rule__dot"></span></div>
+
+                    <!-- 训练统计 -->
+                    <div class="stats-strip" id="statsStrip">
+                        <div class="stats-strip__cell">
+                            <div class="stats-strip__num tnum" id="sPlans">0</div>
+                            <div class="stats-strip__label">计划</div>
+                            <div class="stats-strip__sub" id="sPlansSub">无当前</div>
+                        </div>
+                        <div class="stats-strip__cell">
+                            <div class="stats-strip__num tnum" id="sLogs">0</div>
+                            <div class="stats-strip__label">总打卡</div>
+                            <div class="stats-strip__sub">次</div>
+                        </div>
+                        <div class="stats-strip__cell">
+                            <div class="stats-strip__num tnum" id="sWeekly">0</div>
+                            <div class="stats-strip__label">本周</div>
+                            <div class="stats-strip__sub">7 天</div>
+                        </div>
+                        <div class="stats-strip__cell">
+                            <div class="stats-strip__num tnum stats-strip__num--accent" id="sDoneDays">0</div>
+                            <div class="stats-strip__label">已完成天数</div>
+                            <div class="stats-strip__sub" id="sDoneDaysSub">—</div>
                         </div>
                     </div>
-                </div>
-            </section>
 
-            <!-- ===== 训练统计 ===== -->
-            <section class="card">
-                <div class="card__title">🏋️ 训练统计</div>
-                <div class="card__hint">来自你的计划 + 打卡记录（实时）</div>
-                <div class="stats-grid">
-                    <div class="stat-card stat-card--accent">
-                        <div class="stat-card__label">我的计划</div>
-                        <div class="stat-card__value" id="statPlans">—</div>
-                        <div class="stat-card__sub" id="statPlansSub">—</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card__label">总打卡</div>
-                        <div class="stat-card__value" id="statCheckins">—</div>
-                        <div class="stat-card__sub">次</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card__label">本周打卡</div>
-                        <div class="stat-card__value" id="statWeekly">—</div>
-                        <div class="stat-card__sub">最近 7 天</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card__label">已完成天数</div>
-                        <div class="stat-card__value" id="statDoneDays">—</div>
-                        <div class="stat-card__sub" id="statDoneDaysSub">—</div>
-                    </div>
-                </div>
-            </section>
+                    <div class="ornament-rule"><span class="ornament-rule__dot"></span></div>
 
-            <!-- ===== 体重曲线 ===== -->
-            <section class="card">
-                <div class="card__title">📈 体重曲线</div>
-                <div class="card__hint">每天可记多次。建议早上空腹称重，更稳定。</div>
-                <form class="weight-form" id="weightForm" autocomplete="off">
-                    <div class="weight-form__field">
-                        <label>体重 (kg) *</label>
-                        <input type="number" id="wWeight" step="0.1" min="20" max="300" required>
-                    </div>
-                    <div class="weight-form__field">
-                        <label>日期</label>
-                        <input type="datetime-local" id="wDate">
-                    </div>
-                    <div class="weight-form__field">
-                        <label>备注</label>
-                        <input type="text" id="wNote" maxlength="64" placeholder="早起空腹 / 训练后">
-                    </div>
-                    <button type="submit" class="btn btn--primary">📝 记录</button>
-                </form>
-                <div class="weight-chart-wrap"><canvas id="weightChart"></canvas></div>
-                <div id="weightList" class="weight-list"></div>
-            </section>
+                    <!-- 体重曲线 -->
+                    <section>
+                        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom: var(--space-3);">
+                            <h2 style="font-family:'Times New Roman','Songti SC',serif; font-size:24px; font-weight:700;">体重轨迹</h2>
+                            <span style="font-size:11px; color: var(--text-muted); text-transform:uppercase; letter-spacing:1.5px;">最近 90 天</span>
+                        </div>
+                        <form class="weight-form" id="weightForm" autocomplete="off">
+                            <div class="field">
+                                <label>体重</label>
+                                <input type="number" id="wWeight" step="0.1" min="20" max="300" required>
+                            </div>
+                            <div class="field">
+                                <label>日期</label>
+                                <input type="datetime-local" id="wDate">
+                            </div>
+                            <div class="field">
+                                <label>备注</label>
+                                <input type="text" id="wNote" maxlength="64" placeholder="早起空腹 / 训练后">
+                            </div>
+                            <button type="submit" class="btn btn--primary weight-form__submit">记录</button>
+                        </form>
+                        <div class="chart-wrap"><canvas id="weightChart"></canvas></div>
+                        <div id="weightList" class="weight-list"></div>
+                    </section>
 
-            <!-- ===== AI 教练历史 ===== -->
-            <section class="card">
-                <div class="card__title">💬 AI 教练历史</div>
-                <div class="card__hint">最近的会话，点击继续对话</div>
-                <div id="convList">
-                    <div class="list-empty">加载中...</div>
-                </div>
-                <a href="/c/plans.html#ai" class="btn btn--secondary" id="btnAllConvs" style="display:none; margin-top:8px;">查看全部 →</a>
-            </section>
+                    <div class="ornament-rule"><span class="ornament-rule__dot"></span></div>
 
-            <!-- ===== 我的评论 ===== -->
-            <section class="card">
-                <div class="card__title">⭐ 我的评论</div>
-                <div class="card__hint">你对动作的评分和留言（仅你自己可见删除按钮）</div>
-                <div id="reviewList">
-                    <div class="list-empty">加载中...</div>
-                </div>
-            </section>
+                    <!-- AI 历史 -->
+                    <section>
+                        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom: var(--space-3);">
+                            <h2 style="font-family:'Times New Roman','Songti SC',serif; font-size:24px; font-weight:700;">AI 教练对话</h2>
+                            <a href="/c/plans.html#ai" style="font-size:11px; color: var(--text-muted); text-transform:uppercase; letter-spacing:1.5px;">查看全部 →</a>
+                        </div>
+                        <ul class="timeline" id="convList">
+                            <li style="padding: var(--space-4) 0; color: var(--text-muted); font-size:13px;">加载中…</li>
+                        </ul>
+                    </section>
 
-            <!-- ===== 账号安全 ===== -->
-            <section class="card">
-                <div class="card__title">🔒 账号安全</div>
-                <div class="safety-row">
-                    <div>
-                        <div class="safety-row__title">登录密码</div>
-                        <div class="safety-row__desc">定期更换密码可降低被盗风险（8-20 字符，含字母+数字）</div>
-                    </div>
-                    <button class="btn btn--secondary" id="btnChangePwd">🔑 修改密码</button>
-                </div>
-                <div class="safety-row">
-                    <div>
-                        <div class="safety-row__title">退出登录</div>
-                        <div class="safety-row__desc">清除本地 token，下次访问需重新登录</div>
-                    </div>
-                    <button class="btn btn--ghost" id="btnLogout">退出</button>
-                </div>
-            </section>
+                    <div class="ornament-rule"><span class="ornament-rule__dot"></span></div>
 
-            <!-- ===== 危险区：注销账号 ===== -->
-            <section class="card danger-zone">
-                <div class="card__title">⚠️ 危险区</div>
-                <div class="safety-row">
-                    <div>
-                        <div class="safety-row__title">注销账号</div>
-                        <div class="safety-row__desc" style="color:#dc2626;">
-                            软删账号（is_deleted=1 + 清密码）。不可逆！
-                            你的评论、计划、打卡会被保留但归属匿名；
-                            后续无法登录，需联系管理员恢复。
+                    <!-- 我的评论 -->
+                    <section>
+                        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom: var(--space-3);">
+                            <h2 style="font-family:'Times New Roman','Songti SC',serif; font-size:24px; font-weight:700;">我的评论</h2>
+                            <a href="/c/" style="font-size:11px; color: var(--text-muted); text-transform:uppercase; letter-spacing:1.5px;">去发现动作 →</a>
+                        </div>
+                        <ul class="timeline" id="reviewList">
+                            <li style="padding: var(--space-4) 0; color: var(--text-muted); font-size:13px;">加载中…</li>
+                        </ul>
+                    </section>
+
+                </div>
+
+                <!-- ======== 右 sticky 侧栏 ======== -->
+                <aside class="sidebar">
+
+                    <!-- BMI 半圆 gauge -->
+                    <div class="bmi-card">
+                        <div class="bmi-card__label">身体质量指数</div>
+                        <div class="bmi-gauge" id="bmiGauge">
+                            <svg class="bmi-gauge__svg" viewBox="0 0 200 110" preserveAspectRatio="xMidYMax meet">
+                                <defs>
+                                    <linearGradient id="bmiGrad" x1="0" x2="1" y1="0" y2="0">
+                                        <stop offset="0%"   stop-color="#38bdf8"/>
+                                        <stop offset="40%"  stop-color="#4ade80"/>
+                                        <stop offset="65%"  stop-color="#fbbf24"/>
+                                        <stop offset="100%" stop-color="#ef4444"/>
+                                    </linearGradient>
+                                </defs>
+                                <!-- 背景弧 -->
+                                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="14" stroke-linecap="round"/>
+                                <!-- 当前值弧（动态） -->
+                                <path id="bmiArc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#bmiGrad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 251"/>
+                                <!-- 指针 -->
+                                <circle id="bmiDot" cx="100" cy="100" r="5" fill="#fff" stroke="var(--primary)" stroke-width="2"/>
+                            </svg>
+                            <div class="bmi-gauge__value">
+                                <div class="bmi-gauge__num" id="bmiNum" style="color: var(--text-muted);">—</div>
+                                <div class="bmi-gauge__cat" id="bmiCat">未填</div>
+                            </div>
+                        </div>
+                        <div class="bmi-meta">
+                            <div class="bmi-meta__cell">
+                                <div class="bmi-meta__label">身高</div>
+                                <div class="bmi-meta__val tnum" id="bmiH">—</div>
+                            </div>
+                            <div class="bmi-meta__cell">
+                                <div class="bmi-meta__label">体重</div>
+                                <div class="bmi-meta__val tnum" id="bmiW">—</div>
+                            </div>
                         </div>
                     </div>
-                    <button class="btn btn--danger" id="btnDeleteMe">注销账号</button>
-                </div>
-            </section>
 
-            <div id="loading" class="loading">加载中...</div>
+                    <!-- 快捷操作 -->
+                    <div class="quick-actions">
+                        <div class="quick-actions__title">账户</div>
+                        <ul class="quick-actions__list">
+                            <li><button class="quick-actions__btn" id="btnChangePwd">
+                                <span class="quick-actions__btn-label">修改密码</span>
+                                <span class="quick-actions__btn-kbd">PWD</span>
+                            </button></li>
+                            <li><button class="quick-actions__btn" id="btnLogout">
+                                <span class="quick-actions__btn-label">退出登录</span>
+                                <span class="quick-actions__btn-kbd">⎋</span>
+                            </button></li>
+                            <li><button class="quick-actions__btn quick-actions__btn--danger" id="btnDeleteMe">
+                                <span class="quick-actions__btn-label">注销账号</span>
+                                <span class="quick-actions__btn-kbd">⌫</span>
+                            </button></li>
+                        </ul>
+                    </div>
 
+                </aside>
+
+            </div>
         </div>
     </main>
 
     <!-- 修改密码 Modal -->
     <div class="modal-mask" id="pwdModal">
         <div class="modal">
-            <div class="modal__title">🔑 修改密码</div>
+            <div class="modal__title">修改密码</div>
             <form id="pwdForm" autocomplete="off">
-                <div class="form-row" style="margin-bottom:12px;">
+                <div class="field" style="margin-bottom:14px;">
                     <label>旧密码</label>
                     <input type="password" id="oldPwd" minlength="8" maxlength="20" required>
                 </div>
-                <div class="form-row" style="margin-bottom:12px;">
+                <div class="field" style="margin-bottom:14px;">
                     <label>新密码</label>
-                    <input type="password" id="newPwd" minlength="8" maxlength="20" required placeholder="8-20 字符，含字母+数字">
+                    <input type="password" id="newPwd" minlength="8" maxlength="20" required>
                 </div>
-                <div class="form-row" style="margin-bottom:12px;">
+                <div class="field" style="margin-bottom:14px;">
                     <label>确认新密码</label>
                     <input type="password" id="newPwd2" minlength="8" maxlength="20" required>
                 </div>
                 <div class="modal__actions">
                     <button type="button" class="btn btn--ghost" id="btnPwdCancel">取消</button>
-                    <button type="submit" class="btn btn--primary">确认修改</button>
+                    <button type="submit" class="btn btn--primary">确认</button>
                 </div>
             </form>
         </div>
@@ -665,23 +785,23 @@
 
     <div id="toast" class="toast"></div>
 
-    <!-- 页脚 -->
     <footer class="footer">
-        <p>© Gym visual · <a href="https://gymvisual.com/" target="_blank" rel="noopener">动作媒体来源</a></p>
         <p>FitHub · v0.2.0</p>
     </footer>
 
     <script type="module">
         import { api, tokenStore } from './js/api.js';
 
-        // ===== 工具 =====
+        // ============ 工具 ============
         const $ = (id) => document.getElementById(id);
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[c]));
 
         function toast(msg, type = 'success') {
             const el = $('toast');
             el.textContent = msg;
             el.className = `toast toast--show toast--${type}`;
-            setTimeout(() => el.className = 'toast', 2500);
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => el.className = 'toast', 2500);
         }
 
         function fmtDate(s) {
@@ -689,41 +809,82 @@
             return new Date(s).toLocaleString('zh-CN', { hour12: false });
         }
 
-        // ===== BMI 计算 =====
-        function calcBmi(weight, heightCm) {
-            if (!weight || !heightCm || heightCm <= 0) return null;
-            const m = heightCm / 100;
-            return weight / (m * m);
+        function fmtJoinDate(s) {
+            if (!s) return '—';
+            const d = new Date(s);
+            return d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short' });
         }
 
-        function bmiCategory(bmi) {
-            if (bmi == null) return { label: '—', cls: 'unknown', pct: 0 };
-            if (bmi < 18.5)  return { label: '偏瘦',   cls: 'under',  pct: 25 };
-            if (bmi < 24)    return { label: '正常',   cls: 'normal', pct: 50 };
-            if (bmi < 28)    return { label: '超重',   cls: 'over',   pct: 75 };
-            return                  { label: '肥胖',   cls: 'obese',  pct: 100 };
+        // ============ BMI 半圆 gauge ============
+        function calcBmi(w, hCm) {
+            if (!w || !hCm || hCm <= 0) return null;
+            const m = hCm / 100;
+            return w / (m * m);
         }
 
-        function renderBmi(weight, heightCm) {
-            const bmi = calcBmi(weight, heightCm);
-            $('bmiHeight').textContent = heightCm || '—';
-            $('bmiWeight').textContent = weight || '—';
+        function bmiMeta(bmi) {
+            // 返回 { category, color, pct (0~1) }
+            if (bmi == null) return null;
+            if (bmi < 18.5) return { cat: '偏瘦', cls: 'under',  pct: 0.10 };
+            if (bmi < 24)   return { cat: '正常', cls: 'normal', pct: 0.40 };
+            if (bmi < 28)   return { cat: '超重', cls: 'over',   pct: 0.65 };
+            return                  { cat: '肥胖', cls: 'obese',  pct: 0.92 };
+        }
+
+        function renderBmi(w, hCm) {
+            const bmi = calcBmi(w, hCm);
+            $('bmiH').textContent = hCm || '—';
+            $('bmiW').textContent = w || '—';
+
+            // 填充弧（半圆周长 = π·r ≈ 251 for r=80）
+            const arc = $('bmiArc');
+            const dot = $('bmiDot');
+            const num = $('bmiNum');
+            const cat = $('bmiCat');
+
             if (bmi == null) {
-                $('bmiValue').textContent = '—';
-                $('bmiValue').className = 'bmi-stat__value bmi-cat--unknown';
-                $('bmiCategory').textContent = '填入身高体重后查看';
-                $('bmiBar').style.width = '0%';
+                arc.setAttribute('stroke-dasharray', '0 251');
+                dot.setAttribute('cx', 100); dot.setAttribute('cy', 100);
+                num.textContent = '—';
+                num.style.color = 'var(--text-muted)';
+                cat.textContent = '填入身高体重';
+                cat.style.color = 'var(--text-muted)';
                 return;
             }
-            const cat = bmiCategory(bmi);
-            $('bmiValue').textContent = bmi.toFixed(1);
-            $('bmiValue').className = `bmi-stat__value bmi-cat--${cat.cls}`;
-            $('bmiCategory').textContent = cat.label;
-            $('bmiCategory').className = `bmi-stat__sub bmi-cat--${cat.cls}`;
-            $('bmiBar').style.width = `${cat.pct}%`;
+            const meta = bmiMeta(bmi);
+            const length = 251 * meta.pct;
+            arc.setAttribute('stroke-dasharray', `${length} 251`);
+            // 指针位置（半圆弧参数化：θ from 180°→0°，对应 x = 100 + 80·cos(θ-180)）
+            const theta = Math.PI - meta.pct * Math.PI;
+            const dx = 100 + 80 * Math.cos(theta);
+            const dy = 100 - 80 * Math.sin(theta);
+            dot.setAttribute('cx', dx); dot.setAttribute('cy', dy);
+            num.textContent = bmi.toFixed(1);
+            num.style.color = `var(--${meta.cls === 'under' ? 'accent-cool' : meta.cls === 'normal' ? 'accent-mint' : meta.cls === 'over' ? '#fbbf24' : '#ef4444'})`;
+            cat.textContent = meta.cat;
+            cat.style.color = num.style.color;
         }
 
-        // ===== 加载 + 渲染 =====
+        // ============ Hero 渲染 ============
+        function renderHero(me) {
+            $('heroUsername').textContent = '@' + (me.username || '—');
+            $('heroJoined').textContent = 'JOINED ' + fmtJoinDate(me.created_at).toUpperCase();
+            $('heroRole').textContent = (me.role || 'user').toUpperCase();
+            $('heroNickname').textContent = me.nickname || me.username || '—';
+            $('heroHeightStat').textContent = me.height_cm ?? '—';
+            $('heroWeightStat').textContent = me.weight_kg ?? '—';
+            $('heroAgeStat').textContent = me.age ?? '—';
+
+            const initial = (me.nickname || me.username || '·').charAt(0).toUpperCase();
+            $('heroInitial').textContent = initial;
+            if (me.avatar_url) {
+                $('heroImg').src = me.avatar_url;
+                $('heroImg').style.display = 'block';
+                $('heroInitial').style.display = 'none';
+            }
+        }
+
+        // ============ 主加载 ============
         async function loadProfile() {
             if (!tokenStore.isLoggedIn) {
                 location.href = '/c/login.html?next=' + encodeURIComponent('/c/profile.html');
@@ -731,87 +892,40 @@
             }
             try {
                 const me = await api.auth.me();
-                renderProfile(me);
+                renderHero(me);
+                fillForm(me);
+                renderBmi(me.weight_kg, me.height_cm);
                 renderAuthUI();
-                await loadStats();
-                // 并行拉新区块
                 await Promise.allSettled([
+                    loadTrainingStats(),
                     loadWeightLogs(),
                     loadConversations(),
                     loadMyReviews(),
                 ]);
             } catch (e) {
                 toast('加载失败：' + e.message, 'error');
-            } finally {
-                $('loading').style.display = 'none';
             }
         }
 
-        function renderProfile(me) {
-            $('username').value = me.username || '';
-            $('nickname').value = me.nickname || '';
-            $('gender').value = String(me.gender ?? 0);
-            $('age').value = me.age ?? '';
-            $('height_cm').value = me.height_cm ?? '';
-            $('weight_kg').value = me.weight_kg ?? '';
-            $('avatar_url').value = me.avatar_url || '';
-
-            // 头像
-            if (me.avatar_url) {
-                $('avatarImg').src = me.avatar_url;
-                $('avatarImg').style.display = 'block';
-                $('avatarDefault').style.display = 'none';
-            } else {
-                $('avatarDefault').textContent = (me.nickname || me.username || '💪').charAt(0).toUpperCase();
-            }
-
-            renderBmi(me.weight_kg, me.height_cm);
-
-            // 复制初始值（取消时还原）
+        function fillForm(me) {
+            $('fUsername').value = me.username || '';
+            $('fNickname').value = me.nickname || '';
+            $('fGender').value = String(me.gender ?? 0);
+            $('fAge').value = me.age ?? '';
+            $('fHeight').value = me.height_cm ?? '';
+            $('fWeight').value = me.weight_kg ?? '';
+            $('fAvatarUrl').value = me.avatar_url || '';
             initialValues = {
-                nickname: $('nickname').value,
-                gender: $('gender').value,
-                age: $('age').value,
-                height_cm: $('height_cm').value,
-                weight_kg: $('weight_kg').value,
-                avatar_url: $('avatar_url').value,
+                nickname: $('fNickname').value,
+                gender: $('fGender').value,
+                age: $('fAge').value,
+                height_cm: $('fHeight').value,
+                weight_kg: $('fWeight').value,
+                avatar_url: $('fAvatarUrl').value,
             };
         }
 
         let initialValues = {};
-
-        async function loadStats() {
-            try {
-                const plans = await api.get('/plans/');
-                const total = plans.length;
-                const current = plans.find(p => p.is_current);
-                $('statPlans').textContent = total;
-                $('statPlansSub').textContent = current ? `当前：${current.name}` : '无当前计划';
-
-                // 总打卡 + 本周打卡 + 已完成天数
-                let checkins = 0, weekly = 0, doneDays = 0;
-                const now = Date.now();
-                const weekMs = 7 * 24 * 3600 * 1000;
-                const seenDays = new Set();
-                for (const p of plans) {
-                    try {
-                        const records = await api.get(`/plans/${p.id}/records`);
-                        for (const r of records) {
-                            checkins++;
-                            if (now - new Date(r.recorded_at).getTime() < weekMs) weekly++;
-                            seenDays.add(`${p.id}-${r.plan_week}-${r.plan_day}`);
-                        }
-                    } catch (_) {}
-                }
-                doneDays = seenDays.size;
-                $('statCheckins').textContent = checkins;
-                $('statWeekly').textContent = weekly;
-                $('statDoneDays').textContent = doneDays;
-                $('statDoneDaysSub').textContent = total > 0 ? `跨 ${total} 个计划` : '去创建第一个计划';
-            } catch (e) {
-                console.warn('load stats failed', e);
-            }
-        }
 
         function renderAuthUI() {
             const navLogin = $('navLogin'), navRegister = $('navRegister'), navLogout = $('navLogout');
@@ -828,140 +942,57 @@
             }
         }
 
-        // ===== 资料保存 =====
-        $('profileForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const body = {
-                nickname: $('nickname').value.trim() || null,
-                gender: parseInt($('gender').value, 10),
-                age: $('age').value ? parseInt($('age').value, 10) : null,
-                height_cm: $('height_cm').value ? parseFloat($('height_cm').value) : null,
-                weight_kg: $('weight_kg').value ? parseFloat($('weight_kg').value) : null,
-                avatar_url: $('avatar_url').value.trim() || null,
-            };
+        // ============ 训练统计 ============
+        async function loadTrainingStats() {
             try {
-                const updated = await api.patch('/users/me', body);
-                // 更新本地 user 缓存（nickname 显示在导航上）
-                const u = tokenStore.user;
-                if (u) {
-                    u.nickname = updated.nickname;
-                    u.avatar_url = updated.avatar_url;
-                    tokenStore.set(tokenStore.access, tokenStore.refresh, u);
+                const plans = await api.get('/plans/');
+                const total = plans.length;
+                const current = plans.find(p => p.is_current);
+                $('sPlans').textContent = total;
+                $('sPlansSub').textContent = current ? `当前：${current.name}` : '无当前计划';
+
+                let checkins = 0, weekly = 0;
+                const seenDays = new Set();
+                const now = Date.now();
+                const weekMs = 7 * 24 * 3600 * 1000;
+                for (const p of plans) {
+                    try {
+                        const records = await api.get(`/plans/${p.id}/records`);
+                        for (const r of records) {
+                            checkins++;
+                            if (now - new Date(r.recorded_at).getTime() < weekMs) weekly++;
+                            seenDays.add(`${p.id}-${r.plan_week}-${r.plan_day}`);
+                        }
+                    } catch (_) {}
                 }
-                renderProfile(updated);
-                renderAuthUI();
-                toast('✅ 资料已保存');
-            } catch (e) {
-                toast('保存失败：' + e.message, 'error');
-            }
-        });
-
-        $('btnCancel').addEventListener('click', () => {
-            for (const k in initialValues) {
-                const el = $(k);
-                if (el) el.value = initialValues[k];
-            }
-            renderBmi(parseFloat($('weight_kg').value) || null, parseFloat($('height_cm').value) || null);
-        });
-
-        // 实时 BMI
-        ['height_cm', 'weight_kg'].forEach(id => {
-            $(id).addEventListener('input', () => {
-                renderBmi(
-                    parseFloat($('weight_kg').value) || null,
-                    parseFloat($('height_cm').value) || null,
-                );
-            });
-        });
-
-        // ===== 头像上传（只接受 URL，因为没有上传 endpoint）=====
-        $('avatarBox').addEventListener('click', () => {
-            $('avatar_url').focus();
-            $('avatar_url').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        });
-        $('avatar_url').addEventListener('input', () => {
-            const url = $('avatar_url').value.trim();
-            if (url) {
-                $('avatarImg').src = url;
-                $('avatarImg').style.display = 'block';
-                $('avatarDefault').style.display = 'none';
-            } else {
-                $('avatarImg').style.display = 'none';
-                $('avatarDefault').style.display = 'block';
-            }
-        });
-
-        // ===== 修改密码 =====
-        $('btnChangePwd').addEventListener('click', () => {
-            $('pwdModal').classList.add('modal-mask--open');
-            $('oldPwd').focus();
-        });
-        $('btnPwdCancel').addEventListener('click', () => {
-            $('pwdModal').classList.remove('modal-mask--open');
-            $('pwdForm').reset();
-        });
-        $('pwdModal').addEventListener('click', (e) => {
-            if (e.target === $('pwdModal')) $('btnPwdCancel').click();
-        });
-        $('pwdForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const oldPwd = $('oldPwd').value, newPwd = $('newPwd').value, newPwd2 = $('newPwd2').value;
-            if (newPwd !== newPwd2) {
-                toast('两次新密码输入不一致', 'error');
-                return;
-            }
-            if (newPwd === oldPwd) {
-                toast('新密码不能与旧密码相同', 'error');
-                return;
-            }
-            try {
-                await api.post('/users/me/password', {
-                    old_password: oldPwd,
-                    new_password: newPwd,
-                });
-                $('btnPwdCancel').click();
-                toast('✅ 密码已修改');
-            } catch (e) {
-                toast('修改失败：' + e.message, 'error');
-            }
-        });
-
-        // ===== 退出登录 =====
-        $('btnLogout').addEventListener('click', () => {
-            if (confirm('确定要退出登录吗？')) {
-                tokenStore.clear();
-                location.href = '/c/login.html';
-            }
-        });
-        $('navLogout').addEventListener('click', () => {
-            if (confirm('确定要退出登录吗？')) {
-                tokenStore.clear();
-                location.reload();
-            }
-        });
+                $('sLogs').textContent = checkins;
+                $('sWeekly').textContent = weekly;
+                $('sDoneDays').textContent = seenDays.size;
+                $('sDoneDaysSub').textContent = total > 0 ? `跨 ${total} 个计划` : '去创建计划';
+            } catch (e) { console.warn('stats failed', e); }
+        }
 
         // ============ 体重曲线 ============
-
         let weightChart = null;
 
-        function fmtWeightDate(s) {
+        function fmtWDate(s) {
             if (!s) return '';
             const d = new Date(s);
-            return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            return `${d.getMonth() + 1}/${d.getDate()}`;
         }
 
         async function loadWeightLogs() {
             try {
                 const data = await api.get('/users/me/weight-logs?days=90');
                 const items = data.items || [];
+                const list = $('weightList');
                 if (items.length === 0) {
-                    $('weightList').innerHTML = '<div class="list-empty">还没有体重记录</div>';
+                    list.innerHTML = '<div style="padding:14px 0; color:var(--text-muted); font-size:13px;">还没有记录</div>';
                     if (weightChart) { weightChart.destroy(); weightChart = null; }
                     return;
                 }
-                // 图表：按时间正序
                 const sorted = [...items].sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
-                const labels = sorted.map(it => fmtWeightDate(it.recorded_at));
+                const labels = sorted.map(it => fmtWDate(it.recorded_at));
                 const weights = sorted.map(it => it.weight_kg);
                 const ctx = document.getElementById('weightChart');
                 if (weightChart) weightChart.destroy();
@@ -970,53 +1001,58 @@
                     data: {
                         labels,
                         datasets: [{
-                            label: '体重 (kg)',
+                            label: 'kg',
                             data: weights,
-                            borderColor: '#ff6b35',
-                            backgroundColor: 'rgba(255,107,53,0.15)',
-                            tension: 0.3,
+                            borderColor: '#ff7a45',
+                            backgroundColor: 'rgba(255,122,69,0.10)',
+                            tension: 0.35,
                             fill: true,
-                            pointRadius: 3,
-                            pointBackgroundColor: '#ff6b35',
-                            borderWidth: 2,
+                            pointRadius: 2.5,
+                            pointBackgroundColor: '#ff7a45',
+                            borderWidth: 1.5,
                         }],
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1e2446',
+                                borderColor: 'rgba(255,255,255,0.1)',
+                                borderWidth: 1,
+                                padding: 10,
+                                titleFont: { family: 'ui-monospace, monospace', size: 11 },
+                                bodyFont: { family: 'ui-monospace, monospace', size: 12 },
+                                displayColors: false,
+                                callbacks: { label: (ctx) => `${ctx.parsed.y} kg` },
+                            },
+                        },
                         scales: {
-                            y: { beginAtZero: false, ticks: { precision: 1 } },
-                            x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+                            y: { beginAtZero: false, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { family: 'ui-monospace, monospace', size: 11 }, color: 'var(--text-muted)', precision: 1 } },
+                            x: { grid: { display: false }, ticks: { font: { family: 'ui-monospace, monospace', size: 11 }, color: 'var(--text-muted)', maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
                         },
                     },
                 });
-                // 列表（倒序）
-                $('weightList').innerHTML = items.map(it => `
+                list.innerHTML = items.map(it => `
                     <div class="weight-list__item">
-                        <div>
-                            <b>${it.weight_kg}</b> kg
-                            <span class="weight-list__time">${fmtWeightDate(it.recorded_at)}</span>
-                            ${it.note ? `<span class="weight-list__note">· ${esc(it.note)}</span>` : ''}
-                        </div>
+                        <span class="weight-list__val tnum">${it.weight_kg} kg</span>
+                        <span class="weight-list__time">${fmtDate(it.recorded_at)}</span>
+                        <span class="weight-list__note" title="${esc(it.note || '')}">${esc(it.note || '—')}</span>
                         <button class="weight-list__del" data-del="${it.id}" title="删除">✕</button>
                     </div>
                 `).join('');
-                $('weightList').querySelectorAll('[data-del]').forEach(btn => {
+                list.querySelectorAll('[data-del]').forEach(btn => {
                     btn.addEventListener('click', async () => {
                         if (!confirm('删除这条体重记录？')) return;
                         try {
                             await api.delete(`/users/me/weight-logs/${btn.dataset.del}`);
-                            toast('✅ 已删除');
-                            await loadWeightLogs();
-                        } catch (e) {
-                            toast('删除失败：' + e.message, 'error');
-                        }
+                            toast('已删除');
+                            loadWeightLogs();
+                        } catch (e) { toast('失败：' + e.message, 'error'); }
                     });
                 });
-            } catch (e) {
-                console.warn('load weight logs failed', e);
-            }
+            } catch (e) { console.warn('weight logs failed', e); }
         }
 
         $('weightForm').addEventListener('submit', async (e) => {
@@ -1026,118 +1062,196 @@
                 note: $('wNote').value.trim() || null,
             };
             const dt = $('wDate').value;
-            if (dt) {
-                body.recorded_at = new Date(dt).toISOString().slice(0, 19);
-            }
+            if (dt) body.recorded_at = new Date(dt).toISOString().slice(0, 19);
             try {
                 await api.post('/users/me/weight-logs', body);
-                toast('✅ 体重已记录');
+                toast('已记录');
                 $('wWeight').value = '';
                 $('wDate').value = '';
                 $('wNote').value = '';
-                await loadWeightLogs();
-            } catch (e) {
-                toast('记录失败：' + e.message, 'error');
-            }
+                loadWeightLogs();
+            } catch (e) { toast('失败：' + e.message, 'error'); }
         });
 
-        // ============ AI 教练历史 ============
+        // ============ AI 历史 ============
+        function fmtTimelineDate(s) {
+            const d = new Date(s);
+            const now = new Date();
+            const day = Math.floor((now - d) / 86400000);
+            if (day === 0) return '今天';
+            if (day === 1) return '昨天';
+            if (day < 7) return `${day}天前`;
+            return `${d.getMonth() + 1}/${d.getDate()}`;
+        }
 
         async function loadConversations() {
             try {
                 const list = await api.get('/conversations');
-                const items = (list || []).slice(0, 5);
+                const items = (list || []).slice(0, 6);
+                const ul = $('convList');
                 if (items.length === 0) {
-                    $('convList').innerHTML = '<div class="list-empty">还没有对话，去 <a href="/c/plans.html#ai">和 AI 教练聊聊</a> 吧</div>';
-                    $('btnAllConvs').style.display = 'none';
+                    ul.innerHTML = '<li style="padding:14px 0; color:var(--text-muted); font-size:13px;">还没有对话</li>';
                     return;
                 }
-                $('convList').innerHTML = items.map(c => `
-                    <div class="list-card" data-conv="${c.id}" style="cursor:pointer;">
-                        <div class="list-card__icon">💬</div>
-                        <div class="list-card__main">
-                            <div class="list-card__title">${esc(c.title || '未命名会话')}</div>
-                            <div class="list-card__sub">${c.last_message ? esc(c.last_message.slice(0, 30)) : '暂无消息'} · ${fmtDt(c.updated_at)}</div>
+                ul.innerHTML = items.map(c => {
+                    const d = new Date(c.updated_at);
+                    return `
+                    <li class="timeline__item" data-conv="${c.id}">
+                        <div class="timeline__date">
+                            <span class="timeline__date-day">${d.getMonth() + 1}/${d.getDate()}</span>
+                            ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}
                         </div>
-                        <div style="font-size:11px; color: var(--text-muted);">${c.unread ? `🔴 ${c.unread}` : ''}</div>
-                    </div>
-                `).join('');
-                $('convList').querySelectorAll('[data-conv]').forEach(card => {
-                    card.addEventListener('click', () => {
-                        location.href = `/c/plans.html#ai?conv=${card.dataset.conv}`;
+                        <div class="timeline__main">
+                            <div class="timeline__title">${esc(c.title || '未命名会话')}</div>
+                            <div class="timeline__sub">${esc((c.last_message || '暂无消息').slice(0, 40))}${(c.last_message?.length || 0) > 40 ? '…' : ''}</div>
+                        </div>
+                        <div></div>
+                    </li>`;
+                }).join('');
+                ul.querySelectorAll('[data-conv]').forEach(li => {
+                    li.addEventListener('click', () => {
+                        location.href = `/c/plans.html#ai?conv=${li.dataset.conv}`;
                     });
                 });
-                $('btnAllConvs').style.display = 'inline-flex';
             } catch (e) {
-                $('convList').innerHTML = `<div class="list-empty">加载失败：${esc(e.message)}</div>`;
+                $('convList').innerHTML = `<li style="padding:14px 0; color:var(--text-muted); font-size:13px;">加载失败：${esc(e.message)}</li>`;
             }
         }
 
         // ============ 我的评论 ============
-
-        function renderStars(rating) {
-            return '★'.repeat(rating) + '☆'.repeat(5 - rating);
-        }
+        function renderStars(r) { return '★'.repeat(r) + '☆'.repeat(5 - r); }
 
         async function loadMyReviews() {
             try {
                 const data = await api.get('/users/me/reviews?page_size=10');
                 const items = (data.items || []).filter(r => r.status === 0);
+                const ul = $('reviewList');
                 if (items.length === 0) {
-                    $('reviewList').innerHTML = '<div class="list-empty">还没有评论，<a href="/c/">去看看动作</a> 写下你的看法吧</div>';
+                    ul.innerHTML = '<li style="padding:14px 0; color:var(--text-muted); font-size:13px;">还没有评论</li>';
                     return;
                 }
-                $('reviewList').innerHTML = items.map(r => `
-                    <div class="list-card">
-                        <div class="list-card__icon">⭐</div>
-                        <div class="list-card__main">
-                            <div class="list-card__title">${esc(r.exercise_name_zh || r.exercise_id)}</div>
-                            <div class="list-card__sub">
-                                <span class="rating-stars">${renderStars(r.rating)}</span>
-                                · ${fmtDt(r.created_at)}
-                                ${r.content ? `· ${esc(r.content.slice(0, 40))}${r.content.length > 40 ? '...' : ''}` : ''}
-                            </div>
+                ul.innerHTML = items.map(r => {
+                    const d = new Date(r.created_at);
+                    return `
+                    <li class="timeline__item" data-ex="${r.exercise_id}">
+                        <div class="timeline__date">
+                            <span class="timeline__date-day">${d.getMonth() + 1}/${d.getDate()}</span>
+                            <span class="timeline__rating">${renderStars(r.rating)}</span>
                         </div>
-                        <button class="list-card__action" data-del-review="${r.id}">删除</button>
-                        <a href="/c/detail.html?id=${r.exercise_id}" class="list-card__action" style="margin-right:4px;">查看</a>
-                    </div>
-                `).join('');
-                $('reviewList').querySelectorAll('[data-del-review]').forEach(btn => {
-                    btn.addEventListener('click', async () => {
+                        <div class="timeline__main">
+                            <div class="timeline__title">${esc(r.exercise_name_zh || r.exercise_id)}</div>
+                            <div class="timeline__sub">${esc((r.content || '无评论').slice(0, 50))}${(r.content?.length || 0) > 50 ? '…' : ''}</div>
+                        </div>
+                        <button class="timeline__action" data-del-review="${r.id}" title="删除">删</button>
+                    </li>`;
+                }).join('');
+                ul.querySelectorAll('[data-ex]').forEach(li => {
+                    li.addEventListener('click', (e) => {
+                        if (e.target.closest('[data-del-review]')) return;
+                        location.href = `/c/detail.html?id=${li.dataset.ex}`;
+                    });
+                });
+                ul.querySelectorAll('[data-del-review]').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
                         if (!confirm('删除这条评论？')) return;
                         try {
                             await api.delete(`/users/me/reviews/${btn.dataset.delReview}`);
-                            toast('✅ 评论已删除');
-                            await loadMyReviews();
-                        } catch (e) {
-                            toast('删除失败：' + e.message, 'error');
-                        }
+                            toast('已删除');
+                            loadMyReviews();
+                        } catch (err) { toast('失败：' + err.message, 'error'); }
                     });
                 });
             } catch (e) {
-                $('reviewList').innerHTML = `<div class="list-empty">加载失败：${esc(e.message)}</div>`;
+                $('reviewList').innerHTML = `<li style="padding:14px 0; color:var(--text-muted); font-size:13px;">加载失败：${esc(e.message)}</li>`;
             }
         }
 
-        // ============ 危险：注销账号 ============
-
-        $('btnDeleteMe').addEventListener('click', async () => {
-            const ok = prompt('⚠️ 真的要注销账号吗？此操作不可逆！\n\n输入 "DELETE" 确认：');
-            if (ok !== 'DELETE') {
-                toast('已取消', 'success');
-                return;
-            }
+        // ============ 表单保存 ============
+        $('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const body = {
+                nickname: $('fNickname').value.trim() || null,
+                gender: parseInt($('fGender').value, 10),
+                age: $('fAge').value ? parseInt($('fAge').value, 10) : null,
+                height_cm: $('fHeight').value ? parseFloat($('fHeight').value) : null,
+                weight_kg: $('fWeight').value ? parseFloat($('fWeight').value) : null,
+                avatar_url: $('fAvatarUrl').value.trim() || null,
+            };
             try {
-                await api.delete('/users/me');
-                tokenStore.clear();
-                toast('账号已注销', 'success');
-                setTimeout(() => location.href = '/c/login.html', 1500);
-            } catch (e) {
-                toast('注销失败：' + e.message, 'error');
+                const updated = await api.patch('/users/me', body);
+                const u = tokenStore.user;
+                if (u) {
+                    u.nickname = updated.nickname;
+                    u.avatar_url = updated.avatar_url;
+                    tokenStore.set(tokenStore.access, tokenStore.refresh, u);
+                }
+                renderHero(updated);
+                fillForm(updated);
+                renderBmi(updated.weight_kg, updated.height_cm);
+                renderAuthUI();
+                toast('已保存');
+            } catch (e) { toast('保存失败：' + e.message, 'error'); }
+        });
+
+        $('btnCancel').addEventListener('click', () => {
+            for (const k in initialValues) $(k).value = initialValues[k];
+            renderBmi(parseFloat($('fWeight').value) || null, parseFloat($('fHeight').value) || null);
+        });
+
+        // 实时 BMI
+        ['fHeight', 'fWeight'].forEach(id => {
+            $(id).addEventListener('input', () => {
+                renderBmi(parseFloat($('fWeight').value) || null, parseFloat($('fHeight').value) || null);
+            });
+        });
+
+        // 头像 URL 实时预览
+        $('fAvatarUrl').addEventListener('input', () => {
+            const url = $('fAvatarUrl').value.trim();
+            if (url) {
+                $('heroImg').src = url;
+                $('heroImg').style.display = 'block';
+                $('heroInitial').style.display = 'none';
+            } else {
+                $('heroImg').style.display = 'none';
+                $('heroInitial').style.display = 'block';
             }
         });
 
-        // ===== 触发所有加载 =====
+        // ============ 修改密码 ============
+        $('btnChangePwd').addEventListener('click', () => { $('pwdModal').classList.add('modal-mask--open'); $('oldPwd').focus(); });
+        $('btnPwdCancel').addEventListener('click', () => { $('pwdModal').classList.remove('modal-mask--open'); $('pwdForm').reset(); });
+        $('pwdModal').addEventListener('click', (e) => { if (e.target === $('pwdModal')) $('btnPwdCancel').click(); });
+        $('pwdForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oldPwd = $('oldPwd').value, newPwd = $('newPwd').value, newPwd2 = $('newPwd2').value;
+            if (newPwd !== newPwd2) return toast('两次新密码输入不一致', 'error');
+            if (newPwd === oldPwd) return toast('新密码不能与旧密码相同', 'error');
+            try {
+                await api.post('/users/me/password', { old_password: oldPwd, new_password: newPwd });
+                $('btnPwdCancel').click();
+                toast('密码已修改');
+            } catch (e) { toast('修改失败：' + e.message, 'error'); }
+        });
+
+        // ============ 退出 + 注销 ============
+        $('btnLogout').addEventListener('click', () => {
+            if (confirm('确定要退出登录吗？')) { tokenStore.clear(); location.href = '/c/login.html'; }
+        });
+        $('navLogout').addEventListener('click', () => {
+            if (confirm('确定要退出登录吗？')) { tokenStore.clear(); location.reload(); }
+        });
+        $('btnDeleteMe').addEventListener('click', async () => {
+            const ok = prompt('⚠️ 真的要注销账号吗？此操作不可逆！\n\n输入 "DELETE" 确认：');
+            if (ok !== 'DELETE') return toast('已取消');
+            try {
+                await api.delete('/users/me');
+                tokenStore.clear();
+                toast('账号已注销');
+                setTimeout(() => location.href = '/c/login.html', 1500);
+            } catch (e) { toast('注销失败：' + e.message, 'error'); }
+        });
 
         loadProfile();
     </script>
