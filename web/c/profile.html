@@ -98,7 +98,7 @@
             content: '';
             flex: 1;
             height: 1px;
-            background: linear-gradient(90deg, transparent, var(--border-base), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
         }
         .ornament-rule__dot {
             width: 4px; height: 4px;
@@ -106,6 +106,44 @@
             border-radius: 50%;
             box-shadow: 0 0 12px var(--accent-purple-glow);
         }
+
+        /* === Section 卡片（左主栏每个 section 套这个）=== */
+        .section-card {
+            background: rgba(30, 36, 70, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+            margin-bottom: var(--space-4);
+        }
+        .section-card__head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: var(--space-4);
+            padding-bottom: var(--space-3);
+            border-bottom: 1px solid rgba(255,255,255,0.10);
+        }
+        .section-card__title {
+            font-family: 'Times New Roman', 'Songti SC', Georgia, serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .section-card__hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: var(--space-3);
+            margin-top: -8px;
+        }
+        .section-card__link {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+        .section-card__link:hover { color: var(--primary); }
 
         /* === HERO（杂志封面式）=== */
         .hero {
@@ -724,9 +762,9 @@
 
                     <!-- 体重曲线 -->
                     <section>
-                        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom: var(--space-3);">
-                            <h2 style="font-family:'Times New Roman','Songti SC',serif; font-size:24px; font-weight:700;">体重轨迹</h2>
-                            <span style="font-size:11px; color: var(--text-muted); text-transform:uppercase; letter-spacing:1.5px;">最近 90 天</span>
+                        <div class="section-card__head">
+                            <h2 class="section-card__title">体重轨迹</h2>
+                            <span class="section-card__link">最近 90 天</span>
                         </div>
                         <form class="weight-form" id="weightForm" autocomplete="off">
                             <div class="field">
@@ -751,9 +789,9 @@
 
                     <!-- AI 历史 -->
                     <section>
-                        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom: var(--space-3);">
-                            <h2 style="font-family:'Times New Roman','Songti SC',serif; font-size:24px; font-weight:700;">AI 教练对话</h2>
-                            <a href="/c/plans.html#ai" style="font-size:11px; color: var(--text-muted); text-transform:uppercase; letter-spacing:1.5px;">查看全部 →</a>
+                        <div class="section-card__head">
+                            <h2 class="section-card__title">AI 教练对话</h2>
+                            <a href="/c/plans.html#ai" class="section-card__link">查看全部 →</a>
                         </div>
                         <ul class="timeline" id="convList">
                             <li style="padding: var(--space-4) 0; color: var(--text-muted); font-size:13px;">加载中…</li>
@@ -764,9 +802,9 @@
 
                     <!-- 我的评论 -->
                     <section>
-                        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom: var(--space-3);">
-                            <h2 style="font-family:'Times New Roman','Songti SC',serif; font-size:24px; font-weight:700;">我的评论</h2>
-                            <a href="/c/" style="font-size:11px; color: var(--text-muted); text-transform:uppercase; letter-spacing:1.5px;">去发现动作 →</a>
+                        <div class="section-card__head">
+                            <h2 class="section-card__title">我的评论</h2>
+                            <a href="/c/" class="section-card__link">去发现动作 →</a>
                         </div>
                         <ul class="timeline" id="reviewList">
                             <li style="padding: var(--space-4) 0; color: var(--text-muted); font-size:13px;">加载中…</li>
