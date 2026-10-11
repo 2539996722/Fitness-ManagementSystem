@@ -12,6 +12,16 @@
            思路：编辑设计（editorial），不用 dashboard 套路
            ============================================================ */
 
+        /* 覆盖全局 .main（它默认是 grid 260px + 1fr，给 sidebar 用）；
+           profile 页 main 只有 1 个子元素（profile-page），强行套用会塌缩 */
+        main.main {
+            display: block;
+            max-width: 100%;
+            padding: 0;
+            grid-template-columns: none;
+            gap: 0;
+        }
+
         .profile-page {
             position: relative;
             z-index: 1;
