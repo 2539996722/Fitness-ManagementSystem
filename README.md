@@ -476,30 +476,130 @@ CHROMA_PERSIST_DIR=./data/chroma       # 数据持久化目录
 
 ---
 
-## 🧪 性能测试
+## 🧪 测试
 
-工具：[Locust](https://locust.io/)。脚本在 `backend/tests/perf/locustfile.py`。
+**181 个测试**（不含 perf/ 下的 Locust），覆盖核心模块：
 
-### 单元测试（pytest）
+```
+backend/tests/
+├── conftest.py                      # 共享 fixtures（autouse + MySQL 集成）
+├── test_kb_service_pure.py          # 编码 / 分片 / context 格式化（19）
+├── test_kb_service_chroma.py        # Chroma 嵌入式集成（11）
+├── test_chat_pure.py                # intent / rewrite / template 映射（32）
+├── test_chat_metrics.py             # SSE 实时指标（12）
+├── test_chat_integration.py         # mock LLM + DB 端到端（14）
+├── test_auth.py                     # 注册 / 登录 / 刷新 / JWT / bcrypt（67）
+├── test_plans.py                    # 计划 CRUD + 打卡 + 进度统计（20）
+├── test_integration_mysql.py        # 真 MySQL（5，需要本地 MySQL，否则 skip）
+└── perf/
+    ├── locustfile.py                # Locust 压测脚本
+    └── README.md
+```
 
-42 个测试，覆盖 kb_service（80%）+ chat_metrics：
+### 运行
 
 ```bash
 cd backend
 # 装一次
 pip install pytest pytest-asyncio pytest-cov -i https://pypi.org/simple
 
-# 跑
-pytest                       # 全跑（3 秒）
-pytest tests/test_kb_service_pure.py            # 纯函数，O(1) 起
-pytest tests/test_kb_service_chroma.py          # Chroma 集成（嵌入式，毫秒级）
-pytest tests/test_chat_metrics.py               # 内存计数器
-pytest --cov=app.services.kb_service            # 看 kb_service 覆盖度（80%）
+# 全跑（默认跳过 integration，因为需要 MySQL）
+pytest                         # ≈11s
+pytest -v                       # 详细模式
+pytest -q                       # 安静模式
+
+# 跑某个文件
+pytest tests/test_auth.py -v
+
+# 跑某个测试
+pytest tests/test_auth.py::TestJwt::test_access_token_exp_2h
+
+# 跑带覆盖度
+pytest --cov=app.services.kb_service --cov-report=term-missing
+
+# 跑集成测试（需要 MySQL）
+pytest tests/test_integration_mysql.py -v
+# MySQL 不可达会自动 skip，不会报错
 ```
 
-测试 fixtures 见 `tests/conftest.py`：
-- `cleanup_test_kb`（autouse）：每个测试前后清 `kb_9999` collection，避免跨测试污染
+### 集成测试（MySQL）
+
+`test_integration_mysql.py` 用真 MySQL 跑真实写库：
+
+- 探测 `localhost:3306` 是否在线，不可达则 `pytest.skip`
+- 自动 `CREATE DATABASE IF NOT EXISTS fithub_test`
+- 用 `Base.metadata.create_all` 同步 schema（比 alembic 快）
+- 嵌套事务 + 测试结束 `rollback`，**不污染 fithub_test**
+
+不需要 testcontainers，本机 MySQL 即可。CI 上需要起一个 MySQL service container。
+
+### Markers
+
+```ini
+[pytest]
+markers =
+    integration: 需要 MySQL / Chroma
+    slow: 跑得慢（>5s）
+```
+
+```bash
+pytest -m "not integration"           # 跳过集成测试（CI 默认）
+pytest -m integration                 # 只跑集成测试
+pytest -m "integration and not slow"  # 跑集成但跳慢的
+```
+
+### pytest.ini 关键配置
+
+```ini
+[pytest]
+asyncio_mode = auto                     # 自动识别 async 测试
+asyncio_default_fixture_loop_scope = function   # 关键：fixture 和 test 用同一 loop
+asyncio_default_test_loop_scope = function      # 否则会触发 "Task attached to different loop"
+testpaths = tests
+addopts = -v --tb=short --strict-markers
+```
+
+### conftest.py Fixtures
+
+- `cleanup_test_kb`（autouse）：每个测试前后清 `kb_9999` collection，避免跨测试数据污染
 - `mock_embed`：用 md5 hash 生成确定性 fake embedding，不调真 LLM
+- `mysql_available`（session）：探测 MySQL 是否在线
+- `integration_db_url`：把生产 DSN 的 db 名换成 `fithub_test`
+- `bootstrap_test_db`：确保 `fithub_test` 库存在
+- `integration_session`（async）：嵌套事务 session，测试结束 rollback
+
+### CI 接入示例（GitHub Actions）
+
+```yaml
+- name: Tests
+  run: |
+    cd backend
+    pip install -r requirements.txt
+    pip install pytest pytest-asyncio pytest-cov
+    pytest --cov=app --cov-report=xml -m "not integration"
+
+- name: Integration Tests
+  services:
+    mysql:
+      image: mysql:8.0
+      env:
+        MYSQL_ROOT_PASSWORD: rootpass
+        MYSQL_DATABASE: fithub
+      ports: ['3306:3306']
+  run: pytest tests/test_integration_mysql.py -v
+```
+
+### Mock 技巧（auth / plans / chat 集成测试）
+
+- **`AsyncMock` + `MagicMock`**：DB session 多步 execute 用 `side_effect` 链模拟返回
+- **`_mock_session_create`**：`fake_refresh` 回填 id / created_at / updated_at（ORM 默认行为）
+- **`LLMCallResult` dataclass**：直接构造（不是 OpenAI raw response 对象）
+
+---
+
+## 🚀 性能测试
+
+工具：[Locust](https://locust.io/)。脚本在 `backend/tests/perf/locustfile.py`。
 
 ```bash
 cd backend
