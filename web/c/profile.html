@@ -358,7 +358,7 @@
             .sidebar { position: static; }
         }
 
-        /* === BMI 半圆 gauge === */
+        /* === BMI gauge（SVG 在上，文字在下方，普通文档流）=== */
         .bmi-card {
             background: linear-gradient(180deg, rgba(77,208,255,0.04) 0%, transparent 100%);
             border: 1px solid var(--border-base);
@@ -383,23 +383,19 @@
             margin-bottom: var(--space-3);
         }
         .bmi-gauge {
-            position: relative;
-            width: 100%;
-            height: 140px;
             display: flex;
-            align-items: flex-end;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
         }
-        .bmi-gauge__svg { width: 100%; height: 100%; }
+        .bmi-gauge__svg { width: 100%; height: 130px; display: block; }
         .bmi-gauge__value {
-            position: absolute;
-            bottom: 4px; left: 50%;
-            transform: translateX(-50%);
             text-align: center;
+            margin-top: -10px;     /* 拉近 SVG 与数字的视觉距离 */
+            position: relative;
         }
         .bmi-gauge__num {
             font-family: ui-monospace, monospace;
-            font-size: 38px;
+            font-size: 36px;
             font-weight: 800;
             line-height: 1;
             letter-spacing: -0.02em;
@@ -408,7 +404,7 @@
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 2px;
-            margin-top: 4px;
+            margin-top: 6px;
         }
         .bmi-meta {
             display: grid;
@@ -511,12 +507,64 @@
             font-weight: 700;
             margin-bottom: var(--space-4);
         }
+        /* === Modal === */
+        .modal-mask {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.65);
+            display: none;
+            align-items: center; justify-content: center;
+            z-index: 999;
+            backdrop-filter: blur(8px);
+        }
+        .modal-mask--open { display: flex; }
+        .modal {
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-base);
+            padding: var(--space-5);
+            max-width: 460px; width: 92%;
+        }
+        .modal__title {
+            font-family: 'Times New Roman', 'Songti SC', Georgia, serif;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: var(--space-4);
+        }
         .modal__actions {
             display: flex; gap: var(--space-2);
             justify-content: flex-end;
             margin-top: var(--space-4);
         }
-    </style>
+
+        /* === 响应式 === */
+        @media (max-width: 980px) {
+            .profile-grid { grid-template-columns: 1fr; }
+            .sidebar { position: static; }
+        }
+        @media (max-width: 720px) {
+            .profile-form { grid-template-columns: 1fr 1fr; }
+            .weight-form { grid-template-columns: 1fr 1fr; }
+            .weight-form > .weight-form__submit { grid-column: 1 / -1; }
+            .weight-list__item { grid-template-columns: 1fr auto; row-gap: 2px; }
+            .weight-list__time,
+            .weight-list__note { grid-column: 1; }
+            .timeline__item { grid-template-columns: 70px 1fr auto; }
+            .stats-strip__num { font-size: 26px; }
+        }
+        @media (max-width: 600px) {
+            .stats-strip { grid-template-columns: repeat(2, 1fr); }
+            .stats-strip__cell:nth-child(2n) { border-right: none; }
+            .timeline__item { grid-template-columns: 1fr; row-gap: 4px; padding: 12px 0; }
+            .timeline__date { display: flex; gap: 8px; align-items: center; }
+            .timeline__date-day { display: inline; font-size: 13px; }
+            .hero__name { font-size: 42px; }
+        }
+        @media (max-width: 480px) {
+            .profile-form { grid-template-columns: 1fr; }
+            .weight-form { grid-template-columns: 1fr; }
+            .hero { grid-template-columns: 72px 1fr; gap: var(--space-3); }
+            .hero__avatar { width: 72px; height: 72px; font-size: 28px; }
+            .hero__name { font-size: 36px; }
+        }
 </head>
 <body>
     <header class="navbar">
@@ -700,7 +748,7 @@
                     <div class="bmi-card">
                         <div class="bmi-card__label">身体质量指数</div>
                         <div class="bmi-gauge" id="bmiGauge">
-                            <svg class="bmi-gauge__svg" viewBox="0 0 200 110" preserveAspectRatio="xMidYMax meet">
+                            <svg class="bmi-gauge__svg" viewBox="0 0 200 130" preserveAspectRatio="xMidYMin meet">
                                 <defs>
                                     <linearGradient id="bmiGrad" x1="0" x2="1" y1="0" y2="0">
                                         <stop offset="0%"   stop-color="#38bdf8"/>
@@ -709,12 +757,12 @@
                                         <stop offset="100%" stop-color="#ef4444"/>
                                     </linearGradient>
                                 </defs>
-                                <!-- 背景弧 -->
-                                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="14" stroke-linecap="round"/>
-                                <!-- 当前值弧（动态） -->
-                                <path id="bmiArc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#bmiGrad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 251"/>
-                                <!-- 指针 -->
-                                <circle id="bmiDot" cx="100" cy="100" r="5" fill="#fff" stroke="var(--primary)" stroke-width="2"/>
+                                <!-- 背景弧（半圆）：从 x=20 y=120 弯到 x=180 y=120，圆心 (100, 120) r=80 -->
+                                <path d="M 20 120 A 80 80 0 0 1 180 120" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="14" stroke-linecap="round"/>
+                                <!-- 当前值弧（动态），半圆周长 = π·r ≈ 251.3 -->
+                                <path id="bmiArc" d="M 20 120 A 80 80 0 0 1 180 120" fill="none" stroke="url(#bmiGrad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 251"/>
+                                <!-- 指针：沿弧滑动 -->
+                                <circle id="bmiDot" cx="20" cy="120" r="5" fill="#fff" stroke="var(--primary)" stroke-width="2"/>
                             </svg>
                             <div class="bmi-gauge__value">
                                 <div class="bmi-gauge__num" id="bmiNum" style="color: var(--text-muted);">—</div>
@@ -836,7 +884,8 @@
             $('bmiH').textContent = hCm || '—';
             $('bmiW').textContent = w || '—';
 
-            // 填充弧（半圆周长 = π·r ≈ 251 for r=80）
+            // 半圆周长 = π·r ≈ 251.3 for r=80；半圆从 x=20 → x=180，圆心 (100, 120)，
+            // 沿弧角度 θ from π (起点) → 0 (终点)，pct 映射 θ。
             const arc = $('bmiArc');
             const dot = $('bmiDot');
             const num = $('bmiNum');
@@ -844,7 +893,7 @@
 
             if (bmi == null) {
                 arc.setAttribute('stroke-dasharray', '0 251');
-                dot.setAttribute('cx', 100); dot.setAttribute('cy', 100);
+                dot.setAttribute('cx', 20); dot.setAttribute('cy', 120);
                 num.textContent = '—';
                 num.style.color = 'var(--text-muted)';
                 cat.textContent = '填入身高体重';
@@ -854,10 +903,10 @@
             const meta = bmiMeta(bmi);
             const length = 251 * meta.pct;
             arc.setAttribute('stroke-dasharray', `${length} 251`);
-            // 指针位置（半圆弧参数化：θ from 180°→0°，对应 x = 100 + 80·cos(θ-180)）
+            // 指针位置：弧参数化，θ = π − pct·π → x = 100 − 80·cos(θ−π) 等价 100 + 80·cos(θ−π)
             const theta = Math.PI - meta.pct * Math.PI;
             const dx = 100 + 80 * Math.cos(theta);
-            const dy = 100 - 80 * Math.sin(theta);
+            const dy = 120 - 80 * Math.sin(theta);
             dot.setAttribute('cx', dx); dot.setAttribute('cy', dy);
             num.textContent = bmi.toFixed(1);
             num.style.color = `var(--${meta.cls === 'under' ? 'accent-cool' : meta.cls === 'normal' ? 'accent-mint' : meta.cls === 'over' ? '#fbbf24' : '#ef4444'})`;
