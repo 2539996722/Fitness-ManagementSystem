@@ -7,6 +7,59 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="css/soft-ui.css">
     <script type="module" src="js/admin-layout.js"></script>
+    <style>
+        /* Chat SSE 实时指标卡片 */
+        .chart-card--wide { min-height: 240px; }
+        .rt-kpi-row {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+            padding: 12px 0; border-bottom: 1px solid rgba(163,177,198,0.18);
+            margin-bottom: 12px;
+        }
+        .rt-kpi { padding: 8px 12px; background: var(--bg-1); border-radius: var(--r-sm); }
+        .rt-kpi__label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+        .rt-kpi__value { font-size: 22px; font-weight: 700; color: var(--text); }
+        .rt-kpi__value--error { color: #dc2626; }
+        .rt-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+            padding: 0 4px;
+        }
+        .rt-section__title {
+            font-size: 12px; color: var(--text-muted); font-weight: 600;
+            margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.4px;
+        }
+        .rt-list {
+            max-height: 160px; overflow-y: auto;
+            background: var(--bg-1); border-radius: var(--r-sm); padding: 8px 12px;
+            font-size: 12px; font-family: ui-monospace, Consolas, monospace;
+        }
+        .rt-list__item {
+            display: flex; gap: 12px; padding: 4px 0;
+            border-bottom: 1px dashed rgba(163,177,198,0.15);
+        }
+        .rt-list__item:last-child { border-bottom: none; }
+        .rt-list__uid { color: var(--accent); }
+        .rt-list__intent {
+            padding: 1px 6px; border-radius: 3px; font-size: 10px;
+            background: rgba(99,102,241,0.15); color: #6366f1;
+        }
+        .rt-list__duration { margin-left: auto; color: var(--text-muted); }
+        .rt-empty { color: var(--text-muted); font-style: italic; }
+        .rt-bars { display: flex; flex-direction: column; gap: 6px; }
+        .rt-bar {
+            display: flex; align-items: center; gap: 8px; font-size: 12px;
+        }
+        .rt-bar__name { width: 110px; color: var(--text); }
+        .rt-bar__track {
+            flex: 1; height: 8px; background: rgba(163,177,198,0.15);
+            border-radius: 4px; overflow: hidden;
+        }
+        .rt-bar__fill {
+            height: 100%; background: linear-gradient(90deg, var(--accent), #4dd0ff);
+            transition: width 0.4s ease;
+        }
+        .rt-bar__count { width: 36px; text-align: right; color: var(--text-muted); font-family: monospace; }
+        .rt-bar--zero .rt-bar__fill { background: rgba(163,177,198,0.3); }
+    </style>
 </head>
 <body>
     <aside class="sidebar" id="appSidebar"></aside>
@@ -78,6 +131,72 @@
                     🤖 AI 场景调用分布
                 </div>
                 <canvas id="intentChart"></canvas>
+            </div>
+        </div>
+
+        <!-- AI 用量（admin 专属） -->
+        <div class="chart-row" data-requires-roles="admin,trainer">
+            <div class="chart-card chart-card--wide">
+                <div class="chart-card__title">
+                    🔴 Chat SSE 实时指标
+                    <span style="margin-left:12px; font-size:11px; color:var(--text-muted);">
+                        进程内 metrics · 重启清零 · 按日滚动
+                    </span>
+                    <span id="rtStatus" style="margin-left:auto; font-size:11px; color:var(--text-muted);">🟢 自动刷新 10s</span>
+                    <button id="btnRtRefresh" class="btn btn--sm" style="margin-left:8px;">↻ 立即刷新</button>
+                </div>
+                <!-- 顶部 5 个 KPI -->
+                <div class="rt-kpi-row">
+                    <div class="rt-kpi"><div class="rt-kpi__label">活跃 SSE 流</div><div class="rt-kpi__value" id="rtActive">—</div></div>
+                    <div class="rt-kpi"><div class="rt-kpi__label">今日总流数</div><div class="rt-kpi__value" id="rtTotal">—</div></div>
+                    <div class="rt-kpi"><div class="rt-kpi__label">今日错误</div><div class="rt-kpi__value" id="rtErrors">—</div></div>
+                    <div class="rt-kpi"><div class="rt-kpi__label">错误率</div><div class="rt-kpi__value" id="rtErrRate">—</div></div>
+                    <div class="rt-kpi"><div class="rt-kpi__label">首字节 p95</div><div class="rt-kpi__value" id="rtP95">—</div></div>
+                </div>
+                <!-- 活跃流详情 + 分布 -->
+                <div class="rt-grid">
+                    <div>
+                        <div class="rt-section__title">活跃流详情</div>
+                        <div id="rtActiveDetails" class="rt-list"><div class="rt-empty">无活跃流</div></div>
+                    </div>
+                    <div>
+                        <div class="rt-section__title">按 intent 分布</div>
+                        <div id="rtByIntent" class="rt-bars"></div>
+                        <div class="rt-section__title" style="margin-top:14px;">按 model 分布</div>
+                        <div id="rtByModel" class="rt-bars"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 历史摘要（与实时对比） -->
+        <div class="chart-row" data-requires-roles="admin,trainer">
+            <div class="chart-card chart-card--wide">
+                <div class="chart-card__title">
+                    📚 Chat 历史摘要（来自 ai_call_logs 表 · 持久化）
+                    <span style="margin-left:12px; font-size:11px; color:var(--text-muted);">
+                        近 <span id="histDays">7</span> 天 · 与上方实时指标对照看
+                    </span>
+                </div>
+                <div class="hist-kpi-row">
+                    <div class="rt-kpi"><div class="rt-kpi__label">今日 LLM 调用</div><div class="rt-kpi__value" id="histTodayCalls">—</div></div>
+                    <div class="rt-kpi"><div class="rt-kpi__label">今日 tokens</div><div class="rt-kpi__value" id="histTodayTokens">—</div></div>
+                    <div class="rt-kpi"><div class="rt-kpi__label">今日成本</div><div class="rt-kpi__value" id="histTodayCost">—</div></div>
+                    <div class="rt-kpi"><div class="rt-kpi__label">7 天调用</div><div class="rt-kpi__value" id="histWeekCalls">—</div></div>
+                    <div class="rt-kpi"><div class="rt-kpi__label">7 天成本</div><div class="rt-kpi__value" id="histWeekCost">—</div></div>
+                </div>
+                <div class="rt-grid">
+                    <div>
+                        <div class="rt-section__title">近 7 天每日趋势</div>
+                        <canvas id="histTrendChart" style="height:180px;"></canvas>
+                    </div>
+                    <div>
+                        <div class="rt-section__title">按 intent 累计 tokens（历史）</div>
+                        <div id="histByIntent" class="rt-bars"></div>
+                        <div class="rt-section__title" style="margin-top:14px;">Top models（近 7 天按调用次数）</div>
+                        <div id="histTopModels" class="rt-bars"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -380,10 +499,166 @@
 
         async function loadAll() {
             if (user?.role === 'customer_service') return;
-            const tasks = [loadOverview(), loadTrend(), loadGoal(), loadBody(), loadIntent()];
+            const tasks = [loadOverview(), loadTrend(), loadGoal(), loadBody(), loadIntent(), loadChatMetrics(), loadChatOverview()];
             if (user?.role === 'admin') tasks.push(loadAiCost());
             await Promise.all(tasks);
         }
+
+        // ============ Chat SSE 实时指标 ============
+
+        const INTENT_LABEL = { qa: '问答', plan: '计划', substitution: '替代', diet: '饮食', unknown: '未知' };
+
+        async function loadChatMetrics() {
+            try {
+                const m = await api('/admin/dashboard/chat-metrics');
+                renderChatMetrics(m);
+            } catch (e) {
+                document.getElementById('rtStatus').textContent = '⚠️ 加载失败';
+                console.warn('chat-metrics load failed', e);
+            }
+        }
+
+        function renderChatMetrics(m) {
+            const today = m.today || {};
+            const fb = today.first_byte_ms || {};
+            // 顶部 KPI
+            document.getElementById('rtActive').textContent = m.active_streams ?? 0;
+            document.getElementById('rtTotal').textContent = today.total_streams ?? 0;
+            const errEl = document.getElementById('rtErrors');
+            errEl.textContent = today.errors ?? 0;
+            errEl.classList.toggle('rt-kpi__value--error', (today.errors ?? 0) > 0);
+            document.getElementById('rtErrRate').textContent = ((today.error_rate ?? 0) * 100).toFixed(1) + '%';
+            document.getElementById('rtP95').textContent = fb.samples ? `${fb.p95} ms` : '—';
+
+            // 活跃流详情
+            const det = document.getElementById('rtActiveDetails');
+            const active = m.active_details || [];
+            if (active.length === 0) {
+                det.innerHTML = '<div class="rt-empty">无活跃流</div>';
+            } else {
+                det.innerHTML = active.map(s => `
+                    <div class="rt-list__item">
+                        <span class="rt-list__uid">u#${s.user_id}/c#${s.conversation_id}</span>
+                        <span class="rt-list__intent">${INTENT_LABEL[s.intent] || s.intent}</span>
+                        <span class="rt-list__duration">${s.running_seconds}s</span>
+                    </div>
+                `).join('');
+            }
+
+            // by_intent 分布
+            const intentMax = Math.max(1, ...Object.values(today.by_intent || {}));
+            const intentEl = document.getElementById('rtByIntent');
+            intentEl.innerHTML = Object.keys(INTENT_LABEL).map(k => {
+                const v = (today.by_intent || {})[k] || 0;
+                return renderBar(INTENT_LABEL[k], v, intentMax);
+            }).join('');
+
+            // by_model 分布
+            const models = today.by_model || {};
+            const modelMax = Math.max(1, ...Object.values(models));
+            const modelEl = document.getElementById('rtByModel');
+            const modelKeys = Object.keys(models);
+            modelEl.innerHTML = modelKeys.length === 0
+                ? '<div class="rt-empty">尚无记录</div>'
+                : modelKeys.map(k => renderBar(k, models[k], modelMax)).join('');
+        }
+
+        function renderBar(name, value, max) {
+            const pct = max > 0 ? Math.round(value / max * 100) : 0;
+            const cls = value === 0 ? 'rt-bar rt-bar--zero' : 'rt-bar';
+            return `
+                <div class="${cls}">
+                    <div class="rt-bar__name">${name}</div>
+                    <div class="rt-bar__track"><div class="rt-bar__fill" style="width:${pct}%;"></div></div>
+                    <div class="rt-bar__count">${value}</div>
+                </div>
+            `;
+        }
+
+        // ============ Chat 历史摘要（双视图的下半部分）============
+
+        async function loadChatOverview() {
+            try {
+                const data = await api('/admin/dashboard/chat-overview?days=7');
+                renderChatOverview(data);
+            } catch (e) {
+                console.warn('chat-overview load failed', e);
+            }
+        }
+
+        function renderChatOverview(data) {
+            const h = data.history || {};
+            const t = h.today || {};
+            const trend = h.trend || [];
+
+            document.getElementById('histDays').textContent = data.days;
+            document.getElementById('histTodayCalls').textContent = t.calls ?? 0;
+            document.getElementById('histTodayTokens').textContent = (t.total_tokens ?? 0).toLocaleString();
+            document.getElementById('histTodayCost').textContent = '¥' + (t.cost_cny ?? 0).toFixed(4);
+            const weekTotal = trend.reduce((s, p) => s + p.calls, 0);
+            const weekCost = trend.reduce((s, p) => s + p.cost, 0);
+            document.getElementById('histWeekCalls').textContent = weekTotal;
+            document.getElementById('histWeekCost').textContent = '¥' + weekCost.toFixed(4);
+
+            // 每日趋势 chart
+            destroyChart('histTrend');
+            const ctx = document.getElementById('histTrendChart');
+            charts.histTrend = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: trend.map(p => p.date.slice(5)),
+                    datasets: [{
+                        label: '调用次数',
+                        data: trend.map(p => p.calls),
+                        backgroundColor: 'rgba(255,107,53,0.6)',
+                        borderColor: '#ff6b35',
+                        borderWidth: 1,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } },
+                        x: { ticks: { maxRotation: 0, autoSkip: true } },
+                    },
+                },
+            });
+
+            // by_intent tokens
+            const intentList = h.by_intent || [];
+            const intentMax = Math.max(1, ...intentList.map(x => x.tokens));
+            const intentEl = document.getElementById('histByIntent');
+            intentEl.innerHTML = intentList.length === 0
+                ? '<div class="rt-empty">近 7 天无调用</div>'
+                : intentList.map(x => renderBar(x.intent, x.tokens, intentMax)).join('');
+
+            // top_models
+            const models = h.top_models || [];
+            const modelMax = Math.max(1, ...models.map(x => x.calls));
+            const modelEl = document.getElementById('histTopModels');
+            modelEl.innerHTML = models.length === 0
+                ? '<div class="rt-empty">尚无记录</div>'
+                : models.map(m => renderBar(m.model, m.calls, modelMax)).join('');
+        }
+
+        // 自动刷新（仅 admin/trainer 角色）
+        let rtTimer = null;
+        function startRtPolling() {
+            if (rtTimer) return;
+            rtTimer = setInterval(() => {
+                loadChatMetrics();
+                loadChatOverview();   // 历史摘要也 10s 刷一次（DB 查询轻）
+            }, 10000);
+        }
+        function stopRtPolling() {
+            if (rtTimer) { clearInterval(rtTimer); rtTimer = null; }
+        }
+        document.getElementById('btnRtRefresh').addEventListener('click', () => {
+            loadChatMetrics();
+            loadChatOverview();
+        });
 
         document.getElementById('btnRefresh').addEventListener('click', loadAll);
         if (user?.role === 'customer_service') {
@@ -391,6 +666,8 @@
             if (r) r.style.display = 'none';
         }
         loadAll();
+        // 启动实时指标轮询（仅 admin/trainer 才会真正加载数据）
+        if (user?.role !== 'customer_service') startRtPolling();
     </script>
 </body>
 </html>

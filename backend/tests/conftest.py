@@ -17,6 +17,32 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 
+# ============ 修复 starlette.config.Config 的 .env 读取编码 ============
+# 与 backend/app/main.py 同款 patch：slowapi 初始化时会读 .env，
+# Windows 默认 GBK 编码会失败。强制 UTF-8。
+import starlette.config
+
+
+_original_read_file = starlette.config.Config._read_file
+
+
+def _read_file_utf8(self, file_name):
+    file_values: dict[str, str] = {}
+    try:
+        with open(file_name, encoding="utf-8") as input_file:
+            for line in input_file.readlines():
+                line = line.strip()
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.split("=", 1)
+                    file_values[key.strip()] = value.strip().strip("\"'")
+    except FileNotFoundError:
+        pass
+    return file_values
+
+
+starlette.config.Config._read_file = _read_file_utf8
+
+
 # ============ Chroma 集成 fixture ============
 
 @pytest.fixture

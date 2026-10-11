@@ -311,3 +311,124 @@ async def chat_runtime_metrics(
     """
     from app.services.chat_metrics import chat_metrics
     return chat_metrics.snapshot()
+
+
+@router.get("/dashboard/chat-overview", summary="Chat 双视图（历史 ai_call_logs + 实时 chat_metrics）")
+async def chat_overview(
+    _user: Annotated[User, Depends(require_role("admin", "trainer"))],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    days: int = Query(7, ge=1, le=30),
+) -> dict:
+    """一站式 dashboard：把历史（DB）和实时（内存）拼成一张视图。
+
+    history（来自 ai_call_logs 表）：
+    - 今日 calls / total_tokens / cost_cny
+    - 近 N 天每日趋势（calls + cost + tokens）
+    - by_intent 分布（历史累计 token 数）
+    - top_models（近 N 天按调用次数）
+
+    realtime（来自 chat_metrics 内存）：
+    - active_streams + 详情
+    - 今日总流数 / 错误率 / 首字节 p50/p95/avg
+    - by_intent / by_model 分布（实时）
+
+    用法：前端一次拉数据，渲染「历史趋势 + 实时 KPI」组合视图。
+    """
+    from sqlalchemy import desc
+
+    from app.services.chat_metrics import chat_metrics
+
+    today_start, tomorrow_start = _today_range()
+
+    # ============ 历史：今日 totals ============
+    today_calls = (
+        await session.execute(
+            select(func.count(AiCallLog.id)).where(
+                AiCallLog.created_at >= today_start,
+                AiCallLog.created_at < tomorrow_start,
+            )
+        )
+    ).scalar() or 0
+
+    today_tokens_row = (
+        await session.execute(
+            select(
+                func.coalesce(func.sum(AiCallLog.prompt_tokens + AiCallLog.completion_tokens), 0),
+                func.coalesce(func.sum(AiCallLog.cost_cny), 0.0),
+            ).where(
+                AiCallLog.created_at >= today_start,
+                AiCallLog.created_at < tomorrow_start,
+            )
+        )
+    ).first()
+    today_total_tokens, today_cost = today_tokens_row
+
+    # ============ 历史：近 N 天每日趋势 ============
+    start_date = (datetime.utcnow().date() - timedelta(days=days - 1))
+    rows = (
+        await session.execute(
+            select(
+                func.date(AiCallLog.created_at).label("d"),
+                func.count(AiCallLog.id),
+                func.coalesce(func.sum(AiCallLog.prompt_tokens + AiCallLog.completion_tokens), 0),
+                func.coalesce(func.sum(AiCallLog.cost_cny), 0.0),
+            )
+            .where(AiCallLog.created_at >= start_date)
+            .group_by("d")
+        )
+    ).all()
+    bucket = {str(r[0]): {"calls": r[1], "tokens": int(r[2]), "cost": float(r[3])} for r in rows}
+    history_points = []
+    for i in range(days):
+        d = (start_date + timedelta(days=i)).isoformat()
+        slot = bucket.get(d) or {"calls": 0, "tokens": 0, "cost": 0.0}
+        history_points.append({"date": d, **slot})
+
+    # ============ 历史：by_intent token 分布 ============
+    by_intent_rows = (
+        await session.execute(
+            select(
+                AiCallLog.intent,
+                func.coalesce(func.sum(AiCallLog.prompt_tokens + AiCallLog.completion_tokens), 0),
+            )
+            .where(AiCallLog.created_at >= start_date)
+            .group_by(AiCallLog.intent)
+        )
+    ).all()
+    history_by_intent = [
+        {"intent": r[0] or "unknown", "tokens": int(r[1])}
+        for r in by_intent_rows
+    ]
+
+    # ============ 历史：top models（按 call 数）============
+    top_model_rows = (
+        await session.execute(
+            select(
+                AiCallLog.model,
+                func.count(AiCallLog.id),
+            )
+            .where(AiCallLog.created_at >= start_date, AiCallLog.model.isnot(None))
+            .group_by(AiCallLog.model)
+            .order_by(desc(func.count(AiCallLog.id)))
+            .limit(5)
+        )
+    ).all()
+    top_models = [{"model": r[0], "calls": r[1]} for r in top_model_rows]
+
+    # ============ 实时：从内存取 ============
+    realtime = chat_metrics.snapshot()
+
+    return {
+        "days": days,
+        "history": {
+            "today": {
+                "calls": today_calls,
+                "total_tokens": int(today_total_tokens or 0),
+                "cost_cny": round(float(today_cost or 0), 6),
+            },
+            "trend": history_points,
+            "by_intent": history_by_intent,
+            "top_models": top_models,
+        },
+        "realtime": realtime,
+    }
