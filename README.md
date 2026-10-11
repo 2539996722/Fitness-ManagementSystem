@@ -592,6 +592,63 @@ $env:PYTHONUTF8=1; pip install -r requirements.txt
 
 ---
 
+## 🔄 Chroma 升级路径（0.5.x → 0.6+）
+
+> 当前 `requirements.txt` 锁 `chromadb>=0.5.0,<0.6.0`，**避开 0.6.3 的 `_type` config 迁移 bug**。
+> 等上游修 bug 后（建议先看 [chromadb issue tracker](https://github.com/chroma-core/chroma/issues) 搜 `_type` / `from_json`），可按下面步骤解锁升级。
+
+### 解锁前 checklist
+
+- [ ] 查上游 release notes，确认 `_type` 迁移代码已重写（PR 合并 / issue 关闭）
+- [ ] 在 staging 环境跑一遍 KB 文档上传 → ingest → 检索，确认无 `_type` 错误
+- [ ] 备份现有 chroma 数据：`cp -r backend/data/chroma backend/data/chroma.bak.$(date +%F)`
+- [ ] 跑 Locust 性能回归，看 p95 没有大幅退化
+
+### 升级步骤
+
+```bash
+# 1. 改 requirements.txt
+#    chromadb>=0.5.0,<0.6.0    →    chromadb>=0.5.0,<1.0.0
+sed -i 's/chromadb>=0.5.0,<0.6.0/chromadb>=0.5.0,<1.0.0/' backend/requirements.txt
+
+# 2. 装新版
+pip install -U -r backend/requirements.txt
+
+# 3. 保留旧数据试跑（不删 chroma 数据目录）
+#    chroma 0.6.x 会自己跑 schema migration；如果失败则降级回 0.5.x
+uvicorn app.main:app --reload --port 8000
+
+# 4. 端到端验证
+#    - 上传 1 个 KB 文档，确认 ingest status=ready
+#    - 检索 1 个 query，确认 sources 返回正确
+#    - 查看 B 端「分片可视化」Modal 正常
+```
+
+### 回滚（如果升级失败）
+
+```bash
+# 1. 卸新版
+pip install 'chromadb>=0.5.0,<0.6.0'
+
+# 2. 恢复备份（如果上一步保留）
+rm -rf backend/data/chroma
+mv backend/data/chroma.bak.* backend/data/chroma
+```
+
+### 为什么不直接锁到 0.6.x 最新小版本
+
+- 0.6.x 系列每个小版本都改 schema（`ConfigurationInternal` 的 JSON 字段在变）
+- 跨小版本升级可能再次触发迁移 bug
+- 等 0.7.x 稳定后再评估是更稳的策略
+
+### 相关 issue / PR（待跟进）
+
+- 现象：`chromadb/api/configuration.py:209 in from_json` 抛 `KeyError: '_type'`
+- 触发路径：`get_collections → _load_config_from_json_str_and_migrate → CollectionConfigurationInternal.from_json_str → from_json`
+- 上游链接待补（chromadb 仓库搜关键字）
+
+---
+
 ## 🤝 贡献指南
 
 ### 开发约定
