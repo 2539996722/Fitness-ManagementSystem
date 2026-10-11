@@ -165,6 +165,9 @@ async def create_template(
         weeks=[w if isinstance(w, dict) else w.model_dump() for w in body.weeks],
         author_id=trainer.id,
         status=STATUS_DRAFT,
+        use_count=0,         # 默认 0（必须显式，ORM 不给非 nullable 列默认值）
+        avg_rating=0.0,
+        review_count=0,
     )
     session.add(t)
     await session.commit()
