@@ -409,7 +409,7 @@ CHROMA_PERSIST_DIR=./data/chroma       # 数据持久化目录
 | `/chat` | `chat.py` | user | AI 对话（4 场景：问答/计划/替代/饮食，SSE 流式） |
 | `/admin` | `admin.py` | admin | 系统配置 |
 | `/admin` | `admin_member.py` | admin | 会员管理 |
-| `/admin` | `admin_dashboard.py` | admin | 数据看板（overview / ai-cost / user-trend） |
+| `/admin` | `admin_dashboard.py` | admin | 数据看板（overview / ai-cost / user-trend / chat-metrics） |
 | `/admin` | `admin_templates.py` | admin | 模板审核队列（approve / reject / offline） |
 | `/admin` | `admin_log.py` | admin | 操作日志查询 |
 | `/admin` | `admin_trace.py` | admin | 链路追踪查询 |
@@ -479,6 +479,27 @@ CHROMA_PERSIST_DIR=./data/chroma       # 数据持久化目录
 ## 🧪 性能测试
 
 工具：[Locust](https://locust.io/)。脚本在 `backend/tests/perf/locustfile.py`。
+
+### 单元测试（pytest）
+
+42 个测试，覆盖 kb_service（80%）+ chat_metrics：
+
+```bash
+cd backend
+# 装一次
+pip install pytest pytest-asyncio pytest-cov -i https://pypi.org/simple
+
+# 跑
+pytest                       # 全跑（3 秒）
+pytest tests/test_kb_service_pure.py            # 纯函数，O(1) 起
+pytest tests/test_kb_service_chroma.py          # Chroma 集成（嵌入式，毫秒级）
+pytest tests/test_chat_metrics.py               # 内存计数器
+pytest --cov=app.services.kb_service            # 看 kb_service 覆盖度（80%）
+```
+
+测试 fixtures 见 `tests/conftest.py`：
+- `cleanup_test_kb`（autouse）：每个测试前后清 `kb_9999` collection，避免跨测试污染
+- `mock_embed`：用 md5 hash 生成确定性 fake embedding，不调真 LLM
 
 ```bash
 cd backend
