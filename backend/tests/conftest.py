@@ -1,8 +1,14 @@
 """共享测试 fixtures。
 
 - 纯函数测试：无需任何 fixture
-- Chroma 集成测试：用 `chroma_collection` fixture（独立 collection，避免污染生产数据）
-- DB 集成测试：暂未实现（生产建议接 testcontainers）
+- Chroma 集成测试：`cleanup_test_kb`（autouse）隔离 kb_9999
+- Mock embedding：`mock_embed` fixture 替换 LLM embedding
+- MySQL 集成测试：`integration_session` fixture（自动建 fithub_test 库，嵌套事务 rollback）
+
+策略：
+- mock_embed + integration_session 可同时使用：
+  mock 替换 LLM，真实 DB 写入
+- function-scoped：避免 event loop 冲突（pytest-asyncio 默认 test loop 是 function）
 """
 from __future__ import annotations
 
@@ -53,15 +59,10 @@ def kb_id() -> int:
 
 @pytest.fixture(autouse=True)
 def cleanup_test_kb(kb_id):
-    """每个测试前后自动清理 kb_9999 collection，防止跨测试数据污染。
-
-    autouse=True → 不需要在测试函数里显式声明。
-    """
+    """每个测试前后自动清理 kb_9999 collection，防止跨测试数据污染。"""
     from app.services.kb_service import delete_kb_collection
-    # 测试前先清
     delete_kb_collection(kb_id)
     yield
-    # 测试后再清
     delete_kb_collection(kb_id)
 
 
@@ -78,12 +79,10 @@ def mock_embed(monkeypatch):
     import math
 
     def _fake_vec(text: str, dim: int = 8) -> list[float]:
-        # 8 维够测试用了
         seed = int.from_bytes(hashlib.md5(text.encode("utf-8")).digest()[:4], "big")
         v = []
         for i in range(dim):
             v.append(((seed >> i) & 0xFF) / 255.0)
-        # 归一化（cosine 距离要归一化向量）
         norm = math.sqrt(sum(x * x for x in v)) or 1.0
         return [x / norm for x in v]
 
@@ -91,13 +90,75 @@ def mock_embed(monkeypatch):
         return [_fake_vec(t) for t in texts]
 
     async def fake_embed_query(text):
-        # embed_query 返回单条 1-dim 向量（与 embed_documents 返回的 list[list[float] 不同）
         return _fake_vec(text)
 
     from app.services import embedding_service
     monkeypatch.setattr(embedding_service, "embed_documents", fake_embed_documents)
     monkeypatch.setattr(embedding_service, "embed_query", fake_embed_query)
-    # kb_service 是函数内部 import，不能在模块层级 setattr；
-    # 函数内部 `from app.services.embedding_service import embed_documents`
-    # 会重新走 sys.modules 查找，所以 mock embedding_service.embed_documents 已足够
     return _fake_vec
+
+
+# ============ MySQL 集成 fixture（可选，需要本地 MySQL）============
+
+def _mysql_reachable(host="localhost", port=3306, timeout=1.0) -> bool:
+    """探测 MySQL 是否可达。"""
+    import socket
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except (OSError, socket.timeout):
+        return False
+
+
+@pytest.fixture(scope="session")
+def mysql_available() -> bool:
+    """session 级：探测一次 MySQL 是否在线。"""
+    return _mysql_reachable()
+
+
+@pytest.fixture
+def integration_db_url(mysql_available) -> str:
+    """返回测试用 DSN。若 MySQL 不可用则跳过测试。"""
+    if not mysql_available:
+        pytest.skip("MySQL 不可达，跳过集成测试")
+
+    from app.core.config import settings
+    import re
+    dsn = settings.mysql_dsn
+    test_dsn = re.sub(r"/fithub(\?|$)", r"/fithub_test\1", dsn)
+    return test_dsn
+
+
+@pytest.fixture
+async def bootstrap_test_db(integration_db_url):
+    """每个 test 前确保 fithub_test 库存在（async，与 test 共享 loop）。"""
+    import re
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    server_dsn = re.sub(r"/fithub_test(\?|$)", r"/\1", integration_db_url)
+    engine = create_async_engine(server_dsn, isolation_level="AUTOCOMMIT")
+    async with engine.connect() as conn:
+        await conn.exec_driver_sql(
+            "CREATE DATABASE IF NOT EXISTS fithub_test "
+            "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+        )
+    await engine.dispose()
+
+
+@pytest.fixture
+async def integration_session(integration_db_url, bootstrap_test_db):
+    """异步 DB session（嵌套事务，测试结束自动 rollback）。"""
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from app.db.base import Base
+    engine = create_async_engine(integration_db_url)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    Session = async_sessionmaker(engine, expire_on_commit=False)
+    async with Session() as session:
+        await session.begin_nested()
+        yield session
+        await session.rollback()
+
+    await engine.dispose()

@@ -430,7 +430,9 @@ async def _build_history(
     rows = list(reversed(result.scalars().all()))
     out: list[dict[str, str]] = []
     for r in rows:
-        role = "assistant" if r.sender_type == "ai" else r.sender_type
+        # OpenAI 协议只接受 "user" / "assistant" / "system"
+        # DB 里 ai / customer_service / trainer 都是「非用户」消息，统一映射为 assistant
+        role = "user" if r.sender_type == "user" else "assistant"
         out.append({"role": role, "content": r.content})
     return out
 
