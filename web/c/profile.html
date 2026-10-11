@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>个人中心 · FitHub</title>
-    <link rel="stylesheet" href="css/style.css?v=4">
+    <link rel="stylesheet" href="css/style.css?v=5">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* ============================================================
@@ -24,6 +24,26 @@
             grid-template-columns: none;
             gap: 0;
         }
+
+        /* 覆写边框色：默认 --border-base 是 rgba(255,255,255,0.12)，太淡看不见。
+           这里用更高对比度的 rgba(255,255,255,0.22) 让卡片边线可见 */
+        .bmi-card,
+        .quick-actions {
+            border-color: rgba(255, 255, 255, 0.22);
+            background: linear-gradient(180deg, rgba(77,208,255,0.04) 0%, rgba(30,36,70,0.4) 100%);
+        }
+        .quick-actions { background: rgba(30,36,70,0.4); }
+        .timeline__item { border-bottom-color: rgba(255,255,255,0.18); }
+        .weight-list__item { border-bottom-color: rgba(255,255,255,0.15); }
+        .stats-strip,
+        .stats-strip__cell { border-color: rgba(255,255,255,0.22); }
+        .bmi-meta { border-top-color: rgba(255,255,255,0.22); }
+        .form-actions { border-top-color: rgba(255,255,255,0.18); }
+        .field input,
+        .field select { border-bottom-color: rgba(255,255,255,0.28); }
+        .field input:focus,
+        .field select:focus { border-bottom-color: var(--primary); }
+        .hero { border-bottom-color: var(--primary); }
 
         .profile-page {
             position: relative;
@@ -52,8 +72,8 @@
             pointer-events: none;
             z-index: 0;
             background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-            opacity: 0.55;
-            mix-blend-mode: overlay;
+            opacity: 0.35;
+            mix-blend-mode: screen;
         }
 
         /* === 通用排印 === */
