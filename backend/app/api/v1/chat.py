@@ -918,6 +918,16 @@ async def send_message_stream(
         # 先告诉前端 conversation_id（用户消息已存库）
         yield _sse({"type": "meta", "conversation_id": conv_id, "intent": intent, "sources": sources_payload})
 
+        # ============ Metrics：记录 SSE 流开始 ============
+        from app.services.chat_metrics import chat_metrics
+        stream_id = chat_metrics.stream_started(
+            user_id=current_user.id,
+            conversation_id=conv_id,
+            intent=intent,
+        )
+        first_byte_recorded = False
+        had_error = False
+
         # ============ M10+ 6 阶段埋点（流式）============
         # 阶段 5: LLM 流式生成 — 包裹整段 stream
         full = ""
@@ -933,6 +943,10 @@ async def send_message_stream(
                     if ev["type"] == "delta":
                         full += ev["text"]
                         s_llm.meta["delta_count"] = s_llm.meta.get("delta_count", 0) + 1
+                        # Metrics：首字节延迟（首个 delta 到达时刻）
+                        if not first_byte_recorded:
+                            chat_metrics.stream_first_byte(stream_id=stream_id, model=ev.get("model"))
+                            first_byte_recorded = True
                         yield _sse({"type": "delta", "text": ev["text"]})
                     elif ev["type"] == "done":
                         s_llm.tokens = {
@@ -943,6 +957,8 @@ async def send_message_stream(
                         s_llm.output_preview = (ev["content"] or "")[:200]
                         s_llm.meta["model"] = ev["model"]
                         s_llm.meta["latency_ms"] = ev["latency_ms"]
+                        # Metrics：用 done 里的真 model 字段补一次（delta 不带 model）
+                        chat_metrics.record_model(ev["model"])
 
                         # 阶段 3: Tool（流式不走 LLM 工具，关键词查）
                         ts: list[dict] = []
@@ -1010,6 +1026,7 @@ async def send_message_stream(
                         })
         except Exception as e:
             logger.exception("流式 LLM 调用失败：{}", e)
+            had_error = True
             # 把已收到的部分存下来作为 ai 消息
             err_text = full + f"\n\n⚠️ AI 服务中断：{str(e)[:120]}"
             async with async_session() as s:
@@ -1032,6 +1049,9 @@ async def send_message_stream(
                 "content": err_text,
                 "error": str(e)[:200],
             })
+        finally:
+            # Metrics：无论正常结束 / 异常 / 客户端断开，都注销 stream
+            chat_metrics.stream_stopped(stream_id=stream_id, error=had_error)
 
     return EventSourceResponse(event_gen())
 

@@ -292,3 +292,22 @@ async def ai_cost_trend(
         "points": points,
         "total": {"calls": total_calls, "total_tokens": total_tokens, "cost_cny": total_cost},
     }
+
+
+# ============ 运行时 Chat 流式 Metrics（in-memory，实时）============
+
+@router.get("/dashboard/chat-metrics", summary="Chat SSE 运行时实时指标")
+async def chat_runtime_metrics(
+    _user: Annotated[User, Depends(require_role("admin", "trainer"))],
+) -> dict:
+    """进程内 Chat 流式指标快照（重启清零，按日滚动）。
+
+    包含：
+    - active_streams：当前活跃 SSE 流数 + 详情（user_id/conv_id/intent/运行秒数）
+    - today：今日累计 stream 数 / 错误率 / 首字节延迟 p50/p95/avg
+    - by_intent / by_model：分布
+
+    与 ai_call_logs（DB 持久化、历史对账）互补，本接口看实时。
+    """
+    from app.services.chat_metrics import chat_metrics
+    return chat_metrics.snapshot()
