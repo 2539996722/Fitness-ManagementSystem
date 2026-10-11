@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 · FitHub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .profile-page {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: var(--space-6) var(--space-5);
+        }
+
+        .profile-header {
+            margin-bottom: var(--space-5);
+            padding-bottom: var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .profile-header h1 {
+            font-size: var(--font-size-3xl);
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, var(--primary-bright) 50%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 32px var(--primary-glow);
+        }
+        .profile-header__sub {
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+            margin-top: var(--space-2);
+        }
+
+        /* ===== 通用卡片 ===== */
+        .card {
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+            margin-bottom: var(--space-4);
+        }
+        .card__title {
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+            margin-bottom: var(--space-4);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card__hint {
+            color: var(--text-muted);
+            font-size: var(--font-size-sm);
+            margin-top: -8px;
+            margin-bottom: var(--space-4);
+        }
+
+        /* ===== 资料卡 ===== */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: var(--space-5);
+            align-items: flex-start;
+        }
+        .avatar-box {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: var(--bg-elevated);
+            border: 2px solid var(--border-base);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-size: 56px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .avatar-box:hover { border-color: var(--accent-color); }
+        .avatar-box__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .avatar-box__upload {
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent-color);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 10px;
+            border-radius: 10px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .avatar-box:hover .avatar-box__upload { opacity: 1; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-3) var(--space-4);
+        }
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-row--full { grid-column: 1 / -1; }
+        .form-row label {
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .form-row input, .form-row select {
+            background: var(--bg-input);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            padding: 8px 12px;
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+            font-family: inherit;
+            transition: border-color 0.15s;
+        }
+        .form-row input:focus, .form-row select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(124,131,255,0.15);
+        }
+        .form-row input[readonly], .form-row input:disabled {
+            background: var(--bg-elevated);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: var(--space-3);
+            margin-top: var(--space-4);
+            padding-top: var(--space-4);
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        /* ===== 身体指标 ===== */
+        .bmi-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: var(--space-4);
+        }
+        .bmi-stat {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+            text-align: center;
+        }
+        .bmi-stat__label {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .bmi-stat__value {
+            font-size: var(--font-size-2xl);
+            font-weight: 800;
+            line-height: 1;
+        }
+        .bmi-stat__sub {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+        .bmi-stat__bar {
+            margin-top: 12px;
+            height: 6px;
+            background: var(--bg-input);
+            border-radius: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+        .bmi-stat__bar-fill {
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            transition: width 0.4s ease;
+        }
+        .bmi-cat--under { color: #38bdf8; }
+        .bmi-cat--normal { color: #4ade80; }
+        .bmi-cat--over { color: #f59e0b; }
+        .bmi-cat--obese { color: #ef4444; }
+        .bmi-cat--unknown { color: var(--text-muted); }
+
+        /* ===== 训练统计 ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-3);
+        }
+        .stat-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+        }
+        .stat-card__label {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .stat-card__value {
+            font-size: var(--font-size-2xl);
+            font-weight: 800;
+            line-height: 1;
+        }
+        .stat-card__sub {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+        .stat-card--accent {
+            border-color: var(--accent-color);
+            background: linear-gradient(135deg, var(--bg-elevated), rgba(124,131,255,0.08));
+        }
+
+        /* ===== 账号安全 ===== */
+        .safety-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .safety-row:last-child { border-bottom: none; }
+        .safety-row__title {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .safety-row__desc {
+            font-size: var(--font-size-sm);
+            color: var(--text-muted);
+        }
+
+        /* ===== Toast ===== */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-md);
+            padding: 12px 20px;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            opacity: 0;
+            transform: translate(-50%, 20px);
+            transition: all 0.3s ease;
+        }
+        .toast--show { opacity: 1; transform: translate(-50%, 0); }
+        .toast--success { border-color: #4ade80; color: #4ade80; }
+        .toast--error { border-color: #ef4444; color: #ef4444; }
+
+        /* ===== Modal ===== */
+        .modal-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            backdrop-filter: blur(4px);
+        }
+        .modal-mask--open { display: flex; }
+        .modal {
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-base);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+            max-width: 480px;
+            width: 92%;
+        }
+        .modal__title {
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+            margin-bottom: var(--space-4);
+        }
+        .modal__actions {
+            display: flex;
+            gap: var(--space-2);
+            justify-content: flex-end;
+            margin-top: var(--space-4);
+        }
+
+        .loading {
+            padding: var(--space-6);
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 720px) {
+            .profile-grid { grid-template-columns: 1fr; }
+            .avatar-box { margin: 0 auto; }
+            .form-grid { grid-template-columns: 1fr; }
+            .form-row--full { grid-column: 1; }
+            .bmi-row { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <header class="navbar">
+        <div class="navbar__brand">
+            <span class="navbar__logo">💪</span>
+            <span class="navbar__title">FitHub</span>
+        </div>
+        <nav class="navbar__nav">
+            <a href="/c/" class="navbar__link">动作库</a>
+            <a href="/c/plans.html" class="navbar__link">训练计划</a>
+            <a href="/c/templates.html" class="navbar__link">模板市场</a>
+            <a href="/c/profile.html" class="navbar__link navbar__link--active" data-requires-auth>个人中心</a>
+        </nav>
+        <div class="navbar__auth">
+            <a href="/admin/login.html" class="btn btn--ghost" title="进入管理后台">⚙️ 后台</a>
+            <a href="/c/login.html" class="btn btn--ghost" id="navLogin">登录</a>
+            <a href="/c/register.html" class="btn btn--primary" id="navRegister">注册</a>
+            <button class="btn btn--ghost" id="navLogout" style="display:none">退出</button>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="profile-page">
+
+            <div class="profile-header">
+                <h1>👤 个人中心</h1>
+                <div class="profile-header__sub">管理你的资料、查看训练统计</div>
+            </div>
+
+            <!-- ===== 资料卡 ===== -->
+            <section class="card" id="profileCard">
+                <div class="card__title">📝 个人资料</div>
+                <div class="card__hint">所有资料仅用于个性化训练推荐，不会被分享</div>
+                <div class="profile-grid">
+                    <div>
+                        <div class="avatar-box" id="avatarBox" title="点击更换头像">
+                            <span id="avatarDefault">💪</span>
+                            <img class="avatar-box__img" id="avatarImg" style="display:none" alt="头像">
+                            <div class="avatar-box__upload">更换</div>
+                        </div>
+                        <input type="file" id="avatarInput" accept="image/*" style="display:none">
+                    </div>
+                    <form class="form-grid" id="profileForm" autocomplete="off">
+                        <div class="form-row">
+                            <label>用户名</label>
+                            <input type="text" id="username" readonly>
+                        </div>
+                        <div class="form-row">
+                            <label>昵称 *</label>
+                            <input type="text" id="nickname" maxlength="32" placeholder="给自己起个名字">
+                        </div>
+                        <div class="form-row">
+                            <label>性别</label>
+                            <select id="gender">
+                                <option value="0">未设置</option>
+                                <option value="1">男</option>
+                                <option value="2">女</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <label>年龄</label>
+                            <input type="number" id="age" min="0" max="150" step="1" placeholder="岁">
+                        </div>
+                        <div class="form-row">
+                            <label>身高</label>
+                            <input type="number" id="height_cm" min="0" max="300" step="0.1" placeholder="cm">
+                        </div>
+                        <div class="form-row">
+                            <label>体重</label>
+                            <input type="number" id="weight_kg" min="0" max="500" step="0.1" placeholder="kg">
+                        </div>
+                        <div class="form-row form-row--full">
+                            <label>头像 URL</label>
+                            <input type="url" id="avatar_url" maxlength="255" placeholder="https://...">
+                        </div>
+                        <div class="form-row form-row--full form-actions">
+                            <button type="button" class="btn btn--ghost" id="btnCancel">取消</button>
+                            <button type="submit" class="btn btn--primary" id="btnSaveProfile">💾 保存修改</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- ===== 身体指标 ===== -->
+            <section class="card">
+                <div class="card__title">📊 身体指标</div>
+                <div class="card__hint">BMI = 体重(kg) / 身高(m)²。填入身高体重后自动计算。</div>
+                <div class="bmi-row">
+                    <div class="bmi-stat">
+                        <div class="bmi-stat__label">身高</div>
+                        <div class="bmi-stat__value" id="bmiHeight">—</div>
+                        <div class="bmi-stat__sub">cm</div>
+                    </div>
+                    <div class="bmi-stat">
+                        <div class="bmi-stat__label">体重</div>
+                        <div class="bmi-stat__value" id="bmiWeight">—</div>
+                        <div class="bmi-stat__sub">kg</div>
+                    </div>
+                    <div class="bmi-stat">
+                        <div class="bmi-stat__label">BMI</div>
+                        <div class="bmi-stat__value" id="bmiValue">—</div>
+                        <div class="bmi-stat__sub" id="bmiCategory">填入身高体重后查看</div>
+                        <div class="bmi-stat__bar">
+                            <div class="bmi-stat__bar-fill" id="bmiBar" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== 训练统计 ===== -->
+            <section class="card">
+                <div class="card__title">🏋️ 训练统计</div>
+                <div class="card__hint">来自你的计划 + 打卡记录（实时）</div>
+                <div class="stats-grid">
+                    <div class="stat-card stat-card--accent">
+                        <div class="stat-card__label">我的计划</div>
+                        <div class="stat-card__value" id="statPlans">—</div>
+                        <div class="stat-card__sub" id="statPlansSub">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card__label">总打卡</div>
+                        <div class="stat-card__value" id="statCheckins">—</div>
+                        <div class="stat-card__sub">次</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card__label">本周打卡</div>
+                        <div class="stat-card__value" id="statWeekly">—</div>
+                        <div class="stat-card__sub">最近 7 天</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card__label">已完成天数</div>
+                        <div class="stat-card__value" id="statDoneDays">—</div>
+                        <div class="stat-card__sub" id="statDoneDaysSub">—</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== 账号安全 ===== -->
+            <section class="card">
+                <div class="card__title">🔒 账号安全</div>
+                <div class="safety-row">
+                    <div>
+                        <div class="safety-row__title">登录密码</div>
+                        <div class="safety-row__desc">定期更换密码可降低被盗风险（8-20 字符，含字母+数字）</div>
+                    </div>
+                    <button class="btn btn--secondary" id="btnChangePwd">🔑 修改密码</button>
+                </div>
+                <div class="safety-row">
+                    <div>
+                        <div class="safety-row__title">退出登录</div>
+                        <div class="safety-row__desc">清除本地 token，下次访问需重新登录</div>
+                    </div>
+                    <button class="btn btn--ghost" id="btnLogout">退出</button>
+                </div>
+            </section>
+
+            <div id="loading" class="loading">加载中...</div>
+
+        </div>
+    </main>
+
+    <!-- 修改密码 Modal -->
+    <div class="modal-mask" id="pwdModal">
+        <div class="modal">
+            <div class="modal__title">🔑 修改密码</div>
+            <form id="pwdForm" autocomplete="off">
+                <div class="form-row" style="margin-bottom:12px;">
+                    <label>旧密码</label>
+                    <input type="password" id="oldPwd" minlength="8" maxlength="20" required>
+                </div>
+                <div class="form-row" style="margin-bottom:12px;">
+                    <label>新密码</label>
+                    <input type="password" id="newPwd" minlength="8" maxlength="20" required placeholder="8-20 字符，含字母+数字">
+                </div>
+                <div class="form-row" style="margin-bottom:12px;">
+                    <label>确认新密码</label>
+                    <input type="password" id="newPwd2" minlength="8" maxlength="20" required>
+                </div>
+                <div class="modal__actions">
+                    <button type="button" class="btn btn--ghost" id="btnPwdCancel">取消</button>
+                    <button type="submit" class="btn btn--primary">确认修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <p>© Gym visual · <a href="https://gymvisual.com/" target="_blank" rel="noopener">动作媒体来源</a></p>
+        <p>FitHub · v0.2.0</p>
+    </footer>
+
+    <script type="module">
+        import { api, tokenStore } from './js/api.js';
+
+        // ===== 工具 =====
+        const $ = (id) => document.getElementById(id);
+
+        function toast(msg, type = 'success') {
+            const el = $('toast');
+            el.textContent = msg;
+            el.className = `toast toast--show toast--${type}`;
+            setTimeout(() => el.className = 'toast', 2500);
+        }
+
+        function fmtDate(s) {
+            if (!s) return '—';
+            return new Date(s).toLocaleString('zh-CN', { hour12: false });
+        }
+
+        // ===== BMI 计算 =====
+        function calcBmi(weight, heightCm) {
+            if (!weight || !heightCm || heightCm <= 0) return null;
+            const m = heightCm / 100;
+            return weight / (m * m);
+        }
+
+        function bmiCategory(bmi) {
+            if (bmi == null) return { label: '—', cls: 'unknown', pct: 0 };
+            if (bmi < 18.5)  return { label: '偏瘦',   cls: 'under',  pct: 25 };
+            if (bmi < 24)    return { label: '正常',   cls: 'normal', pct: 50 };
+            if (bmi < 28)    return { label: '超重',   cls: 'over',   pct: 75 };
+            return                  { label: '肥胖',   cls: 'obese',  pct: 100 };
+        }
+
+        function renderBmi(weight, heightCm) {
+            const bmi = calcBmi(weight, heightCm);
+            $('bmiHeight').textContent = heightCm || '—';
+            $('bmiWeight').textContent = weight || '—';
+            if (bmi == null) {
+                $('bmiValue').textContent = '—';
+                $('bmiValue').className = 'bmi-stat__value bmi-cat--unknown';
+                $('bmiCategory').textContent = '填入身高体重后查看';
+                $('bmiBar').style.width = '0%';
+                return;
+            }
+            const cat = bmiCategory(bmi);
+            $('bmiValue').textContent = bmi.toFixed(1);
+            $('bmiValue').className = `bmi-stat__value bmi-cat--${cat.cls}`;
+            $('bmiCategory').textContent = cat.label;
+            $('bmiCategory').className = `bmi-stat__sub bmi-cat--${cat.cls}`;
+            $('bmiBar').style.width = `${cat.pct}%`;
+        }
+
+        // ===== 加载 + 渲染 =====
+        async function loadProfile() {
+            if (!tokenStore.isLoggedIn) {
+                location.href = '/c/login.html?next=' + encodeURIComponent('/c/profile.html');
+                return;
+            }
+            try {
+                const me = await api.auth.me();
+                renderProfile(me);
+                renderAuthUI();
+                await loadStats();
+            } catch (e) {
+                toast('加载失败：' + e.message, 'error');
+            } finally {
+                $('loading').style.display = 'none';
+            }
+        }
+
+        function renderProfile(me) {
+            $('username').value = me.username || '';
+            $('nickname').value = me.nickname || '';
+            $('gender').value = String(me.gender ?? 0);
+            $('age').value = me.age ?? '';
+            $('height_cm').value = me.height_cm ?? '';
+            $('weight_kg').value = me.weight_kg ?? '';
+            $('avatar_url').value = me.avatar_url || '';
+
+            // 头像
+            if (me.avatar_url) {
+                $('avatarImg').src = me.avatar_url;
+                $('avatarImg').style.display = 'block';
+                $('avatarDefault').style.display = 'none';
+            } else {
+                $('avatarDefault').textContent = (me.nickname || me.username || '💪').charAt(0).toUpperCase();
+            }
+
+            renderBmi(me.weight_kg, me.height_cm);
+
+            // 复制初始值（取消时还原）
+            initialValues = {
+                nickname: $('nickname').value,
+                gender: $('gender').value,
+                age: $('age').value,
+                height_cm: $('height_cm').value,
+                weight_kg: $('weight_kg').value,
+                avatar_url: $('avatar_url').value,
+            };
+        }
+
+        let initialValues = {};
+
+        async function loadStats() {
+            try {
+                const plans = await api.get('/plans/');
+                const total = plans.length;
+                const current = plans.find(p => p.is_current);
+                $('statPlans').textContent = total;
+                $('statPlansSub').textContent = current ? `当前：${current.name}` : '无当前计划';
+
+                // 总打卡 + 本周打卡 + 已完成天数
+                let checkins = 0, weekly = 0, doneDays = 0;
+                const now = Date.now();
+                const weekMs = 7 * 24 * 3600 * 1000;
+                const seenDays = new Set();
+                for (const p of plans) {
+                    try {
+                        const records = await api.get(`/plans/${p.id}/records`);
+                        for (const r of records) {
+                            checkins++;
+                            if (now - new Date(r.recorded_at).getTime() < weekMs) weekly++;
+                            seenDays.add(`${p.id}-${r.plan_week}-${r.plan_day}`);
+                        }
+                    } catch (_) {}
+                }
+                doneDays = seenDays.size;
+                $('statCheckins').textContent = checkins;
+                $('statWeekly').textContent = weekly;
+                $('statDoneDays').textContent = doneDays;
+                $('statDoneDaysSub').textContent = total > 0 ? `跨 ${total} 个计划` : '去创建第一个计划';
+            } catch (e) {
+                console.warn('load stats failed', e);
+            }
+        }
+
+        function renderAuthUI() {
+            const navLogin = $('navLogin'), navRegister = $('navRegister'), navLogout = $('navLogout');
+            const u = tokenStore.user;
+            if (tokenStore.isLoggedIn) {
+                navLogin.style.display = 'none';
+                navRegister.style.display = 'none';
+                navLogout.style.display = 'inline-flex';
+                navLogout.textContent = `退出（${u?.nickname || u?.username || ''}）`;
+            } else {
+                navLogin.style.display = 'inline-flex';
+                navRegister.style.display = 'inline-flex';
+                navLogout.style.display = 'none';
+            }
+        }
+
+        // ===== 资料保存 =====
+        $('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const body = {
+                nickname: $('nickname').value.trim() || null,
+                gender: parseInt($('gender').value, 10),
+                age: $('age').value ? parseInt($('age').value, 10) : null,
+                height_cm: $('height_cm').value ? parseFloat($('height_cm').value) : null,
+                weight_kg: $('weight_kg').value ? parseFloat($('weight_kg').value) : null,
+                avatar_url: $('avatar_url').value.trim() || null,
+            };
+            try {
+                const updated = await api.patch('/users/me', body);
+                // 更新本地 user 缓存（nickname 显示在导航上）
+                const u = tokenStore.user;
+                if (u) {
+                    u.nickname = updated.nickname;
+                    u.avatar_url = updated.avatar_url;
+                    tokenStore.set(tokenStore.access, tokenStore.refresh, u);
+                }
+                renderProfile(updated);
+                renderAuthUI();
+                toast('✅ 资料已保存');
+            } catch (e) {
+                toast('保存失败：' + e.message, 'error');
+            }
+        });
+
+        $('btnCancel').addEventListener('click', () => {
+            for (const k in initialValues) {
+                const el = $(k);
+                if (el) el.value = initialValues[k];
+            }
+            renderBmi(parseFloat($('weight_kg').value) || null, parseFloat($('height_cm').value) || null);
+        });
+
+        // 实时 BMI
+        ['height_cm', 'weight_kg'].forEach(id => {
+            $(id).addEventListener('input', () => {
+                renderBmi(
+                    parseFloat($('weight_kg').value) || null,
+                    parseFloat($('height_cm').value) || null,
+                );
+            });
+        });
+
+        // ===== 头像上传（只接受 URL，因为没有上传 endpoint）=====
+        $('avatarBox').addEventListener('click', () => {
+            $('avatar_url').focus();
+            $('avatar_url').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+        $('avatar_url').addEventListener('input', () => {
+            const url = $('avatar_url').value.trim();
+            if (url) {
+                $('avatarImg').src = url;
+                $('avatarImg').style.display = 'block';
+                $('avatarDefault').style.display = 'none';
+            } else {
+                $('avatarImg').style.display = 'none';
+                $('avatarDefault').style.display = 'block';
+            }
+        });
+
+        // ===== 修改密码 =====
+        $('btnChangePwd').addEventListener('click', () => {
+            $('pwdModal').classList.add('modal-mask--open');
+            $('oldPwd').focus();
+        });
+        $('btnPwdCancel').addEventListener('click', () => {
+            $('pwdModal').classList.remove('modal-mask--open');
+            $('pwdForm').reset();
+        });
+        $('pwdModal').addEventListener('click', (e) => {
+            if (e.target === $('pwdModal')) $('btnPwdCancel').click();
+        });
+        $('pwdForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oldPwd = $('oldPwd').value, newPwd = $('newPwd').value, newPwd2 = $('newPwd2').value;
+            if (newPwd !== newPwd2) {
+                toast('两次新密码输入不一致', 'error');
+                return;
+            }
+            if (newPwd === oldPwd) {
+                toast('新密码不能与旧密码相同', 'error');
+                return;
+            }
+            try {
+                await api.post('/users/me/password', {
+                    old_password: oldPwd,
+                    new_password: newPwd,
+                });
+                $('btnPwdCancel').click();
+                toast('✅ 密码已修改');
+            } catch (e) {
+                toast('修改失败：' + e.message, 'error');
+            }
+        });
+
+        // ===== 退出登录 =====
+        $('btnLogout').addEventListener('click', () => {
+            if (confirm('确定要退出登录吗？')) {
+                tokenStore.clear();
+                location.href = '/c/login.html';
+            }
+        });
+        $('navLogout').addEventListener('click', () => {
+            if (confirm('确定要退出登录吗？')) {
+                tokenStore.clear();
+                location.reload();
+            }
+        });
+
+        loadProfile();
+    </script>
+</body>
+</html>
