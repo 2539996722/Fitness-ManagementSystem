@@ -69,7 +69,7 @@ class UserMeUpdate(BaseModel):
     """更新当前用户信息。"""
 
     nickname: str | None = Field(None, min_length=1, max_length=32)
-    avatar_url: str | None = Field(None, max_length=255)
+    avatar_url: str | None = Field(None, max_length=2_000_000, description="图片 URL 或 base64 DataURL（≤2MB ≈ 1.4M base64 字符）")
     gender: int | None = Field(None, ge=0, le=2)
     age: int | None = Field(None, ge=0, le=150)
     height_cm: float | None = Field(None, ge=0, le=300)

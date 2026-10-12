@@ -16,6 +16,7 @@ from sqlalchemy import (
     DateTime,
     SmallInteger,
     String,
+    Text,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -34,7 +35,7 @@ class User(Base, TimestampMixin):
     username: Mapped[str] = mapped_column(String(32), unique=True, nullable=False, index=True, comment="登录名")
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False, comment="bcrypt 哈希")
     nickname: Mapped[str | None] = mapped_column(String(32), nullable=True, comment="昵称")
-    avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="头像 URL")
+    avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True, comment="头像 URL 或 base64 DataURL")
 
     # 个人信息
     gender: Mapped[int] = mapped_column(SmallInteger, default=0, comment="0 未知 1 男 2 女")
