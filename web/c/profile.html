@@ -165,7 +165,7 @@
         .hero__avatar {
             width: 96px; height: 96px;
             background: var(--bg-elevated);
-            border: 1px solid var(--border-base);
+            border: 1px solid rgba(255,255,255,0.25);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -175,6 +175,19 @@
             color: var(--text-secondary);
             letter-spacing: 0.05em;
             position: relative;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .hero__avatar:hover { border-color: var(--primary); transform: scale(1.04); }
+        .hero__avatar__hint {
+            position: absolute;
+            inset: auto 0 -22px 0;
+            text-align: center;
+            font-size: 10px;
+            color: var(--text-faint);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            pointer-events: none;
         }
         .hero__avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .hero__avatar::after {
@@ -579,6 +592,74 @@
             font-weight: 700;
             margin-bottom: var(--space-4);
         }
+
+        /* === Avatar 编辑 Modal === */
+        .avatar-modal { max-width: 460px; }
+        .avatar-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: var(--space-4);
+            border-bottom: 1px solid rgba(255,255,255,0.18);
+        }
+        .avatar-tabs__btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 10px 0;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .avatar-tabs__btn--active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .avatar-upload-zone {
+            border: 2px dashed rgba(255,255,255,0.20);
+            border-radius: var(--radius-md);
+            padding: var(--space-6);
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .avatar-upload-zone:hover {
+            border-color: var(--primary);
+            background: rgba(255,122,69,0.05);
+        }
+        .avatar-upload-zone--has {
+            border-style: solid;
+            border-color: var(--accent-mint);
+        }
+        .avatar-upload-zone__icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        .avatar-upload-zone__hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+        .avatar-preview {
+            width: 96px; height: 96px;
+            margin: 0 auto var(--space-3);
+            border-radius: 50%;
+            background: var(--bg-elevated);
+            border: 1px solid rgba(255,255,255,0.18);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+        .avatar-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
         /* === Modal === */
         .modal-mask {
             position: fixed; inset: 0;
@@ -901,6 +982,49 @@
                     <button type="submit" class="btn btn--primary">确认</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Avatar 编辑 Modal（URL 或 上传） -->
+    <div class="modal-mask" id="avatarModal">
+        <div class="modal avatar-modal">
+            <div class="modal__title">更换头像</div>
+            <div class="avatar-tabs">
+                <button class="avatar-tabs__btn avatar-tabs__btn--active" data-tab="url" type="button">URL</button>
+                <button class="avatar-tabs__btn" data-tab="upload" type="button">上传</button>
+            </div>
+
+            <!-- URL Tab -->
+            <div data-pane="url" class="avatar-pane">
+                <div class="field" style="margin-bottom:14px;">
+                    <label>图片 URL（https://...）</label>
+                    <input type="url" id="avatarModalUrl" maxlength="200000" placeholder="https://example.com/avatar.png 或 data:image/png;base64,...">
+                </div>
+                <div class="avatar-preview" id="avatarUrlPreview">
+                    <span id="avatarUrlInitial">·</span>
+                </div>
+                <div class="modal__actions">
+                    <button type="button" class="btn btn--ghost" id="btnAvatarCancel">取消</button>
+                    <button type="button" class="btn btn--primary" id="btnAvatarSaveUrl">保存</button>
+                </div>
+            </div>
+
+            <!-- Upload Tab -->
+            <div data-pane="upload" class="avatar-pane" style="display:none;">
+                <label class="avatar-upload-zone" id="avatarUploadZone">
+                    <div class="avatar-upload-zone__icon">📷</div>
+                    <div id="avatarUploadText">点击或拖拽图片到此处</div>
+                    <div class="avatar-upload-zone__hint">支持 JPG / PNG / GIF · 最大 2MB</div>
+                    <input type="file" id="avatarFileInput" accept="image/*" style="display:none;">
+                </label>
+                <div class="avatar-preview" id="avatarUploadPreview" style="display:none;">
+                    <img id="avatarUploadImg" alt="">
+                </div>
+                <div class="modal__actions">
+                    <button type="button" class="btn btn--ghost" id="btnAvatarCancel2">取消</button>
+                    <button type="button" class="btn btn--primary" id="btnAvatarSaveUpload" disabled>保存</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1376,6 +1500,153 @@
         });
 
         loadProfile();
+
+        // ============ Avatar 编辑 Modal ============
+
+        let pendingAvatarDataUrl = null;  // 上传模式下保存转好的 base64
+
+        function openAvatarModal() {
+            const me = tokenStore.user || {};
+            const initial = (me.nickname || me.username || '·').charAt(0).toUpperCase();
+            $('avatarModalUrl').value = me.avatar_url || '';
+            $('avatarUrlInitial').textContent = me.avatar_url ? '' : initial;
+            $('avatarUrlPreview').innerHTML = me.avatar_url
+                ? `<img src="${esc(me.avatar_url)}" alt="">`
+                : `<span id="avatarUrlInitial">${initial}</span>`;
+            // 重置 upload tab
+            pendingAvatarDataUrl = null;
+            $('avatarUploadPreview').style.display = 'none';
+            $('avatarUploadZone').style.display = '';
+            $('avatarUploadImg').src = '';
+            $('btnAvatarSaveUpload').disabled = true;
+            // 默认切到 URL tab
+            switchAvatarTab('url');
+            $('avatarModal').classList.add('modal-mask--open');
+        }
+
+        function closeAvatarModal() {
+            $('avatarModal').classList.remove('modal-mask--open');
+            pendingAvatarDataUrl = null;
+        }
+
+        function switchAvatarTab(name) {
+            document.querySelectorAll('.avatar-tabs__btn').forEach(b => {
+                b.classList.toggle('avatar-tabs__btn--active', b.dataset.tab === name);
+            });
+            document.querySelectorAll('.avatar-pane').forEach(p => {
+                p.style.display = (p.dataset.pane === name) ? '' : 'none';
+            });
+        }
+
+        // 头像点击 → 弹 modal
+        $('heroAvatar').addEventListener('click', openAvatarModal);
+        $('heroAvatar').style.cursor = 'pointer';
+
+        // tab 切换
+        document.querySelectorAll('.avatar-tabs__btn').forEach(btn => {
+            btn.addEventListener('click', () => switchAvatarTab(btn.dataset.tab));
+        });
+
+        // modal 关闭
+        $('btnAvatarCancel').addEventListener('click', closeAvatarModal);
+        $('btnAvatarCancel2').addEventListener('click', closeAvatarModal);
+        $('avatarModal').addEventListener('click', (e) => {
+            if (e.target === $('avatarModal')) closeAvatarModal();
+        });
+
+        // URL 输入实时预览
+        $('avatarModalUrl').addEventListener('input', () => {
+            const url = $('avatarModalUrl').value.trim();
+            if (url) {
+                $('avatarUrlPreview').innerHTML = `<img src="${esc(url)}" alt="">`;
+            } else {
+                const me = tokenStore.user || {};
+                const initial = (me.nickname || me.username || '·').charAt(0).toUpperCase();
+                $('avatarUrlPreview').innerHTML = `<span id="avatarUrlInitial">${initial}</span>`;
+            }
+        });
+
+        // 保存 URL 头像
+        $('btnAvatarSaveUrl').addEventListener('click', async () => {
+            const url = $('avatarModalUrl').value.trim();
+            if (!url) return toast('请输入 URL 或留空清除', 'error');
+            try {
+                const updated = await api.patch('/users/me', { avatar_url: url || null });
+                const u = tokenStore.user;
+                if (u) { u.avatar_url = updated.avatar_url; tokenStore.set(tokenStore.access, tokenStore.refresh, u); }
+                renderHero(updated);
+                fillForm(updated);
+                toast('✅ 头像已更新');
+                closeAvatarModal();
+            } catch (e) { toast('保存失败：' + e.message, 'error'); }
+        });
+
+        // 上传模式：点击/拖拽 选择文件
+        const uploadZone = $('avatarUploadZone');
+        const fileInput = $('avatarFileInput');
+
+        uploadZone.addEventListener('click', () => fileInput.click());
+
+        ['dragenter', 'dragover'].forEach(ev => {
+            uploadZone.addEventListener(ev, (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('avatar-upload-zone--has');
+            });
+        });
+        ['dragleave', 'drop'].forEach(ev => {
+            uploadZone.addEventListener(ev, (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('avatar-upload-zone--has');
+            });
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            const f = e.dataTransfer?.files?.[0];
+            if (f) handleAvatarFile(f);
+        });
+        fileInput.addEventListener('change', (e) => {
+            const f = e.target.files?.[0];
+            if (f) handleAvatarFile(f);
+        });
+
+        async function handleAvatarFile(file) {
+            if (!file.type.startsWith('image/')) {
+                return toast('请选择图片文件', 'error');
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                return toast('图片超过 2MB，请压缩后再试', 'error');
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                pendingAvatarDataUrl = reader.result;
+                $('avatarUploadImg').src = pendingAvatarDataUrl;
+                $('avatarUploadZone').style.display = 'none';
+                $('avatarUploadPreview').style.display = 'flex';
+                $('btnAvatarSaveUpload').disabled = false;
+                $('avatarUploadText').textContent = file.name;
+            };
+            reader.onerror = () => toast('读取图片失败', 'error');
+            reader.readAsDataURL(file);
+        }
+
+        // 保存上传的头像（base64 → avatar_url）
+        $('btnAvatarSaveUpload').addEventListener('click', async () => {
+            if (!pendingAvatarDataUrl) return toast('请先选择图片', 'error');
+            try {
+                $('btnAvatarSaveUpload').disabled = true;
+                $('btnAvatarSaveUpload').textContent = '保存中...';
+                const updated = await api.patch('/users/me', { avatar_url: pendingAvatarDataUrl });
+                const u = tokenStore.user;
+                if (u) { u.avatar_url = updated.avatar_url; tokenStore.set(tokenStore.access, tokenStore.refresh, u); }
+                renderHero(updated);
+                fillForm(updated);
+                toast('✅ 头像已上传');
+                closeAvatarModal();
+            } catch (e) {
+                toast('上传失败：' + e.message, 'error');
+                $('btnAvatarSaveUpload').disabled = false;
+                $('btnAvatarSaveUpload').textContent = '保存';
+            }
+        });
     </script>
 </body>
 </html>
