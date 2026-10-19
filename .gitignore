@@ -33,6 +33,14 @@ ENV/
 .env.local
 .env.*.local
 
+# 真实的 .env 文件（任何路径都不要提交，.env.example 必须保留作模板）
+.env
+backend/.env
+**/.env
+# 但允许 .env.example
+!backend/.env.example
+!*.env.example
+
 # 测试
 .pytest_cache/
 .coverage
@@ -91,6 +99,7 @@ desktop.ini
 
 # ---------- 数据集（按需 clone 进项目） ----------
 /data/exercises-dataset-zh/
+dataset/                                   # 根目录的 dataset/ 也不进仓库（外部 clone）
 # 上面的注释行：如果希望数据集进 Git，把上面那行删掉
 # 数据集仓库自带 .gitignore
 
@@ -113,7 +122,14 @@ backend/data/milvus_lite.db.lock
 # ---------- 业务数据（不进仓库，重新 seed）----------
 backend/data/tan_actions_full.json
 backend/data/tan_plans.json
+backend/data/*.json
+backend/data/*.jsonl
 backend/data/uploads/
+
+# ---------- 临时复现脚本（不入仓，应放到 tests/ 目录）----------
+backend/repro_tpl_bug.py
+**/repro_*.py
+**/tmp_*.py
 backend/data/*.json
 backend/data/*.db
 
