@@ -6,7 +6,7 @@
 
 这是一个**全栈 Web 应用**：
 - **C 端**：用户浏览健身动作、生成训练计划、与 AI 对话
-- **B 端**：管理员 + 教练 + 客服三级管理后台
+- **B 端**：管理员 + 教练（兼客服）两级管理后台
 - **核心数据**：1,324 个健身动作（来自 wangmuerxiao/exercises-dataset-zh）
 
 **最重要的文档**：[prd.md](../prd.md)（v1.1）。所有功能决策的源头，**先读 PRD 再动手**。
@@ -74,10 +74,9 @@
 - 数据库详细使用见 [数据库使用.md](../数据库使用.md)。
 
 ### 角色与权限（D2）
-系统有 4 种角色（`users.role` 字段）：
+系统有 3 种活跃角色（`users.role` 字段，DB 字段保留 `customer_service` 兼容历史）：
 - `user`：普通 C 端用户
-- `customer_service`：客服，仅人工会话
-- `trainer`：教练，模板 + 专业咨询
+- `trainer`：教练，**兼原客服**（M4 合并：会话工作台统一在 `/admin/workbench.html`，处理 `trainer` 人工会话；M12 迁移后 DB 已无 `customer_service` 字符串）
 - `admin`：管理员，全权
 
 权限矩阵见 PRD §3.2。RBAC 在路由层用 `Depends(require_role(...))` 校验。

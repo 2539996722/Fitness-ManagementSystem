@@ -1,7 +1,8 @@
 # FitHub 健身管理系统
 
 > 一款面向健身爱好者与运营团队的 C 端 + B 端一体化健身管理系统。
-> 1,324 个健身动作库 · AI 健身教练（OpenAI 协议）· 三级 B 端权限（管理员/教练/客服）
+> 1,324 个健身动作库 + 198 个谭师库（教练原创）· AI 健身教练（OpenAI 协议）· 两级 B 端权限（管理员/教练）
+> 训练计划：三分化（3 天）/ 四分化（4 天）预设 · 饮食原理：克数计算 + 5 个原片嵌入
 
 ## 📋 文档导航
 
@@ -12,8 +13,20 @@
 | [.claude/agents/backend-dev.md](./.claude/agents/backend-dev.md) | 后端开发专属 agent |
 | [.claude/commands/db-init.md](./.claude/commands/db-init.md) | 数据库初始化 slash command |
 | [backend/tests/perf/README.md](./backend/tests/perf/README.md) | Locust 性能测试指南 + 当前基线 |
-| `prd.md` | 产品需求文档（**待补**，目前详见 [CLAUDE.md §技术栈](./.claude/CLAUDE.md)） |
-| `数据库使用.md` | MySQL 使用指南（**待补**，目前详见 [SECURITY.md §4](./SECURITY.md)） |
+| `prd.md` | 产品需求文档（v1.1，含 D1~D10 决策 + 8 段业务模型） |
+| [`数据库使用.md`](./数据库使用.md) | MySQL 日常使用手册（启动 + alembic + 排错 + 17 迁移清单） |
+| [`deploy.md`](./deploy.md) | 生产部署指南（docker-compose.prod.yml + .env.prod + 备份 / 回滚） |
+
+### 📊 项目状态
+
+| 指标 | 数字 |
+|---|---|
+| alembic 迁移 | 17（head 0017） |
+| 后端路由文件 | 21（`app/api/v1/`） |
+| 前端页面 | 28（`web/c` + `web/admin`） |
+| 单测覆盖 | 385/385 通过（17 文件） |
+| 角色 | 3（`user` / `trainer` / `admin`） |
+| 里程碑 | M1~M7 基本完成，M8（测试 + 上线）进行中 |
 
 ---
 
@@ -21,14 +34,15 @@
 
 ### C 端（用户侧）
 - 浏览 1,324 个健身动作（含中文名、GIF 演示、10 语言步骤说明）
-- 创建训练计划（手动 / AI 生成 / 教练模板）
+- 浏览 **198 个谭师库动作**（教练原创：分类筛选 + 训练计划 + 饮食专题）
+- 创建训练计划（手动 / AI 生成 / 教练模板 · 含三分化 / 四分化预设）
 - 与 AI 健身教练对话（问答 / 计划 / 动作替代 / 饮食建议）
+- 饮食原理与计算（克数计算器 + 谭成义饮食原理 + 5 个嵌入原片）
 - 动作评论打分、训练打卡、个人中心
 
-### B 端（管理侧）— **四级角色**
-- **管理员（`admin`）**：会员管理、教练/客服账号、模板审核、数据看板、系统配置、操作日志、链路追踪
-- **教练（`trainer`）**：发布计划模板、模板审核、专业训练咨询（队列接管）
-- **客服（`customer_service`）**：基础人工会话接入、可一键升级到教练
+### B 端（管理侧）— **两级角色**
+- **管理员（`admin`）**：会员管理、教练账号、模板审核、数据看板、系统配置、操作日志、链路追踪
+- **教练（`trainer`）**：发布计划模板、模板审核、专业训练咨询（队列接管，**兼原客服** M4 合并）
 - **普通用户（`user`）**：C 端全功能
 
 > 角色定义见 `app/db/models/user.py`（`User.role` 枚举），RBAC 在路由层用 `Depends(require_role(...))` 校验。
@@ -88,7 +102,8 @@ LLM（OpenAI 协议）→ 流式响应（SSE）
 ├── /web                     # 前端（HTML + CSS + JS，无构建）
 │   ├── /c                   # C 端
 │   │   ├── /pages           # 页面（index / detail / plans / plan-create / plan-detail
-│   │   │                    #         templates / template-detail / login / register / chat）
+│   │   │                    #         templates / template-detail / login / register / chat
+│   │   │                    #         tan-library / tan-plan / tan-diet / tan-diet-topic 谭师库）
 │   │   ├── /js              # 脚本（api / app / banner / reviews / chat-tab / translations）
 │   │   ├── /css             # 样式（style / reviews）
 │   │   └── favicon.svg
@@ -208,7 +223,7 @@ cp .env.example .env
 # 数据库迁移 + 数据导入
 alembic upgrade head
 python -m app.db.seed_exercises     # 导入 1,324 个动作（幂等）
-python -m app.db.seed_cs            # 创建测试用客服账号（可选）
+python -m app.db.seed_cs            # 创建测试用教练账号（兼原客服，可选）
 python -m app.db.seed_rag           # 初始化 Chroma 向量库（M3 需要）
 python -m app.db.create_default_admin   # 创建默认管理员 admin/admin123（仅当 users 表为空）
 # 可选：python -m app.db.backfill_ai_cost   # 历史 AI 成本回填
@@ -329,12 +344,12 @@ CHROMA_PERSIST_DIR=./data/chroma       # 数据持久化目录
 
 ## 🔑 关键决策（D1~D10）
 
-详见 [.claude/CLAUDE.md](./.claude/CLAUDE.md)（prd.md 待补）：
+详见 [prd.md §6](./prd.md)：
 
 | # | 决策 | 选择 |
 |---|---|---|
 | D1 | C 端登录 | JWT + 账号密码，预留扩展 |
-| D2 | 角色 | **4 个**：`user` / `customer_service` / `trainer` / `admin` |
+| D2 | 角色 | **3 个**：`user` / `trainer` / `admin`（M12 迁移后 DB 已清理 `customer_service`） |
 | D3 | LLM 功能 | 问答 + 计划 + 替代 + 饮食 |
 | D4 | 技术栈 | FastAPI + MySQL + Chroma，前端 HTML/CSS/JS |
 | D5 | 动作数据源 | wangmuerxiao/exercises-dataset-zh |
@@ -353,11 +368,11 @@ CHROMA_PERSIST_DIR=./data/chroma       # 数据持久化目录
 | M1 | 1-2 周 | 数据集导入、FastAPI 骨架、数据库 | ✅ 完成 |
 | M2 | 3-4 周 | C 端基础（浏览、登录）+ 训练计划 | ✅ 完成 |
 | M3 | 5-6 周 | AI 助手（RAG + 4 场景：问答/计划/替代/饮食） | ✅ 基本完成 |
-| M4 | 7-8 周 | 转人工（客服/教练会话接管） | 🚧 进行中 |
-| M5 | 9-10 周 | B 端会员管理 + 客服工作台 | 🚧 进行中 |
-| M6 | 11 周 | 动作评论 + 教练模块（队列接管） | ✅ 基本完成 |
-| M7 | 12-14 周 | B 端完整 + 系统配置 + 操作日志 + 知识库 + 公告 | 🚧 进行中 |
-| M8 | 15-16 周 | 测试（Locust 压测）+ 上线 | 🚧 进行中 |
+| M4 | 7-8 周 | 转人工（教练兼客服，会话接管合并） | ✅ 完成（M4 合并客服到教练） |
+| M5 | 9-10 周 | B 端会员管理 + 教练工作台 | ✅ 基本完成 |
+| M6 | 11 周 | 动作评论 + 教练模块（队列接管） | ✅ 完成 |
+| M7 | 12-14 周 | B 端完整 + 系统配置 + 操作日志 + 知识库 + 公告 | ✅ 基本完成 |
+| M8 | 15-16 周 | 测试（Locust 压测）+ 上线 | 🚧 进行中（385/385 单测已过，部署前漂移修复中） |
 
 > M3~M7 的「路由 + 服务 + 页面」均已落地，目前在做联调、性能压测和安全加固。详见 [backend/tests/perf/README.md](./backend/tests/perf/README.md) 当前基线。
 
@@ -371,7 +386,7 @@ CHROMA_PERSIST_DIR=./data/chroma       # 数据持久化目录
 
 | # | 表 | 模型文件 | 用途 |
 |---|---|---|---|
-| 1 | `users` | `user.py` | C/B 端账号（`role` 4 枚举：`user` / `customer_service` / `trainer` / `admin`） |
+| 1 | `users` | `user.py` | C/B 端账号（`role` 3 枚举：`user` / `trainer` / `admin`） |
 | 2 | `exercises` | `exercise.py` | 1,324 个动作主数据（含 10 语言 `instructions`） |
 | 3 | `exercise_reviews` | `exercise_review.py` | 动作评论 + 1-5 星打分（M6） |
 | 4 | `plans` | `plan.py` | 用户训练计划（含 `weeks` JSON） |
@@ -413,12 +428,14 @@ CHROMA_PERSIST_DIR=./data/chroma       # 数据持久化目录
 | `/admin` | `admin_templates.py` | admin | 模板审核队列（approve / reject / offline） |
 | `/admin` | `admin_log.py` | admin | 操作日志查询 |
 | `/admin` | `admin_trace.py` | admin | 链路追踪查询 |
-| `/admin` | `cs.py` | cs/admin | 客服工作台（队列 + 一键升级到教练） |
 | `/admin/knowledge-bases` | `admin_knowledge_base.py` (admin) | admin | RAG 知识库 CRUD |
 | `/admin/knowledge-bases/{kb_id}/documents/{doc_id}/chunks` | `admin_knowledge_base.py` (admin) | admin | **查看文档的所有分片原文（调试可视化）** |
 | `/admin/knowledge-bases/{kb_id}/retrieval-test` | `admin_knowledge_base.py` (admin) | admin | KB 检索测试 |
 | `/banners` | `admin_banner.py` (public) | 公开 | C 端公告 |
 | `/admin/banners` | `admin_banner.py` (admin) | admin | 公告管理 |
+| `/tan-actions` | `tan_actions.py` (public) | 公开 | 谭师库：198 个教练动作（筛选 / 详情 / meta） |
+| `/tan-plans` | `tan_plans.py` (public) | 公开 | 训练计划：三分化 / 四分化 |
+| `/tan-diet` | `tan_diet.py` (public) | 公开 | 饮食专题：5 个视频列表 + 详情 |
 | `/static/images`、 `/static/videos` | `main.py` | 公开 | 动作 GIF / 缩略图（数据集直挂） |
 
 > 完整 schema：`http://localhost:8000/docs`（Swagger UI）或 `/openapi.json`。
@@ -433,6 +450,11 @@ CHROMA_PERSIST_DIR=./data/chroma       # 数据持久化目录
 |---|---|---|
 | 首页 | `index.html` | 动作库浏览 + 筛选 |
 | 动作详情 | `detail.html?id=0001` | 单动作 GIF + 步骤说明 |
+| 谭师库 | `tan-library.html` | 198 个教练动作 + 分类筛选 + 训练计划入口 + 饮食专题 |
+| 谭师库指南 | `tan-guide.html` | 谭师库使用引导（首次访问提示） |
+| 训练计划详情 | `tan-plan.html?name=三分化` | 教练训练计划（三/四分化）按天分组：热身 + 正式训练 |
+| 饮食原理与计算 | `tan-diet.html` | 每日克数计算器 + 谭成义饮食原理 + 5 个嵌入视频 |
+| 饮食专题详情 | `tan-diet-topic.html?id=xxx` | 单个饮食视频 + 关联动作 |
 | 模板市场 | `templates.html` | 浏览教练发布的计划模板 |
 | 模板详情 | `template-detail.html` | 模板预览 + 采用 |
 | 训练计划 | `plans.html` | 计划列表 |
@@ -458,7 +480,7 @@ CHROMA_PERSIST_DIR=./data/chroma       # 数据持久化目录
 | 操作日志 | `operation-logs.html` | admin | `operation_logs` 查询 |
 | 知识库 | `knowledge-base.html` | admin | RAG 知识库管理（含文档分片可视化 ✂️） |
 | 链路追踪 | `traces.html` | admin | `trace_spans` 查询（RequestId 串联） |
-| 客服队列 | `workbench.html` + `queue.js` | cs / admin | 人工会话接管 |
+| 会话工作台 | `workbench.html` + `trainer-queue.js` | trainer / admin | 教练人工会话接管（兼原客服） |
 
 ---
 
@@ -469,8 +491,9 @@ CHROMA_PERSIST_DIR=./data/chroma       # 数据持久化目录
 | 脚本 | 用途 | 何时跑 |
 |---|---|---|
 | `seed_exercises.py` | 从 `data/exercises-dataset-zh-master/data/exercises.json` 导入 1,324 个动作到 MySQL | 首次部署 |
+| `tan_plans.py` | 扫描 `actions_full.json` 的 `training_profile.arrangements` 自动构建三分化 / 四分化计划数据 | 首次部署 / 更新谭师库后 |
 | `seed_rag.py` | 把动作子块 embedding 后写入 Chroma | 首次部署 / 数据集更新后 |
-| `seed_cs.py` | 创建客服/教练测试账号（参数 `--users "name:pass"`） | 压测 / 测试 |
+| `seed_cs.py` | 创建教练测试账号（兼原客服，参数 `--users "name:pass"`） | 压测 / 测试 |
 | `create_default_admin.py` | 创建默认管理员（仅当 `users` 表为空时生效） | 首次部署 |
 | `backfill_ai_cost.py` | 给历史 `ai_call_logs` 回填 `cost_cny` | 升级计价模型后 |
 
@@ -703,13 +726,16 @@ $env:PYTHONUTF8=1; pip install -r requirements.txt
 
 **解决**：无需手动改名。`backend/app/main.py` 启动时会按候选顺序自动探测（`EXERCISES_DATA_DIR` → `data/exercises-dataset-zh` → `data/exercises-dataset-zh-master/exercises-dataset-zh-master` → `data/exercises-dataset-zh-master`），命中 `images/` + `videos/` 即挂载。
 
-### 5. SSE 流式响应客户端断线不取消
+### 5. SSE 流式响应客户端断连已自动取消上游 LLM
 
-**症状**：浏览器关了之后，后端 chat task 还在跑、LLM 账单继续计费。
+**症状**（修复前）：浏览器关掉页面后，后端 chat task 还在跑、LLM 账单继续计费。
 
-**临时绕过**：slowapi 全局限流 60/分钟/IP 兜底。
+**修复**（v1.1）：`backend/app/api/v1/chat.py` 的 SSE 生成器在 `asyncio.CancelledError` / `GeneratorExit` 时调用 `llm_service.close_http_client(api_base, api_key)`，强制关闭挂在 AsyncOpenAI 上的 httpx 连接 → 上游 stream 立即被 abort → 不再产生新 token。
 
-**长期方案**（M4 backlog）：在 `chat.py` 的 SSE 生成器里捕获 `asyncio.CancelledError` 并取消上游 LLM HTTP 请求。
+副作用：
+- 已收到的 delta 仍会作为 partial 消息持久化（带 `client_disconnected: True` 元信息）
+- `chat_metrics.stream_stopped` 仍记账（带 `error=True`）
+- 下次 chat 请求会重新创建 httpx client（cache miss），首字节延迟 +50~100ms（一次性）
 
 ---
 
