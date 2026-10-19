@@ -325,7 +325,7 @@ _PORTAL_HTML = """<!DOCTYPE html>
                 <div class="portal__card-title">B 端 · 管理后台</div>
                 <div class="portal__card-desc">
                     会员管理<br>
-                    客服/教练工作台<br>
+                    教练工作台<br>
                     计划模板审核
                 </div>
             </a>

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
     <title>操作日志 · FitHub 管理后台</title>
     <link rel="stylesheet" href="css/soft-ui.css">
     <style>
@@ -236,7 +237,7 @@
             return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
         }
 
-        const ROLE_LABEL = { admin: '管理员', trainer: '教练', system: '系统', customer_service: '客服' };
+        const ROLE_LABEL = { admin: '管理员', trainer: '教练', system: '系统' };
         const ROLE_CLASS = { admin: 'role-badge--admin', trainer: 'role-badge--trainer', system: 'role-badge--system' };
 
         // ============ 状态 ============

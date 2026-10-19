@@ -706,3 +706,1314 @@ input, select { font-family: inherit; }
     .banner-card { flex-wrap: wrap; }
     .banner-card__content { width: 100%; white-space: normal; }
 }
+
+/* ============================================
+   单页 Tab 面板（hidden 时整块隐藏）
+   ============================================ */
+.tab-panel { display: block; }
+.tab-panel[hidden] { display: none; }
+
+/* ============================================
+   谭师动作库样式（从 tan-library.html 抽出）
+   ============================================ */
+
+/* ====== 谭师库 — 头部 ====== */
+        .tan-hero {
+            position: relative;
+            max-width: 960px;
+            margin: var(--space-5) auto var(--space-3);
+            padding: var(--space-3) var(--space-5);
+            border-radius: var(--radius-lg);
+            background: linear-gradient(135deg, rgba(255, 122, 69, 0.12) 0%, rgba(77, 208, 255, 0.10) 100%);
+            border: 1px solid var(--border-base);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 72px;
+        }
+        .tan-hero__eyebrow {
+            font-size: 10px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--primary);
+            margin-bottom: 2px;
+        }
+        .tan-hero h1 {
+            margin: 0 0 2px;
+            font-size: 20px;
+            background: linear-gradient(120deg, var(--primary), var(--accent-cool));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .tan-hero__sub {
+            color: var(--muted);
+            font-size: 12px;
+            margin: 0;
+        }
+        .tan-hero__copy { min-width: 0; }
+        .tan-hero__count {
+            flex-shrink: 0;
+            text-align: right;
+            line-height: 1.1;
+        }
+        .tan-hero__count b {
+            font-size: 22px;
+            color: var(--white);
+            display: block;
+        }
+        .tan-hero__count small {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        /* ====== 筛选区 ====== */
+        .tan-filters {
+            max-width: 960px;
+            margin: 0 auto var(--space-4);
+            padding: 0 var(--space-6);
+        }
+        .tan-search {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: 1px solid var(--border-base);
+            background: rgba(18, 18, 28, 0.6);
+            color: var(--white);
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.18s, box-shadow 0.18s;
+        }
+        .tan-search:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+        .tan-chips {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 12px 0 6px;
+            scrollbar-width: thin;
+        }
+        .tan-chip {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 999px;
+            border: 1px solid var(--border-base);
+            background: rgba(18, 18, 28, 0.5);
+            color: var(--muted);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .tan-chip:hover {
+            color: var(--white);
+            border-color: var(--primary);
+        }
+        .tan-chip[aria-pressed="true"] {
+            background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+            color: var(--white);
+            border-color: var(--primary);
+        }
+
+        /* ====== 卡片网格 ====== */
+        .tan-grid {
+            max-width: 960px;
+            margin: 0 auto var(--space-6);
+            padding: 0 var(--space-6);
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px 12px;
+        }
+        @media (min-width: 600px) {
+            .tan-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (min-width: 900px) {
+            .tan-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        .tan-card {
+            display: block;
+            border-radius: var(--radius-lg);
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.18s ease, border-color 0.18s, box-shadow 0.18s;
+        }
+        .tan-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary);
+            box-shadow: 0 12px 32px rgba(255, 122, 69, 0.18);
+        }
+        .tan-card__pic {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            background: linear-gradient(135deg, #fef3c7 0%, #fee2e2 100%);
+            overflow: hidden;
+        }
+        .tan-card__pic img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .tan-card__origin {
+            position: absolute;
+            left: 6px;
+            bottom: 6px;
+            font-size: 10px;
+            color: var(--white);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+        .tan-card__copy {
+            padding: 10px 12px 12px;
+        }
+        .tan-card__copy h3 {
+            margin: 0 0 4px;
+            font-size: 14px;
+            color: var(--white);
+            line-height: 1.3;
+        }
+        .tan-card__copy p {
+            margin: 0;
+            font-size: 12px;
+            color: var(--muted);
+        }
+        .tan-card__copy .tan-card__equip {
+            margin-top: 6px;
+            font-size: 11px;
+            color: var(--accent-cool);
+        }
+
+        .tan-empty {
+            text-align: center;
+            color: var(--muted);
+            padding: 60px 20px;
+        }
+        .tan-empty b { color: var(--white); }
+
+        /* ====== 版权条 ====== */
+        .tan-credit {
+            text-align: center;
+            padding: 16px;
+            color: var(--muted);
+            font-size: 12px;
+            border-top: 1px solid var(--border-subtle);
+            margin-top: 32px;
+        }
+        .tan-credit a { color: var(--accent-cool); text-decoration: none; }
+
+
+/* ============================================
+   谭师动作库详情页样式（从 tan-guide.html 抽出）
+   ============================================ */
+
+.tan-detail {
+            max-width: 960px;
+            margin: var(--space-6) auto;
+            padding: var(--space-6);
+            background: rgba(18, 18, 28, 0.65);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-subtle);
+        }
+        .tan-detail__back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: var(--space-4);
+        }
+        .tan-detail__back:hover { color: var(--white); }
+        .tan-detail__header {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--space-5);
+            margin-bottom: var(--space-5);
+        }
+        @media (min-width: 700px) {
+            .tan-detail__header { grid-template-columns: 360px 1fr; }
+        }
+        .tan-guide-hero {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            background: linear-gradient(135deg, #fef3c7 0%, #fee2e2 100%);
+            border: 1px solid var(--border-base);
+        }
+        .tan-guide-hero__img { width: 100%; height: 100%; object-fit: cover; }
+        .tan-guide-hero__overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.4) 100%);
+        }
+        .tan-guide-hero__origin {
+            align-self: flex-start;
+            font-size: 11px;
+            color: var(--white);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+        .tan-guide-hero__play,
+        .tan-guide-hero__external {
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 13px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .tan-guide-hero__play {
+            background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+            color: var(--white);
+            box-shadow: 0 6px 20px var(--primary-glow);
+        }
+        .tan-guide-hero__external {
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--primary-deep);
+            font-weight: 600;
+        }
+        /* Loader 与 error 状态 */
+        .tan-guide-hero__loader,
+        .tan-guide-hero__fallback {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: rgba(18, 18, 28, 0.85);
+            color: var(--white);
+        }
+        .tan-guide-hero__spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: tan-spin 0.8s linear infinite;
+        }
+        @keyframes tan-spin {
+            to { transform: rotate(360deg); }
+        }
+        .tan-guide-hero__loader-text {
+            font-size: 13px;
+            opacity: 0.85;
+        }
+        .tan-guide-hero__fallback-icon {
+            font-size: 48px;
+        }
+        .tan-guide-hero__fallback-text {
+            font-size: 14px;
+            color: var(--primary);
+        }
+        .tan-meta h1 {
+            margin: 0 0 6px;
+            font-size: 28px;
+            color: var(--white);
+        }
+        .tan-meta__eyebrow {
+            display: inline-block;
+            font-size: 12px;
+            color: var(--primary);
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .tan-meta__chip {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: rgba(255, 122, 69, 0.12);
+            color: var(--primary-bright);
+            font-size: 11px;
+            margin-right: 6px;
+        }
+        .tan-meta__summary {
+            margin-top: 12px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+        .tan-meta__muscles {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .tan-meta__muscles span {
+            padding: 2px 8px;
+            background: rgba(77, 208, 255, 0.1);
+            color: var(--accent-cool);
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        /* ====== 步骤 tabs ====== */
+        .tan-section {
+            margin-top: var(--space-6);
+        }
+        .tan-section h2 {
+            font-size: 18px;
+            color: var(--white);
+            margin: 0 0 var(--space-3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tan-section h2::before {
+            content: '';
+            width: 3px;
+            height: 16px;
+            background: linear-gradient(180deg, var(--primary), var(--accent-cool));
+            border-radius: 2px;
+        }
+        .tan-steps {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        @media (min-width: 700px) {
+            .tan-steps { grid-template-columns: repeat(4, 1fr); }
+        }
+        .tan-step {
+            padding: 12px;
+            border-radius: var(--radius-md);
+            background: rgba(28, 33, 72, 0.5);
+            border: 1px solid var(--border-subtle);
+        }
+        .tan-step__num {
+            font-size: 12px;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+        .tan-step h4 {
+            margin: 0 0 6px;
+            font-size: 14px;
+            color: var(--white);
+        }
+        .tan-step p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        /* ====== 要点 ====== */
+        .tan-points {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .tan-point {
+            padding: 14px 16px;
+            border-left: 3px solid var(--accent-cool);
+            background: rgba(77, 208, 255, 0.05);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        }
+        .tan-point h4 {
+            margin: 0 0 6px;
+            font-size: 14px;
+            color: var(--accent-cool-bright);
+        }
+        .tan-point p {
+            margin: 0;
+            color: var(--white);
+            line-height: 1.7;
+        }
+
+        /* ====== 源视频 ====== */
+        .tan-sources {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .tan-source {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 14px;
+            background: rgba(28, 33, 72, 0.5);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            color: var(--white);
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .tan-source:hover {
+            border-color: var(--primary);
+            background: rgba(255, 122, 69, 0.08);
+        }
+        .tan-source__main {
+            flex: 1;
+            min-width: 0;
+        }
+        .tan-source__label {
+            font-size: 14px;
+            color: var(--white);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tan-source__meta {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+        .tan-source__platform {
+            flex-shrink: 0;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: var(--white);
+        }
+        .tan-source__platform--bilibili { background: #fb7299; }
+        .tan-source__platform--douyin { background: #000; }
+        .tan-source__arrow {
+            flex-shrink: 0;
+            color: var(--primary);
+            font-size: 18px;
+        }
+
+        /* ====== 训练配置 ====== */
+        .tan-dose {
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, rgba(255, 122, 69, 0.1) 0%, rgba(77, 208, 255, 0.08) 100%);
+            border: 1px solid var(--border-base);
+        }
+        .tan-dose__row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            font-size: 13px;
+        }
+        .tan-dose__row b {
+            display: block;
+            color: var(--muted);
+            font-weight: normal;
+            font-size: 11px;
+            margin-bottom: 4px;
+            letter-spacing: 0.08em;
+        }
+        .tan-dose__row span {
+            color: var(--white);
+        }
+
+        .tan-loading, .tan-error {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+        .tan-error b { color: var(--primary); }
+
+/* ============================================
+   谭师库布局（独立容器，不复用 .main 的 260px sidebar grid）
+   ============================================ */
+/* ============================================
+   谭师库布局：左侧筛选栏 + 右侧卡片区
+   ============================================ */
+.tan-main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-5);
+    display: grid !important;
+    grid-template-columns: 240px 1fr !important;
+    grid-template-areas:
+        "hero  hero"
+        "side  main" !important;
+    column-gap: var(--space-5);
+    row-gap: var(--space-4);
+    align-items: start;
+}
+
+/* hero / sidebar / content 各自归位 */
+.tan-main .tan-hero,
+.tan-main > .content__header { grid-area: hero !important; width: 100% !important; }
+.tan-main .tan-sidebar { grid-area: side !important; width: 240px !important; }
+.tan-main .tan-content { grid-area: main !important; min-width: 0 !important; }
+
+/* Hero 横幅：跨整行（不参与两栏分配） */
+.tan-main .tan-hero { flex: 0 0 100%; }
+
+/* 左侧筛选侧栏（sticky 跟随滚动） */
+.tan-sidebar {
+    flex: 0 0 240px;
+    width: 240px;             /* 硬限制，不被 chip 撑大 */
+    max-width: 240px;
+    min-width: 0;             /* 允许内容截断/换行 */
+    position: sticky;
+    top: 80px;
+    align-self: flex-start;
+    overflow: hidden;         /* 保险：子元素溢出隐藏 */
+}
+
+/* 右侧内容区 */
+.tan-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: block;
+}
+
+/* 响应式：<= 720px 改成单列堆叠 */
+@media (max-width: 720px) {
+    .tan-main {
+        grid-template-columns: 1fr !important;
+        grid-template-areas:
+            "hero"
+            "side"
+            "main" !important;
+    }
+    .tan-sidebar { position: static !important; width: 100% !important; }
+}
+
+/* 修正 .tan-hero 在 tan-main 里全宽显示（不再 max-width:960 居中缩窄） */
+.tan-main .tan-hero { max-width: none; }
+.tan-main .tan-filters { max-width: none; padding: 0; }
+
+/* .grid 在 tan-main 内沿用动作库的多列规则（auto-fill, minmax 220px） */
+.tan-main .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-4);
+}
+
+/* 真实小屏（<= 480px）才把两栏堆叠为单列；保留平板横屏（721-1024）row */
+@media (max-width: 480px) {
+    .tan-main {
+        grid-template-columns: 1fr !important;
+        grid-template-areas:
+            "hero"
+            "side"
+            "main" !important;
+    }
+    .tan-sidebar { position: static !important; width: 100% !important; }
+}
+
+
+/* ====== 谭师库侧栏 ====== */
+.tan-sidebar {
+    /* sticky 卡片外观 */
+    padding: var(--space-4);
+    background: rgba(18, 18, 28, 0.6);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+.tan-sidebar__group {
+    margin-bottom: var(--space-4);
+}
+.tan-sidebar__group:last-child { margin-bottom: 0; }
+.tan-sidebar__label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    letter-spacing: 0.06em;
+}
+.tan-sidebar__group .tan-search {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 13px;
+}
+.tan-sidebar__group .tan-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0;
+    overflow: visible;       /* 关键：覆盖原始 .tan-chips 的 overflow-x:auto */
+    scrollbar-width: none;   /* 侧栏内不显示滚动条 */
+}
+.tan-sidebar__group .tan-chip {
+    padding: 4px 10px;
+    font-size: 12px;
+    max-width: 100%;             /* 不超过父容器宽 */
+    overflow: hidden;
+    text-overflow: ellipsis;     /* 长文字省略号 */
+    white-space: nowrap;
+}
+
+/* ============================================
+   谭师库 — 多维筛选面板 UI（侧栏内）
+   ============================================ */
+.tan-sidebar__group { margin-bottom: var(--space-3); }
+
+/* 搜索框（侧栏内） */
+.tan-sidebar__group .tan-search {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 13px;
+    border-radius: 10px;
+    border: 1px solid var(--border-subtle);
+    background: rgba(18, 18, 28, 0.6);
+    color: var(--white);
+    outline: none;
+    transition: border-color 0.15s;
+}
+.tan-sidebar__group .tan-search:focus {
+    border-color: var(--primary);
+}
+
+/* 一级 Tab：身体部位（胶囊） */
+.tan-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.tan-tab {
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle);
+    background: rgba(18, 18, 28, 0.5);
+    color: var(--muted);
+    font-size: 12px;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+.tan-tab:hover { color: var(--white); border-color: var(--primary); }
+.tan-tab[aria-pressed="true"] {
+    background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+    color: var(--white);
+    border-color: var(--primary);
+    font-weight: 600;
+}
+
+/* 二级 Tab：全部 / 热身（更小的胶囊） */
+.tan-warmup-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 999px;
+}
+.tan-warmup-tab {
+    flex: 1;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 11px;
+    transition: all 0.15s;
+    cursor: pointer;
+    border: none;
+}
+.tan-warmup-tab[aria-pressed="true"] {
+    background: var(--accent-cool);
+    color: #0a0e1f;
+    font-weight: 600;
+}
+
+/* 横向触发器：细分部位 / 器械 / 动作类型 */
+.tan-triggers { display: flex; flex-direction: column; gap: 6px; }
+.tan-trigger { position: static; }   /* 浮层已挂 body，不需 relative 锚定 */
+.tan-trigger__btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    background: rgba(18, 18, 28, 0.5);
+    color: var(--white);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.tan-trigger__btn:hover { border-color: var(--primary); }
+.tan-trigger__val { color: var(--muted); flex: 1; text-align: left; }
+.tan-trigger__arrow { color: var(--primary); font-size: 10px; }
+.tan-trigger--open .tan-trigger__btn { border-color: var(--primary); }
+.tan-trigger--open .tan-trigger__arrow { transform: rotate(180deg); }
+
+/* 弹出下拉 */
+.tan-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    max-height: 280px;
+    overflow-y: auto;
+    background: rgba(28, 33, 72, 0.98);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-base);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    padding: 4px;
+}
+.tan-dropdown--floating.tan-dropdown--visible { display: block; }
+/* 旧的内嵌下拉样式已废弃，浮层走 .tan-dropdown--floating 规则 */
+.tan-dropdown__search {
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--white);
+    font-size: 12px;
+    outline: none;
+    margin: 2px 2px 4px;
+    width: calc(100% - 4px);
+}
+.tan-dropdown__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.tan-dropdown__item:hover { background: rgba(255, 122, 69, 0.1); }
+.tan-dropdown__item.is-selected {
+    background: rgba(255, 122, 69, 0.15);
+    color: var(--white);
+}
+.tan-dropdown__check {
+    width: 12px;
+    color: var(--primary);
+    font-weight: 700;
+}
+.tan-dropdown__label { flex: 1; }
+.tan-dropdown__count {
+    color: var(--muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 2 级嵌套子项缩进 */
+.tan-dropdown__item--child {
+    padding-left: 22px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.tan-dropdown__item--child .tan-dropdown__label {
+    color: var(--text-muted);
+}
+.tan-dropdown__item--child.is-selected {
+    background: rgba(255, 122, 69, 0.1);
+    color: var(--white);
+}
+.tan-dropdown__item--child.is-selected .tan-dropdown__label {
+    color: var(--white);
+}
+.tan-dropdown__item--top {
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 2px;
+    font-weight: 600;
+}
+
+/* ============================================
+   谭师库 — 全局浮层下拉（方案 1：Portal）
+   挂载到 body，fixed 定位，自动翻转
+   ============================================ */
+.tan-dropdown--floating {
+    position: fixed;
+    z-index: 1000;
+    display: none;
+    max-height: 360px;
+    overflow-y: auto;
+    min-width: 180px;
+}
+.tan-dropdown--floating.tan-dropdown--visible {
+    display: block;
+}
+.tan-trigger--open .tan-trigger__btn {
+    border-color: var(--primary);
+    background: rgba(255, 122, 69, 0.1);
+}
+
+/* 肌肉 hint（括号注释） */
+.tan-dropdown__hint {
+    color: var(--muted);
+    font-size: 11px;
+    margin-left: 4px;
+}
+.tan-dropdown__item--child .tan-dropdown__hint {
+    color: var(--text-faint);
+}
+
+/* ============================================
+   Tab 占位面板（训练计划 / 模板市场 / 个人中心）
+   ============================================ */
+.tab-placeholder {
+    max-width: 480px;
+    margin: 80px auto;
+    text-align: center;
+    padding: var(--space-6);
+    background: rgba(18, 18, 28, 0.5);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    color: var(--muted);
+}
+.tab-placeholder__icon {
+    font-size: 64px;
+    margin-bottom: var(--space-3);
+}
+.tab-placeholder h2 {
+    color: var(--white);
+    margin: 0 0 var(--space-3);
+    font-size: 22px;
+}
+.tab-placeholder p {
+    line-height: 1.8;
+    margin: 0;
+    font-size: 14px;
+}
+.tab-placeholder a {
+    color: var(--primary);
+    text-decoration: underline;
+}
+.tab-placeholder a:hover {
+    color: var(--primary-bright);
+}
+
+/* ============================================
+   训练计划快捷入口（谭师库侧边栏底部）
+   ============================================ */
+.tan-plans-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.tan-plan-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(18, 18, 28, 0.5);
+    border: 1px solid var(--border-subtle);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.15s;
+}
+.tan-plan-item:hover {
+    background: rgba(255, 122, 69, 0.1);
+    border-color: var(--primary);
+    transform: translateX(2px);
+}
+.tan-plan-item__icon {
+    font-size: 22px;
+    flex-shrink: 0;
+}
+.tan-plan-item__main { flex: 1; min-width: 0; }
+.tan-plan-item__name {
+    font-size: 13px;
+    color: var(--white);
+    font-weight: 600;
+}
+.tan-plan-item__meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+.tan-plan-item__arrow {
+    color: var(--primary);
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+/* ============ 训练计划详情页 ============ */
+.tan-plan-detail {
+    max-width: 960px;
+    margin: var(--space-6) auto;
+    padding: 0 var(--space-5);
+}
+.tan-plan-detail__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+    margin-bottom: var(--space-4);
+}
+.tan-plan-detail__back:hover { color: var(--white); }
+.tan-plan-header {
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, rgba(255, 122, 69, 0.12) 0%, rgba(77, 208, 255, 0.10) 100%);
+    border: 1px solid var(--border-base);
+    margin-bottom: var(--space-5);
+}
+.tan-plan-header h1 {
+    margin: 0 0 6px;
+    color: var(--white);
+    font-size: 28px;
+}
+.tan-plan-header__meta {
+    color: var(--muted);
+    font-size: 13px;
+}
+.tan-day-section {
+    margin-bottom: var(--space-5);
+    padding: var(--space-4);
+    background: rgba(18, 18, 28, 0.6);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+}
+.tan-day-section h2 {
+    margin: 0 0 var(--space-3);
+    color: var(--primary);
+    font-size: 18px;
+}
+.tan-day-section__count {
+    color: var(--muted);
+    font-weight: normal;
+    font-size: 13px;
+    margin-left: 8px;
+}
+.tan-plan-action {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    background: rgba(28, 33, 72, 0.5);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.15s;
+}
+.tan-plan-action:hover {
+    border-color: var(--primary);
+    background: rgba(255, 122, 69, 0.06);
+}
+.tan-plan-action__num {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+}
+.tan-plan-action__main { flex: 1; min-width: 0; }
+.tan-plan-action__name {
+    color: var(--white);
+    font-size: 14px;
+    font-weight: 600;
+}
+.tan-plan-action__body {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 2px;
+}
+.tan-plan-action__dose {
+    color: var(--accent-cool);
+    font-size: 12px;
+    margin-top: 6px;
+    line-height: 1.5;
+}
+
+/* ============================================
+   谭师库 · 饮食详情面板（点击左栏视频在右侧展示）
+   ============================================ */
+.tan-diet-detail {
+    max-width: 960px;
+    margin: 0 auto;
+}
+.tan-diet-detail__hero {
+    padding: var(--space-5);
+    background: linear-gradient(135deg, rgba(255, 122, 69, 0.10) 0%, rgba(77, 208, 255, 0.08) 100%);
+    border: 1px solid var(--border-base);
+    border-radius: var(--radius-xl);
+    margin-bottom: var(--space-4);
+}
+.tan-diet-detail__platform {
+    display: inline-block;
+    padding: 3px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--accent-cool);
+    font-size: 11px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+}
+.tan-diet-detail__title {
+    margin: 0 0 10px;
+    color: var(--white);
+    font-size: 22px;
+    line-height: 1.4;
+}
+.tan-diet-detail__desc {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+    margin: 0 0 16px;
+}
+.tan-diet-detail__watch {
+    display: inline-block;
+    padding: 10px 22px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+    color: var(--white);
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 4px 16px var(--primary-glow);
+}
+.tan-diet-detail__watch:hover { box-shadow: 0 6px 24px var(--primary-glow); }
+.tan-diet-detail__ts {
+    color: var(--accent-cool);
+    font-size: 12px;
+    margin: 0 0 var(--space-4);
+}
+.tan-diet-detail__related {
+    padding: var(--space-4);
+    background: rgba(18, 18, 28, 0.5);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-3);
+}
+.tan-diet-detail__related h3 {
+    margin: 0 0 var(--space-3);
+    color: var(--white);
+    font-size: 15px;
+}
+.tan-diet-detail__rel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.tan-diet-detail__rel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(28, 33, 72, 0.5);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--white);
+    font-size: 13px;
+    transition: all 0.15s;
+}
+.tan-diet-detail__rel:hover {
+    border-color: var(--accent-cool);
+    background: rgba(77, 208, 255, 0.06);
+}
+.tan-diet-detail__more {
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+    margin: var(--space-3) 0 0;
+}
+.tan-diet-detail__more a { color: var(--primary); }
+.content__back {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+}
+.content__back:hover { color: var(--primary-bright); }
+
+/* ============================================
+   饮食专题触发按钮（侧栏）
+   ============================================ */
+.tan-trigger-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(18, 18, 28, 0.5);
+    border: 1px solid var(--border-subtle);
+    text-align: left;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 13px;
+    transition: all 0.15s;
+}
+.tan-trigger-btn:hover {
+    background: rgba(255, 122, 69, 0.08);
+    border-color: var(--primary);
+    transform: translateX(2px);
+}
+
+/* ============================================
+   饮食专题卡片网格（谭师库主区）
+   ============================================ */
+.tan-diet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-3);
+    width: 100%;
+}
+.tan-diet-card {
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.18s ease, border-color 0.18s, box-shadow 0.18s;
+}
+.tan-diet-card:hover {
+    border-color: var(--primary) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 122, 69, 0.18);
+}
+.tan-diet-card__image {
+    aspect-ratio: 16/9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+.tan-diet-card__icon {
+    font-size: 64px;
+    opacity: 0.4;
+    line-height: 1;
+}
+.tan-diet-card__platform {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 2px 8px;
+    color: var(--white);
+    font-size: 10px;
+    border-radius: 999px;
+}
+.tan-diet-card__summary {
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 6px 0 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ============================================
+   谭师库饮食专题 · "查看更多"入口卡（紫色）
+   ============================================ */
+.tan-diet-card--more {
+    border-style: dashed;
+    border-color: var(--accent-purple);
+}
+.tan-diet-card--more:hover {
+    border-style: solid !important;
+    box-shadow: 0 0 20px var(--accent-purple-glow) !important;
+}
+
+/* ============================================
+   谭师库侧栏 · 饮食专区快捷入口（指向 tan-diet.html）
+   ============================================ */
+.tan-diet-shortcut {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(167, 139, 255, 0.10) 0%, rgba(77, 208, 255, 0.06) 100%);
+    border: 1px solid rgba(167, 139, 255, 0.3);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.15s var(--ease);
+}
+.tan-diet-shortcut:hover {
+    background: linear-gradient(135deg, rgba(167, 139, 255, 0.18) 0%, rgba(77, 208, 255, 0.10) 100%);
+    border-color: var(--accent-purple);
+    transform: translateX(2px);
+}
+.tan-diet-shortcut__main { flex: 1; min-width: 0; }
+.tan-diet-shortcut__name {
+    color: var(--white);
+    font-size: 12px;
+    font-weight: 600;
+}
+.tan-diet-shortcut__desc {
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 2px;
+}
+
+/* ============================================
+   谭师库侧栏 · 饮食专区（全部内联在左栏内）
+   ============================================ */
+.tan-diet-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    border-radius: 8px;
+    background: rgba(28, 33, 72, 0.4);
+    border: 1px solid var(--border-subtle);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.15s var(--ease);
+}
+.tan-diet-item:hover {
+    border-color: var(--primary);
+    background: rgba(255, 122, 69, 0.08);
+    transform: translateX(2px);
+}
+.tan-diet-item__icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+}
+.tan-diet-item__main { flex: 1; min-width: 0; }
+.tan-diet-item__name {
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.tan-diet-item__meta {
+    color: var(--text-faint);
+    font-size: 9px;
+    margin-top: 2px;
+}
+.tan-diet-item__arrow {
+    color: var(--primary);
+    font-size: 14px;
+    flex-shrink: 0;
+}
+/* "查看更多"卡：紫色虚线边 */
+.tan-diet-item--more {
+    border-style: dashed;
+    border-color: var(--accent-purple);
+    background: linear-gradient(135deg, rgba(167, 139, 255, 0.06) 0%, rgba(28, 33, 72, 0.4) 100%);
+    margin-top: 6px;
+}
+.tan-diet-item--more:hover {
+    border-color: var(--accent-purple);
+    border-style: solid;
+    background: linear-gradient(135deg, rgba(167, 139, 255, 0.12) 0%, rgba(28, 33, 72, 0.4) 100%);
+    box-shadow: 0 0 12px var(--accent-purple-glow);
+}

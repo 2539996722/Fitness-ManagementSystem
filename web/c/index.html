@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
     <title>FitHub · 健身动作库</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -13,11 +14,12 @@
             <span class="navbar__logo">💪</span>
             <span class="navbar__title">FitHub</span>
         </div>
-        <nav class="navbar__nav">
-            <a href="/c/" class="navbar__link navbar__link--active">动作库</a>
-            <a href="/c/plans.html" class="navbar__link">训练计划</a>
-            <a href="/c/templates.html" class="navbar__link">模板市场</a>
-            <a href="/c/profile.html" class="navbar__link" data-requires-auth>个人中心</a>
+        <nav class="navbar__nav" role="tablist" aria-label="主导航">
+            <a class="navbar__link navbar__link--active" role="tab" aria-selected="true" data-tab="exercises" href="#exercises">动作库</a>
+            <a class="navbar__link" href="tan-library.html">谭师库</a>
+            <a class="navbar__link" role="tab" aria-selected="false" data-tab="plans" href="#plans">训练计划</a>
+            <a class="navbar__link" role="tab" aria-selected="false" data-tab="templates" href="#templates">模板市场</a>
+            <a class="navbar__link" role="tab" aria-selected="false" data-tab="profile" href="#profile" data-requires-auth>个人中心</a>
         </nav>
         <div class="navbar__auth">
             <a href="/admin/login.html" class="btn btn--ghost" title="进入管理后台">⚙️ 后台</a>
@@ -30,8 +32,9 @@
     <!-- 公告 Banner（M9，从 /api/v1/banners/active 拉取） -->
     <section id="bannerStrip" class="banner-strip" aria-label="公告"></section>
 
-    <!-- 主体 -->
-    <main class="main">
+    <!-- Tab 面板 1：动作库（原 index.html 主体） -->
+    <section id="panel-exercises" class="tab-panel" role="tabpanel" data-panel="exercises">
+        <main class="main">
         <!-- 筛选侧栏 -->
             <aside class="sidebar">
                 <div class="sidebar__group">
@@ -79,8 +82,43 @@
                 </div>
             </section>
         </main>
+    </section>
 
-        <!-- 页脚 -->
+    <!-- Tab 面板 2：谭师库（按需挂载到 #panel-tan-body，避免重复请求） -->
+    <section id="panel-tan" class="tab-panel" role="tabpanel" data-panel="tan" hidden>
+        <div id="panel-tan-body">
+            <div class="tan-loading" style="text-align:center;padding:60px;color:var(--muted);">谭师库加载中…</div>
+        </div>
+    </section>
+
+    <!-- Tab 面板 3：训练计划（占位） -->
+    <section id="panel-plans" class="tab-panel" role="tabpanel" data-panel="plans" hidden>
+        <div class="tab-placeholder">
+            <div class="tab-placeholder__icon">📋</div>
+            <h2>训练计划</h2>
+            <p>该模块正在开发中…<br>当前完整功能请访问 <a href="/c/plans.html" target="_blank">/c/plans.html</a>。</p>
+        </div>
+    </section>
+
+    <!-- Tab 面板 4：模板市场（占位） -->
+    <section id="panel-templates" class="tab-panel" role="tabpanel" data-panel="templates" hidden>
+        <div class="tab-placeholder">
+            <div class="tab-placeholder__icon">📚</div>
+            <h2>模板市场</h2>
+            <p>该模块正在开发中…<br>当前完整功能请访问 <a href="/c/templates.html" target="_blank">/c/templates.html</a>。</p>
+        </div>
+    </section>
+
+    <!-- Tab 面板 5：个人中心（占位） -->
+    <section id="panel-profile" class="tab-panel" role="tabpanel" data-panel="profile" hidden>
+        <div class="tab-placeholder">
+            <div class="tab-placeholder__icon">👤</div>
+            <h2>个人中心</h2>
+            <p>该模块正在开发中…<br>当前完整功能请访问 <a href="/c/profile.html" target="_blank">/c/profile.html</a>。</p>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
         <footer class="footer">
             <p>© Gym visual · <a href="https://gymvisual.com/" target="_blank" rel="noopener">动作媒体来源</a></p>
             <p>FitHub · v0.1.0</p>
@@ -88,5 +126,6 @@
 
         <script type="module" src="js/app.js"></script>
         <script type="module" src="js/banner.js"></script>
+        <script type="module" src="js/index-tabs.js"></script>
     </body>
 </html>

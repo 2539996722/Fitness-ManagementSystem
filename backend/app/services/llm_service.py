@@ -96,6 +96,27 @@ def _get_client(api_base: str, api_key: str) -> "AsyncOpenAI":
     return _client_cache[key]
 
 
+async def close_http_client(api_base: str, api_key: str) -> None:
+    """关闭并移除指定 (api_base, api_key) 对应的 httpx 客户端。
+
+    用途：SSE 客户端断连时，强制关闭上游 LLM 的 HTTP 连接，避免 token 继续扣费。
+    下次调用 _get_client() 会重新创建。
+    """
+    import httpx
+
+    key = (api_base, api_key)
+    client = _client_cache.pop(key, None)
+    if client is None:
+        return
+    # 自定义 httpx client 路径：client._client 是 AsyncClient 实例
+    http_client = getattr(client, "_client", None) or getattr(client, "http_client", None)
+    if http_client is not None and isinstance(http_client, httpx.AsyncClient):
+        try:
+            await http_client.aclose()
+        except Exception as e:
+            logger.warning("关闭 LLM httpx client 失败：{}", e)
+
+
 async def load_llm_config() -> dict[str, Any]:
     """从 DB 加载 LLM 配置，缺省回退 .env。
 

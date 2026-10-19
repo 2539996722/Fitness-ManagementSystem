@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
     <title>会话工作台 · FitHub 管理后台</title>
     <link rel="stylesheet" href="css/soft-ui.css">
     <link rel="stylesheet" href="css/queue.css">
@@ -25,20 +26,15 @@
             <div class="wb-shell__topbar">
                 <div class="wb-shell__title">
                     💬 会话工作台
-                    <span id="wbRoleTag"></span>
+                    <span id="wbRoleTag">· 教练视角：会话队列 + 历史</span>
                 </div>
                 <div class="wb-shell__actions">
                     <button class="wb-shell__toggle" id="wbToggleUser" title="展开/收起右栏">
                         <span id="wbToggleUserIcon">📋 隐藏会员信息</span>
                     </button>
-                    <div id="wbTabs" class="tab-row">
-                        <button class="tab tab--active" data-wb="cs" id="wbTabCs">📞 客服</button>
-                        <button class="tab" data-wb="trainer" id="wbTabTrainer">🏋️ 教练</button>
-                    </div>
                 </div>
             </div>
             <div id="wbPanels" class="wb-shell__panels">
-                <div id="csPanel" data-wb-panel="cs"></div>
                 <div id="trainerPanel" data-wb-panel="trainer"></div>
             </div>
         </div>
@@ -57,32 +53,8 @@
             window.location.href = '/admin/login.html';
         }
 
-        // 挂载客服 + 教练两个工作台面板
-        import('./js/queue.js').then(({ mountQueue }) => mountQueue('csPanel'));
+        // ponytail: 教练兼任客服（M4 合并），统一挂载 trainer 工作台即可覆盖 waiting_human + waiting_trainer 两类
         import('./js/trainer-queue.js').then(({ mountTrainer }) => mountTrainer('trainerPanel'));
-
-        const wbTabs = document.querySelectorAll('[data-wb]');
-        const wbPanels = document.querySelectorAll('[data-wb-panel]');
-        const wbRoleTag = document.getElementById('wbRoleTag');
-        const wbTabTrainer = document.getElementById('wbTabTrainer');
-
-        // ponytail: customer_service 已从 B 端移除（login.html 拦截），这里不再按角色切默认 Tab
-        const defaultWb = 'trainer';
-        const wbLabel = {
-            cs:      '· 客服视角：转人工队列与历史',
-            trainer: '· 教练视角：专业咨询队列',
-        };
-        function switchWb(tab) {
-            wbTabs.forEach(t => t.classList.toggle('tab--active', t.dataset.wb === tab));
-            wbPanels.forEach(p => {
-                const show = p.dataset.wbPanel === tab;
-                p.style.display = show ? 'flex' : 'none';
-            });
-            if (wbRoleTag) wbRoleTag.textContent = wbLabel[tab] || '';
-            document.title = `会话工作台 · ${tab === 'trainer' ? '教练视角' : '客服视角'} · FitHub 管理后台`;
-        }
-        wbTabs.forEach(t => t.addEventListener('click', () => switchWb(t.dataset.wb)));
-        switchWb(defaultWb);
 
         // 右栏（会员信息）折叠开关
         const wbShell = document.getElementById('wbShell');
@@ -104,7 +76,6 @@
             applyUserPaneHidden(next);
             localStorage.setItem(USER_PANE_KEY, next ? '1' : '0');
         });
-
-        </script>
+    </script>
 </body>
 </html>
