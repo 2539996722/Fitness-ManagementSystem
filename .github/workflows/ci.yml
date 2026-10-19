@@ -1,0 +1,117 @@
+# FitHub CI
+#
+# 触发：push / pull_request 到 master
+# 跑：单测 + alembic head 一致性 + ruff lint
+# 不跑：MySQL 集成测试（test_integration_mysql.py，需要真实 MySQL）
+# 不跑：Locust 压测（perf/，超时+资源密集）
+#
+# 总耗时目标：< 5 分钟
+# 如果某步失败，会发邮件给 GitHub 设置的地址
+
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+# 同一个 PR 后推会取消上一次的运行（节省 CI 资源）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================
+  # Job 1：单测 + 静态检查
+  # ============================================
+  test:
+    name: 测试 + Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    # 默认 python 3.11 可用，ubuntu-latest 自带
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          # 跳过 chromadb（CI 跑 RAG 测试有 Windows-only 的 issues；prod CI 加进 extra）
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx ruff
+
+      - name: ruff check
+        working-directory: backend
+        run: |
+          ruff check . --output-format=github
+
+      - name: ruff format check
+        working-directory: backend
+        run: |
+          ruff format --check .
+
+      - name: 单测（不含 MySQL 集成）
+        working-directory: backend
+        env:
+          # CI 不连真实 MySQL；用 sqlite/in-memory 跑单测，
+          # 路由层 mock 数据库，详见 conftest
+          APP_ENV: testing
+          JWT_SECRET: ci-test-secret-at-least-32-characters-long-pad-pad
+          DEFAULT_ADMIN_USERNAME: ciadmin
+          DEFAULT_ADMIN_PASSWORD: CIPass123!@#
+        run: |
+          pytest -q --ignore=tests/test_integration_mysql.py \
+                   --tb=short \
+                   --maxfail=5 \
+                   -W ignore::DeprecationWarning
+
+      - name: alembic head 一致性
+        working-directory: backend
+        # CI 无 MySQL，只验 head 数 = 1（无分叉）。完整 check 要 MySQL。
+        run: |
+          # alembic env.py 要 MYSQL_DSN 才能 import env，
+          # 给一个 dummy 让 import 通过
+          MYSQL_DSN="mysql+aiomysql://ci:ci@localhost:3306/ci?charset=utf8mb4" \
+            alembic heads 2>&1 | tee /tmp/alembic_heads.txt
+          HEAD_COUNT=$(grep -c "(head)" /tmp/alembic_heads.txt || true)
+          if [ "$HEAD_COUNT" != "1" ]; then
+            echo "::error::alembic heads 数量 = $HEAD_COUNT（应为 1）"
+            exit 1
+          fi
+
+  # ============================================
+  # Job 2：Docker 镜像构建冒烟（不推送）
+  # ============================================
+  build:
+    name: Docker 构建
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test
+    # 仅 push 到 master 时跑（PR 跳过，节省时间）
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 构建 backend 镜像（不推送）
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: false
+          tags: fithub-backend:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

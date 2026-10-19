@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.tox/
+
+# 环境 / 密钥（绝不能进镜像）
+.env
+.env.*
+!.env.example
+
+# 业务数据 / 缓存
+data/
+!data/.gitkeep
+backend/data/
+backend/.chroma/
+backend/.milvus/
+
+# 测试 artifacts
+tests/perf/perf_report*.csv
+tests/perf/locust_*.log
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Git
+.git/
+.gitignore
+.github/
+
+# Docs（生产镜像不需要 markdown 源文件，可减小层）
+# 注释掉如需在容器内查文档：
+# *.md
+# !README.md
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
