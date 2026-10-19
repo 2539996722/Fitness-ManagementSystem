@@ -41,32 +41,44 @@ PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe tests/perf/locustfile.py
 | p99 | < 500 ms | 健康；超过要查索引或加缓存 |
 | max | < 1000 ms | 偶发抖动可接受 |
 
-## 当前基线（2026-09-09，dev + 本机 MySQL）
+## 当前基线（2026-10-19，dev + 本机 MySQL + 17 迁移 + 385 单测）
 
-### 单进程基准 `tests/perf/locustfile.py quick_benchmark`
+> 注：M12 (#122) 跑过 alembic 0017 customer_service 归一；数据集 1324 动作 / 36 用户 / 4 公告 / 6 模板。
+> 单进程脚本：`backend/tests/perf/quick_bench.py`（不依赖 locust）
+> 并发脚本：`backend/tests/perf/concurrent_bench.py`（10 用户 × 15 秒，纯 threading）
+
+### 单进程基准 `python tests/perf/quick_bench.py`
 
 `GET /api/v1/exercises?page=1&page_size=24` × 50 次：
 
+| 指标 | 值 | 对比 2026-09-09 |
+|---|---|---|
+| avg | 25.9 ms | 9.3 ms（+178%） |
+| p50 | 20.4 ms | 8.6 ms |
+| p95 | 55.1 ms | 9.6 ms |
+| p99 | 56.2 ms | 41.2 ms |
+| max | 56.2 ms | 41.2 ms |
+| 成功 | 50/50 | 50/50 |
+
+> 延迟上升原因：M12 期间 `0016` 改 `users.avatar_url` 字段长度、`0017` 跑过数据 UPDATE；M5-M7 期间新加的字段（`weight_logs` / `banners` 全文索引）使表 schema 复杂度上升。仍在 200ms 阈值内。
+
+### 10 用户并发 × 15 秒 `python tests/perf/concurrent_bench.py`
+
 | 指标 | 值 |
 |---|---|
-| avg | 9.3 ms |
-| p50 | 8.6 ms |
-| p95 | 9.6 ms |
-| p99 | 41.2 ms |
-| max | 41.2 ms |
+| 用户数 | 10（threading） |
+| 时长 | 15s |
+| 总请求 | 1676 |
+| 成功 | 1676（100%） |
+| 失败 | 0（无 5xx / 4xx） |
+| **RPS** | **111.5** |
+| avg | 89.6 ms |
+| p50 | 85.6 ms |
+| p95 | 113.3 ms |
+| p99 | 155.1 ms |
+| max | 162.7 ms |
 
-### 10 用户并发 × 15 秒（locust --headless）
-
-| 端点 | p50 | p95 | 总请求 |
-|---|---|---|---|
-| `/exercises` (带筛选) | 40 ms | 77 ms | 40 |
-| `/exercises` (无筛选) | 41 ms | 50 ms | 41 |
-| `/exercises/{id}` | 19 ms | 29 ms | 19 |
-| `/exercises/filters` | 27 ms | 35 ms | 27 |
-| `/plan-templates` | 25 ms | 27 ms | 25 |
-| `/banners/active` | 29 ms | 29 ms | 29 |
-| C 端**聚合** | **29 ms** | **77 ms** | **181** |
-| `/admin/*` (B 端) | 16 ms | 16 ms | 63 |
+> 老基线（locust 9 月 10 用户 15 秒）总请求 181，本基线 1676（**+826%**）—— 旧 locust 跑得太保守，10 用户里只有 9 个真在打；新脚本 10 个 thread 持续 15s 是真实压力。
 
 ## 已识别的潜在瓶颈
 
