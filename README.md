@@ -13,7 +13,6 @@
 | [.claude/agents/backend-dev.md](./.claude/agents/backend-dev.md) | 后端开发专属 agent |
 | [.claude/commands/db-init.md](./.claude/commands/db-init.md) | 数据库初始化 slash command |
 | [backend/tests/perf/README.md](./backend/tests/perf/README.md) | Locust 性能测试指南 + 当前基线 |
-| `prd.md` | 产品需求文档（v1.1，含 D1~D10 决策 + 8 段业务模型） |
 | [`数据库使用.md`](./数据库使用.md) | MySQL 日常使用手册（启动 + alembic + 排错 + 17 迁移清单） |
 | [`deploy.md`](./deploy.md) | 生产部署指南（docker-compose.prod.yml + .env.prod + 备份 / 回滚） |
 
@@ -358,25 +357,6 @@ CHROMA_PERSIST_DIR=./data/chroma       # 数据持久化目录
 | D8 | AI 兜底 | RAG 检索相似动作重生成 |
 | D9 | 客服排班 | 不需要 |
 | D10 | 国际化 | 仅中文 |
-
----
-
-## 📅 里程碑
-
-| 阶段 | 时间 | 内容 | 状态 |
-|---|---|---|---|
-| M1 | 1-2 周 | 数据集导入、FastAPI 骨架、数据库 | ✅ 完成 |
-| M2 | 3-4 周 | C 端基础（浏览、登录）+ 训练计划 | ✅ 完成 |
-| M3 | 5-6 周 | AI 助手（RAG + 4 场景：问答/计划/替代/饮食） | ✅ 基本完成 |
-| M4 | 7-8 周 | 转人工（教练兼客服，会话接管合并） | ✅ 完成（M4 合并客服到教练） |
-| M5 | 9-10 周 | B 端会员管理 + 教练工作台 | ✅ 基本完成 |
-| M6 | 11 周 | 动作评论 + 教练模块（队列接管） | ✅ 完成 |
-| M7 | 12-14 周 | B 端完整 + 系统配置 + 操作日志 + 知识库 + 公告 | ✅ 基本完成 |
-| M8 | 15-16 周 | 测试（Locust 压测）+ 上线 | 🚧 进行中（385/385 单测已过，部署前漂移修复中） |
-
-> M3~M7 的「路由 + 服务 + 页面」均已落地，目前在做联调、性能压测和安全加固。详见 [backend/tests/perf/README.md](./backend/tests/perf/README.md) 当前基线。
-
-**MVP 建议范围**：M1 + M2 + M3 + M4（共 8 周）。
 
 ---
 
