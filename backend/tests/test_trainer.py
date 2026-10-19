@@ -304,7 +304,7 @@ class TestCheckTrainerConv:
         with pytest.raises(HTTPException) as exc:
             await _check_trainer_conv(1, _make_trainer(), session)
         assert exc.value.status_code == 400
-        assert "不是教练" in exc.value.detail
+        assert "不是人工咨询类型" in exc.value.detail
 
     @pytest.mark.asyncio
     async def test_require_claimed_other_trainer_403(self):
@@ -360,7 +360,7 @@ class TestClaimConversation:
         with pytest.raises(HTTPException) as exc:
             await claim_trainer_conversation(1, _make_trainer(id=10), session)
         assert exc.value.status_code == 409
-        assert "已被其他教练" in exc.value.detail
+        assert "已被其他人" in exc.value.detail
 
     @pytest.mark.asyncio
     async def test_claim_ai_active_blocked(self):

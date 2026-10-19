@@ -75,17 +75,17 @@ class TestBuildHistory:
         ]
 
     @pytest.mark.asyncio
-    async def test_cs_and_trainer_map_to_assistant(self):
-        """customer_service / trainer 消息统一映射为 assistant（OpenAI 协议兼容）。"""
+    async def test_trainer_and_ai_map_to_assistant(self):
+        """trainer / ai 消息统一映射为 assistant（OpenAI 协议兼容）。"""
         session = _mock_history_session([
             _make_message("trainer", "教练回复", datetime(2024, 1, 3)),
-            _make_message("customer_service", "客服回复", datetime(2024, 1, 2)),
+            _make_message("ai", "AI 回复", datetime(2024, 1, 2)),
             _make_message("user", "问 1", datetime(2024, 1, 1)),
         ])
         out = await _build_history(session, conv_id=1)
         # 非 user 全部 → assistant
         assert out[0] == {"role": "user", "content": "问 1"}
-        assert out[1] == {"role": "assistant", "content": "客服回复"}
+        assert out[1] == {"role": "assistant", "content": "AI 回复"}
         assert out[2] == {"role": "assistant", "content": "教练回复"}
 
     @pytest.mark.asyncio

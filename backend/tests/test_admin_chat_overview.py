@@ -28,6 +28,11 @@ class TestChatOverviewHappyPath:
         from app.api.v1.admin_dashboard import chat_overview
         from app.services import chat_metrics
 
+        # 动态日期：基于 today - N 推算，避免历史日期跑出 trend 窗口
+        now_date = datetime.now().date()
+        d_minus_2 = (now_date - timedelta(days=2)).isoformat()  # trend 范围内
+        d_minus_0 = now_date.isoformat()  # 当天
+
         # mock session（按路由调用顺序返回结果）
         session = AsyncMock()
 
@@ -35,10 +40,10 @@ class TestChatOverviewHappyPath:
         r1 = MagicMock(); r1.scalar.return_value = 12
         # 2) today tokens + cost
         r2 = MagicMock(); r2.first.return_value = (15000, 0.012345)
-        # 3) daily trend rows: [('2026-10-09', 5, 5000, 0.005)]
+        # 3) daily trend rows：两天有数据，中间一天无数据补 0
         r3 = MagicMock(); r3.all.return_value = [
-            ('2026-10-09', 5, 5000, 0.005),
-            ('2026-10-11', 3, 3000, 0.003),
+            (d_minus_2, 5, 5000, 0.005),
+            (d_minus_0, 3, 3000, 0.003),
         ]
         # 4) by_intent rows
         r4 = MagicMock(); r4.all.return_value = [
@@ -83,13 +88,14 @@ class TestChatOverviewHappyPath:
             assert "cost" in point
         # 验证 mock 的两个日期非空
         by_date = {p["date"]: p for p in trend}
-        assert by_date["2026-10-09"]["calls"] == 5
-        assert by_date["2026-10-09"]["tokens"] == 5000
-        assert by_date["2026-10-09"]["cost"] == 0.005
-        assert by_date["2026-10-11"]["calls"] == 3
+        assert by_date[d_minus_2]["calls"] == 5
+        assert by_date[d_minus_2]["tokens"] == 5000
+        assert by_date[d_minus_2]["cost"] == 0.005
+        assert by_date[d_minus_0]["calls"] == 3
         # 中间没数据的日期补 0
-        assert by_date["2026-10-10"]["calls"] == 0
-        assert by_date["2026-10-10"]["cost"] == 0.0
+        d_minus_1 = (now_date - timedelta(days=1)).isoformat()
+        assert by_date[d_minus_1]["calls"] == 0
+        assert by_date[d_minus_1]["cost"] == 0.0
 
         # history.by_intent：null intent → 'unknown'
         by_intent = {x["intent"]: x["tokens"] for x in result["history"]["by_intent"]}
