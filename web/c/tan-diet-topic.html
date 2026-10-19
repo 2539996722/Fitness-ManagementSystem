@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>饮食专题 · 谭师库</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .diet-topic-page { max-width: 960px; margin: var(--space-6) auto var(--space-8); padding: 0 var(--space-5); }
+        .diet-topic-page__back { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); text-decoration: none; font-size: 14px; margin-bottom: var(--space-4); }
+        .diet-topic-page__back:hover { color: var(--white); }
+        .diet-topic-hero { padding: var(--space-6); background: linear-gradient(135deg, rgba(255, 122, 69, 0.12) 0%, rgba(77, 208, 255, 0.10) 100%); border: 1px solid var(--border-base); border-radius: var(--radius-xl); margin-bottom: var(--space-4); }
+        .diet-topic-hero__platform { display: inline-block; padding: 4px 12px; color: var(--white); font-size: 12px; border-radius: 999px; margin-bottom: 12px; }
+        .diet-topic-hero h1 { margin: 0 0 12px; color: var(--white); font-size: 26px; line-height: 1.4; }
+        .diet-topic-hero__desc { color: var(--muted); font-size: 14px; line-height: 1.7; margin: 0 0 18px; max-width: 720px; }
+        .diet-topic-hero__watch { display: inline-block; padding: 10px 22px; background: linear-gradient(135deg, var(--primary), var(--primary-deep)); color: var(--white); border-radius: 999px; text-decoration: none; font-size: 14px; font-weight: 600; box-shadow: 0 4px 16px var(--primary-glow); }
+        .diet-topic-hero__watch:hover { box-shadow: 0 6px 24px var(--primary-glow); }
+        .diet-topic-section { margin-top: var(--space-5); }
+        .diet-topic-section h2 { margin: 0 0 12px; color: var(--white); font-size: 18px; }
+        .diet-topic-related { display: flex; flex-direction: column; gap: 8px; }
+        .diet-topic-related a { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: rgba(28, 33, 72, 0.5); border: 1px solid var(--border-subtle); border-radius: 8px; text-decoration: none; color: var(--white); font-size: 13px; transition: all 0.15s; }
+        .diet-topic-related a:hover { border-color: var(--accent-cool); background: rgba(77, 208, 255, 0.06); }
+        .diet-topic-related__label { color: var(--text-muted); font-size: 11px; margin-left: auto; }
+        .diet-topic-more { color: var(--muted); font-size: 12px; text-align: center; margin-top: var(--space-5); }
+        .diet-topic-more a { color: var(--primary); }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="navbar__brand"><span class="navbar__logo">💪</span><span class="navbar__title">FitHub</span></div>
+        <nav class="navbar__nav">
+            <a href="/c/" class="navbar__link">动作库</a>
+            <a href="/c/tan-library.html" class="navbar__link navbar__link--active">训练师库</a>
+            <a href="/c/tan-diet.html" class="navbar__link">饮食</a>
+            <a href="/c/plans.html" class="navbar__link">训练计划</a>
+            <a href="/c/templates.html" class="navbar__link">模板市场</a>
+            <a href="/c/profile.html" class="navbar__link" data-requires-auth>个人中心</a>
+        </nav>
+        <div class="navbar__auth">
+            <a href="/admin/login.html" class="btn btn--ghost" title="进入管理后台">⚙️ 后台</a>
+            <a href="/c/login.html" class="btn btn--ghost" id="navLogin">登录</a>
+            <a href="/c/register.html" class="btn btn--primary" id="navRegister">注册</a>
+            <button class="btn btn--ghost" id="navLogout" style="display:none">退出</button>
+        </div>
+    </header>
+
+    <main class="diet-topic-page">
+        <a class="diet-topic-page__back" href="tan-library.html">‹ 返回谭师库</a>
+        <div id="content"><div style="text-align:center;padding:60px;color:var(--muted);">加载中…</div></div>
+    </main>
+
+    <p class="tan-credit" style="text-align:center;color:var(--muted);font-size:12px;padding:16px;">
+        饮食内容 © 谭成义
+    </p>
+
+    <script type="module">
+        const API = '/api/v1';
+        const params = new URLSearchParams(location.search);
+        const topicId = params.get('id');
+        const content = document.getElementById('content');
+
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        function fmtTime(sec) {
+            if (typeof sec !== 'number') return '';
+            return `${Math.floor(sec/60)}:${String(Math.round(sec%60)).padStart(2,'0')}`;
+        }
+
+        async function load() {
+            if (!topicId) {
+                content.innerHTML = '<div style="text-align:center;padding:60px;color:var(--muted);">未指定专题 ID</div>';
+                return;
+            }
+            try {
+                const r = await fetch(`${API}/tan-diet/${encodeURIComponent(topicId)}`);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const t = await r.json();
+                document.title = `${t.title} · 饮食专题`;
+                render(t);
+            } catch (e) {
+                content.innerHTML = `<div style="text-align:center;padding:60px;color:#fca5a5;">加载失败：${esc(e.message)}</div>`;
+            }
+        }
+
+        function render(t) {
+            const platColor = { 'B站': '#fb7299', '抖音': '#000000' };
+            const platIcon = { 'B站': '📺', '抖音': '🎵' };
+            const related = (t.related_actions || []).map(a => `
+                <a href="tan-guide.html?actionId=${encodeURIComponent(a.action_id)}">
+                    <span>${platIcon[t.platform] || '🎬'}</span>
+                    <span>${esc(a.name)}</span>
+                    <span style="color:var(--muted);font-size:11px;">${esc(a.body || '')}</span>
+                    <span class="diet-topic-related__label">${esc(a.label || '')}${a.start ? ' · ' + fmtTime(a.start) : ''}</span>
+                </a>
+            `).join('');
+            content.innerHTML = `
+                <section class="diet-topic-hero">
+                    <div class="diet-topic-hero__platform" style="background:${platColor[t.platform] || '#666'};">
+                        ${platIcon[t.platform] || '🎬'} ${esc(t.platform)}
+                    </div>
+                    <h1>${esc(t.title)}</h1>
+                    <p class="diet-topic-hero__desc">${esc(t.summary)}</p>
+                    <a class="diet-topic-hero__watch" href="${esc(t.url)}" target="_blank" rel="noreferrer">
+                        ▶ 去 ${esc(t.platform)} 观看完整${t.timestamp ? '（' + fmtTime(t.timestamp) + '）' : ''}
+                    </a>
+                </section>
+                ${related ? `
+                <section class="diet-topic-section">
+                    <h2>关联动作（${t.related_actions.length}）</h2>
+                    <div class="diet-topic-related">${related}</div>
+                </section>` : ''}
+                <p class="diet-topic-more">
+                    完整饮食原理与每日克数计算，请访问 <a href="tan-diet.html">饮食｜饮食原理与计算</a>。
+                </p>
+            `;
+        }
+
+        load();
+    </script>
+    <script src="js/auth-nav.js"></script>
+</body>
+</html>

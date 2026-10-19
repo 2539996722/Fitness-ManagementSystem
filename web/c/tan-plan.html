@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>训练计划 · 谭师库</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* ============ 训练计划详情页（顶部 Tab 切换版）============ */
+        .tan-plan-page {
+            max-width: 960px;
+            margin: var(--space-6) auto var(--space-8);
+            padding: 0 var(--space-5);
+        }
+        .tan-plan-page__back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: var(--space-4);
+            transition: color 0.15s;
+        }
+        .tan-plan-page__back:hover { color: var(--white); }
+
+        .tan-plan-title {
+            margin-bottom: var(--space-2);
+        }
+        .tan-plan-title h1 {
+            font-size: 28px;
+            color: var(--white);
+            margin: 0 0 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .tan-plan-title__icon {
+            font-size: 28px;
+        }
+        .tan-plan-title__sub {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        /* 顶部 Tab 栏（按天数切换）—— 高级质感 */
+        .tan-plan-tabs {
+            display: flex;
+            gap: 4px;
+            margin: var(--space-5) 0 var(--space-5);
+            padding: 6px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(28, 33, 72, 0.7) 0%, rgba(18, 18, 28, 0.7) 100%);
+            border: 1px solid var(--border-subtle);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.04),
+                0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+        .tan-plan-tab {
+            position: relative;
+            flex: 1;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.25s var(--ease);
+            overflow: hidden;
+        }
+        .tan-plan-tab:hover {
+            color: var(--white);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .tan-plan-tab[aria-selected="true"] {
+            color: var(--white);
+            font-weight: 700;
+            background: linear-gradient(135deg,
+                rgba(255, 122, 69, 0.18) 0%,
+                rgba(229, 90, 35, 0.18) 100%);
+            box-shadow:
+                0 0 0 1px rgba(255, 122, 69, 0.5),
+                0 4px 18px rgba(255, 122, 69, 0.35),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .tan-plan-tab[aria-selected="true"]::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg,
+                transparent 0%,
+                var(--primary) 50%,
+                transparent 100%);
+        }
+        .tan-plan-tab[aria-selected="true"]::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: -1px;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 2px;
+            background: var(--primary);
+            border-radius: 2px;
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+        .tan-plan-tab__count {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 8px;
+            font-size: 11px;
+            color: var(--text-faint);
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+        }
+        .tan-plan-tab[aria-selected="true"] .tan-plan-tab__count {
+            color: var(--white);
+            background: rgba(255, 122, 69, 0.25);
+        }
+
+        /* 动作卡片列表 */
+        .tan-plan-day {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .tan-plan-phase {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: var(--space-4) 0 var(--space-2);
+            padding-left: 4px;
+        }
+        .tan-plan-phase:first-child { margin-top: 0; }
+        .tan-plan-phase__bar {
+            width: 3px;
+            height: 14px;
+            border-radius: 2px;
+            background: linear-gradient(180deg, var(--primary), var(--primary-deep));
+        }
+        .tan-plan-phase__title {
+            font-size: 13px;
+            color: var(--primary);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+        .tan-plan-phase__count {
+            color: var(--text-faint);
+            font-size: 11px;
+            margin-left: auto;
+        }
+        .tan-plan-action {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 14px 16px;
+            background: rgba(28, 33, 72, 0.5);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.18s var(--ease);
+        }
+        .tan-plan-action--warmup {
+            border-left: 3px solid var(--accent-cool);
+            background: rgba(77, 208, 255, 0.05);
+        }
+        .tan-plan-action--warmup .tan-plan-action__num {
+            background: linear-gradient(135deg, var(--accent-cool), var(--accent-purple));
+            box-shadow: 0 0 8px var(--accent-cool-glow);
+        }
+        .tan-plan-action:hover {
+            border-color: var(--primary);
+            background: rgba(255, 122, 69, 0.06);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .tan-plan-action--warmup:hover {
+            border-color: var(--accent-cool);
+            background: rgba(77, 208, 255, 0.08);
+        }
+        .tan-plan-action__num {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+        .tan-plan-action__main { flex: 1; min-width: 0; }
+        .tan-plan-action__name {
+            color: var(--white);
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .tan-plan-action__body {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        .tan-plan-action__dose {
+            color: var(--accent-cool);
+            font-size: 12px;
+            line-height: 1.5;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px dashed var(--border-subtle);
+        }
+        .tan-plan-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="navbar__brand">
+            <span class="navbar__logo">💪</span>
+            <span class="navbar__title">FitHub</span>
+        </div>
+        <nav class="navbar__nav">
+            <a href="/c/" class="navbar__link">动作库</a>
+            <a href="/c/tan-library.html" class="navbar__link navbar__link--active">训练师库</a>
+            <a href="/c/plans.html" class="navbar__link">训练计划</a>
+            <a href="/c/templates.html" class="navbar__link">模板市场</a>
+            <a href="/c/profile.html" class="navbar__link" data-requires-auth>个人中心</a>
+        </nav>
+        <div class="navbar__auth">
+            <a href="/admin/login.html" class="btn btn--ghost" title="进入管理后台">⚙️ 后台</a>
+            <a href="/c/login.html" class="btn btn--ghost" id="navLogin">登录</a>
+            <a href="/c/register.html" class="btn btn--primary" id="navRegister">注册</a>
+            <button class="btn btn--ghost" id="navLogout" style="display:none">退出</button>
+        </div>
+    </header>
+
+    <div id="content" class="tan-plan-page">
+        <div class="tan-plan-empty">加载中…</div>
+    </div>
+
+    <p class="tan-credit" style="text-align:center;color:var(--muted);font-size:12px;padding:16px;">
+        训练计划内容 © 谭成义
+    </p>
+
+    <script type="module">
+        const API = '/api/v1';
+        const params = new URLSearchParams(location.search);
+        const planName = params.get('name') || '';
+        const initialDay = parseInt(params.get('day') || '1', 10);
+        const content = document.getElementById('content');
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        async function load() {
+            if (!planName) {
+                content.innerHTML = '<div class="tan-plan-empty">未指定计划名（URL 需带 ?name=三分化 或 ?name=四分化）</div>';
+                return;
+            }
+            try {
+                const r = await fetch(`${API}/tan-plans/${encodeURIComponent(planName)}`);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const p = await r.json();
+                document.title = `${p.name} · 谭师训练计划`;
+                render(p);
+            } catch (e) {
+                content.innerHTML = `<div class="tan-plan-empty"><b>加载失败</b><br>${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        function render(p) {
+            const iconMap = { '三分化': '🔥', '四分化': '💪' };
+            // 校验 initialDay
+            const validDays = p.days.map(d => d.day);
+            let currentDay = validDays.includes(initialDay) ? initialDay : validDays[0];
+
+            // 标题 + 副标题
+            const title = `
+                <a class="tan-plan-page__back" href="tan-library.html">‹ 返回动作库</a>
+                <div class="tan-plan-title">
+                    <h1><span class="tan-plan-title__icon">${iconMap[p.name] || '📋'}</span>${escapeHtml(p.name)}</h1>
+                    <div class="tan-plan-title__sub">${p.days.length}天 · ${p.total_actions}个动作 · 由谭成义教练设计</div>
+                </div>
+            `;
+
+            // 顶部 Tab 栏
+            const tabs = `
+                <div class="tan-plan-tabs" role="tablist">
+                    ${p.days.map(d => `
+                        <button class="tan-plan-tab" role="tab"
+                                aria-selected="${d.day === currentDay ? 'true' : 'false'}"
+                                data-day="${d.day}">
+                            第 ${d.day} 天
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+
+            content.innerHTML = title + tabs + `<div id="dayList" class="tan-plan-day"></div>`;
+            // 绑定 tab 点击
+            content.querySelectorAll('.tan-plan-tab').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentDay = parseInt(btn.dataset.day, 10);
+                    // 更新 URL（保留 plan name，更新 day）
+                    const u = new URL(location.href);
+                    u.searchParams.set('day', currentDay);
+                    history.replaceState(null, '', u.toString());
+                    // 更新高亮
+                    content.querySelectorAll('.tan-plan-tab').forEach(b =>
+                        b.setAttribute('aria-selected', b === btn ? 'true' : 'false')
+                    );
+                    // 渲染当天
+                    renderDay(p, currentDay);
+                });
+            });
+            renderDay(p, currentDay);
+        }
+
+        function renderDay(p, day) {
+            const list = document.getElementById('dayList');
+            const dayData = p.days.find(d => d.day === day);
+            if (!dayData) {
+                list.innerHTML = '<div class="tan-plan-empty">该天暂无数据</div>';
+                return;
+            }
+            // 按 phase 分组（warmup 在前，main 在后）
+            const warmup = dayData.actions.filter(a => a.phase === 'warmup');
+            const main = dayData.actions.filter(a => a.phase !== 'warmup');
+
+            function renderAction(a, idx) {
+                const isWarmup = a.phase === 'warmup';
+                return `
+                <a class="tan-plan-action ${isWarmup ? 'tan-plan-action--warmup' : ''}"
+                   href="tan-guide.html?plan=${encodeURIComponent(p.name)}&day=${day}&actionId=${encodeURIComponent(a.action_id)}">
+                    <div class="tan-plan-action__num">${idx + 1}</div>
+                    <div class="tan-plan-action__main">
+                        <div class="tan-plan-action__name">${escapeHtml(a.name)}</div>
+                        <div class="tan-plan-action__body">训练部位：${escapeHtml(a.body || '—')}</div>
+                        ${a.dose ? `<div class="tan-plan-action__dose">组数次数：${escapeHtml(a.dose)}</div>` : ''}
+                    </div>
+                </a>`;
+            }
+
+            function phaseHeader(title, count) {
+                return `
+                <div class="tan-plan-phase">
+                    <div class="tan-plan-phase__bar"></div>
+                    <div class="tan-plan-phase__title">${title}</div>
+                    <div class="tan-plan-phase__count">${count} 个动作</div>
+                </div>`;
+            }
+
+            let html = '';
+            if (warmup.length) {
+                html += phaseHeader('🔥 热身激活', warmup.length);
+                warmup.forEach((a, i) => html += renderAction(a, i));
+            }
+            if (main.length) {
+                html += phaseHeader('💪 正式训练', main.length);
+                main.forEach((a, i) => html += renderAction(a, i));
+            }
+            list.innerHTML = html;
+        }
+
+        load();
+    </script>
+    <script src="js/auth-nav.js"></script>
+</body>
+</html>

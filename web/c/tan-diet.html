@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>饮食｜饮食原理与计算 · FitHub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .diet-page { max-width: 960px; margin: var(--space-6) auto var(--space-8); padding: 0 var(--space-5); }
+        .diet-page__back { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); text-decoration: none; font-size: 14px; margin-bottom: var(--space-4); }
+        .diet-page__back:hover { color: var(--white); }
+        .diet-hero h1 { margin: 0 0 12px; font-size: 32px; color: var(--white); }
+        .diet-hero p { color: var(--muted); font-size: 14px; line-height: 1.7; margin: 0; max-width: 720px; }
+
+        .diet-section { margin-top: var(--space-7); padding: var(--space-5); background: rgba(18, 18, 28, 0.6); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); }
+        .diet-section h2 { margin: 0 0 8px; color: var(--white); font-size: 22px; }
+        .diet-section__num { color: var(--primary); margin-right: 8px; }
+        .diet-section__desc { color: var(--muted); font-size: 13px; line-height: 1.7; margin: 0 0 var(--space-4); }
+
+        .diet-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); margin: var(--space-4) 0; }
+        .diet-form__field { display: flex; flex-direction: column; gap: 4px; }
+        .diet-form__field label { font-size: 12px; color: var(--muted); }
+        .diet-form__field input, .diet-form__field select { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-subtle); background: rgba(0, 0, 0, 0.3); color: var(--white); font-size: 13px; }
+        .diet-form__field input:focus, .diet-form__field select:focus { border-color: var(--primary); outline: none; }
+        .diet-form__note { font-size: 11px; color: var(--text-faint); margin-top: var(--space-2); }
+        .diet-form__btn { padding: 10px 24px; border-radius: 8px; background: linear-gradient(135deg, var(--primary), var(--primary-deep)); color: var(--white); border: none; cursor: pointer; font-size: 14px; font-weight: 600; margin-top: var(--space-3); }
+        .diet-form__btn:hover { box-shadow: 0 4px 16px var(--primary-glow); }
+        .diet-form__disclaimer { font-size: 11px; color: var(--text-faint); margin-top: var(--space-3); line-height: 1.6; }
+
+        .diet-result { display: none; }
+        .diet-result.is-shown { display: block; }
+        .diet-result__params { padding: 8px 12px; background: rgba(0, 0, 0, 0.2); border-radius: 6px; font-size: 12px; color: var(--muted); margin-bottom: var(--space-3); }
+        .diet-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); margin: var(--space-3) 0; }
+        .diet-card { padding: var(--space-4); background: rgba(28, 33, 72, 0.5); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); text-align: center; }
+        .diet-card__label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+        .diet-card__value { font-size: 32px; font-weight: 700; color: var(--primary); }
+        .diet-card__unit { font-size: 14px; color: var(--muted); margin-left: 4px; font-weight: normal; }
+        .diet-card__formula { font-size: 11px; color: var(--text-faint); margin-top: 8px; font-family: monospace; }
+        .diet-energy { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(28, 33, 72, 0.5); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); margin: var(--space-3) 0; }
+        .diet-energy__label { color: var(--muted); font-size: 13px; }
+        .diet-energy__value { color: var(--white); font-size: 22px; font-weight: 700; }
+        .diet-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; background: rgba(0, 0, 0, 0.3); margin: var(--space-3) 0; }
+        .diet-bar__seg { display: flex; align-items: center; justify-content: center; color: var(--white); font-size: 11px; font-weight: 600; transition: width 0.3s; }
+        .diet-bar__seg--carb { background: linear-gradient(90deg, var(--primary), var(--primary-deep)); }
+        .diet-bar__seg--prot { background: linear-gradient(90deg, var(--accent-cool), var(--accent-purple)); }
+        .diet-bar__seg--fat { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+        .diet-bar__legend { display: flex; gap: var(--space-3); font-size: 11px; color: var(--muted); }
+        .diet-bar__legend span::before { content: '●'; margin-right: 4px; }
+        .diet-bar__legend .l-carb::before { color: var(--primary); }
+        .diet-bar__legend .l-prot::before { color: var(--accent-cool); }
+        .diet-bar__legend .l-fat::before { color: #fbbf24; }
+        .diet-warn { padding: 12px 16px; background: rgba(220, 38, 38, 0.15); border: 1px solid rgba(220, 38, 38, 0.4); border-radius: 8px; color: #fca5a5; font-size: 12px; line-height: 1.6; margin: var(--space-3) 0; }
+
+        .diet-collapse { border: 1px solid var(--border-subtle); border-radius: 8px; margin: var(--space-3) 0; overflow: hidden; }
+        .diet-collapse__head { padding: 12px 16px; background: rgba(28, 33, 72, 0.5); cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+        .diet-collapse__head h3 { margin: 0; color: var(--white); font-size: 15px; }
+        .diet-collapse__head span { color: var(--primary); transition: transform 0.2s; }
+        .diet-collapse.is-open .diet-collapse__head span { transform: rotate(180deg); }
+        .diet-collapse__body { display: none; padding: var(--space-4); background: rgba(18, 18, 28, 0.5); font-size: 13px; line-height: 1.7; color: var(--muted); }
+        .diet-collapse.is-open .diet-collapse__body { display: block; }
+
+        .diet-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: var(--space-3) 0; }
+        .diet-table th, .diet-table td { padding: 8px 10px; border: 1px solid var(--border-subtle); text-align: center; }
+        .diet-table th { background: rgba(28, 33, 72, 0.6); color: var(--muted); font-weight: 600; }
+        .diet-table a { color: var(--accent-cool); text-decoration: none; }
+        .diet-table a:hover { color: var(--accent-cool-bright); }
+
+        .diet-meal { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-3); }
+        .diet-meal__item { padding: 12px 14px; background: rgba(28, 33, 72, 0.5); border-radius: 8px; font-size: 13px; }
+        .diet-meal__item b { color: var(--primary); display: block; margin-bottom: 4px; }
+
+        .diet-toggle { display: flex; gap: 8px; margin: var(--space-3) 0; }
+        .diet-toggle button { padding: 6px 16px; border-radius: 999px; border: 1px solid var(--border-subtle); background: rgba(18, 18, 28, 0.5); color: var(--muted); font-size: 12px; cursor: pointer; }
+        .diet-toggle button[aria-pressed="true"] { background: linear-gradient(135deg, var(--primary), var(--primary-deep)); color: var(--white); border-color: var(--primary); }
+
+        .diet-list { padding-left: 20px; color: var(--muted); font-size: 13px; line-height: 1.9; }
+        .diet-list b { color: var(--white); }
+
+        .diet-tip { font-size: 12px; color: var(--text-faint); line-height: 1.7; margin-top: var(--space-2); }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="navbar__brand"><span class="navbar__logo">💪</span><span class="navbar__title">FitHub</span></div>
+        <nav class="navbar__nav">
+            <a href="/c/" class="navbar__link">动作库</a>
+            <a href="/c/tan-library.html" class="navbar__link">训练师库</a>
+            <a href="/c/tan-diet.html" class="navbar__link navbar__link--active">饮食</a>
+            <a href="/c/plans.html" class="navbar__link">训练计划</a>
+            <a href="/c/templates.html" class="navbar__link">模板市场</a>
+            <a href="/c/profile.html" class="navbar__link" data-requires-auth>个人中心</a>
+        </nav>
+        <div class="navbar__auth">
+            <a href="/admin/login.html" class="btn btn--ghost" title="进入管理后台">⚙️ 后台</a>
+            <a href="/c/login.html" class="btn btn--ghost" id="navLogin">登录</a>
+            <a href="/c/register.html" class="btn btn--primary" id="navRegister">注册</a>
+            <button class="btn btn--ghost" id="navLogout" style="display:none">退出</button>
+        </div>
+    </header>
+
+    <main class="diet-page">
+        <a class="diet-page__back" href="tan-library.html">‹ 返回谭师库</a>
+        <section class="diet-hero">
+            <h1>饮食｜饮食原理与计算</h1>
+            <p>谭成义的减脂方法：先确定每天的碳水、蛋白质和脂肪，再用连续 7–10 天的变化调整。</p>
+        </section>
+
+        <!-- 模块 1：每日摄入计算 -->
+        <section class="diet-section">
+            <h2><span class="diet-section__num">01 /</span> 计算 · 每日摄入计算</h2>
+            <p class="diet-section__desc">体重填公斤，运动量按每周实际小时填写。</p>
+            <form id="dietForm" onsubmit="return false">
+                <div class="diet-form">
+                    <div class="diet-form__field"><label>性别</label><select id="gender"><option value="male" selected>男</option><option value="female">女</option></select></div>
+                    <div class="diet-form__field"><label>体重 (kg)</label><input id="weight" type="number" value="68" min="30" max="200" step="0.1"></div>
+                    <div class="diet-form__field"><label>年龄 (岁)</label><input id="age" type="number" value="23" min="10" max="100"></div>
+                    <div class="diet-form__field"><label>身高 (cm，选填)</label><input id="height" type="number" value="173" min="100" max="220"></div>
+                    <div class="diet-form__field"><label>当前目标</label><select id="goal"><option value="cut" selected>减脂</option><option value="maintain">维持</option><option value="bulk">增肌</option></select></div>
+                    <div class="diet-form__field"><label>每周运动时长</label><select id="hours"><option value="0-1">0-1 小时</option><option value="2-3" selected>2-3 小时</option><option value="4-5">4-5 小时</option><option value="6-8">6-8 小时</option><option value="8+">8 小时以上</option></select></div>
+                </div>
+                <p class="diet-form__note">原片按小时分档，训练次数不直接代入。身高仅用于下方的静息代谢估算。</p>
+                <button class="diet-form__btn" id="calcBtn" type="button">计算参考量</button>
+                <p class="diet-form__disclaimer">⚠ 适用于普通健康成年人。孕哺期、进食障碍或需要医疗饮食管理时，请先由专业人员评估。</p>
+            </form>
+        </section>
+
+        <!-- 模块 2：减脂起始参考 -->
+        <section class="diet-section diet-result" id="resultSection">
+            <p class="diet-result__params" id="resultParams"></p>
+            <h2>减脂起始参考</h2>
+            <p class="diet-section__desc">每天的三项克数，来自原片系数表。</p>
+            <div class="diet-cards">
+                <div class="diet-card"><div class="diet-card__label">碳水</div><div><span class="diet-card__value" id="carbG">—</span><span class="diet-card__unit">g</span></div><div class="diet-card__formula" id="carbF">—</div></div>
+                <div class="diet-card"><div class="diet-card__label">蛋白质</div><div><span class="diet-card__value" id="protG">—</span><span class="diet-card__unit">g</span></div><div class="diet-card__formula" id="protF">—</div></div>
+                <div class="diet-card"><div class="diet-card__label">脂肪</div><div><span class="diet-card__value" id="fatG">—</span><span class="diet-card__unit">g</span></div><div class="diet-card__formula" id="fatF">—</div></div>
+            </div>
+            <div class="diet-energy"><div class="diet-energy__label">三项折算能量</div><div><span class="diet-energy__value" id="totalKcal">—</span> kcal/天</div></div>
+            <div class="diet-bar" id="dietBar">
+                <div class="diet-bar__seg diet-bar__seg--carb" id="barCarb" style="width:50%">碳水 50%</div>
+                <div class="diet-bar__seg diet-bar__seg--prot" id="barProt" style="width:30%">蛋白 30%</div>
+                <div class="diet-bar__seg diet-bar__seg--fat" id="barFat" style="width:20%">脂肪 20%</div>
+            </div>
+            <div class="diet-bar__legend"><span class="l-carb">碳水</span><span class="l-prot">蛋白质</span><span class="l-fat">脂肪</span></div>
+            <p class="diet-section__desc" style="margin-top:var(--space-3);">占比按供能计算：碳水、蛋白质每克约 4 kcal，脂肪每克约 9 kcal。这里的克数是营养素重量，不是米饭、肉或食用油的食物重量。</p>
+            <div class="diet-warn" id="dietWarn" style="display:none;">⚠ 表内三项折算能量低于你的静息代谢估算。请先核对输入及适用性，不要直接将这个数作为每日摄入目标。</div>
+            <div class="diet-collapse" data-collapse>
+                <div class="diet-collapse__head" data-toggle><h3>原片系数与 85 公斤算例</h3><span>▾</span></div>
+                <div class="diet-collapse__body">
+                    <p>男性每周 2-3 小时训练：碳水 = 体重 × 2.2、蛋白 = 体重 × 1.4、脂肪 = 体重 × 0.8。</p>
+                    <p>85 公斤参考：碳水 ≈ 187g、蛋白 ≈ 119g、脂肪 ≈ 68g。总能量 ≈ 187×4 + 119×4 + 68×9 ≈ 1992 kcal。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块 3：食物份量换算 -->
+        <section class="diet-section">
+            <h2>食物份量换算</h2>
+            <p class="diet-section__desc">以下是全天参考量的等效对照，帮助理解份量。每一项单独换算，不能把所有选项相加。</p>
+            <div class="diet-card" style="text-align:left;margin-bottom:var(--space-3);">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div><div class="diet-card__label" style="text-align:left;">碳水目标</div><div><span class="diet-card__value" id="carbG2" style="font-size:24px;">—</span> <span class="diet-card__unit">g</span></div></div>
+                    <div style="text-align:right;"><div class="diet-card__label" style="text-align:right;">≈ 熟米饭</div><div><span class="diet-card__value" id="riceG" style="font-size:24px;">—</span> <span class="diet-card__unit">g</span></div></div>
+                </div>
+                <p class="diet-tip">📌 本页按 150g/碗计算。一碗约 43g 碳水，约 3.6g 蛋白质。</p>
+            </div>
+            <h3 style="color:var(--white);font-size:15px;margin:var(--space-4) 0 8px;">蛋白质来源换算</h3>
+            <table class="diet-table">
+                <thead><tr><th>食物</th><th>目标 (g)</th><th>需要 (g)</th><th>自带脂肪 (g)</th></tr></thead>
+                <tbody>
+                    <tr><td>鸡胸肉（熟·去皮去骨）</td><td id="protRow1T">—</td><td id="protRow1G">—</td><td>≈ 3g/100g</td></tr>
+                    <tr><td>鸡腿肉（大腿部·熟·去皮去骨）</td><td id="protRow2T">—</td><td id="protRow2G">—</td><td>≈ 8g/100g</td></tr>
+                    <tr><td>水煮鸡蛋（全蛋·去壳）</td><td id="protRow3T">—</td><td id="protRow3G">—</td><td>≈ 5g/个（≈50g）</td></tr>
+                </tbody>
+            </table>
+            <p class="diet-tip">📌 米饭、鸡蛋、奶和豆制品也提供蛋白质。混合吃时要一起计算，不必再吃满上面整份鸡肉；鸡蛋一项只作含量对照。</p>
+        </section>
+
+        <!-- 模块 4：组合换算 -->
+        <section class="diet-section">
+            <h2>组合换算：米饭 + 鸡肉 + 鸡蛋</h2>
+            <p class="diet-section__desc">这是三类食物的组合演算，已扣除米饭和鸡蛋提供的蛋白质。可切换肉类、调整鸡蛋数。</p>
+            <div class="diet-toggle" id="meatToggle">
+                <button data-meat="breast" aria-pressed="true">鸡胸肉</button>
+                <button data-meat="thigh" aria-pressed="false">鸡腿肉</button>
+            </div>
+            <div class="diet-form__field" style="max-width:200px;margin-top:var(--space-2);">
+                <label>鸡蛋数（个）</label>
+                <select id="eggCount">
+                    <option value="0">0</option><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option>
+                </select>
+            </div>
+            <div class="diet-cards" id="comboOut" style="margin-top:var(--space-3);">
+                <div class="diet-card"><div class="diet-card__label">熟米饭</div><div><span class="diet-card__value" id="outRice">—</span><span class="diet-card__unit">g</span></div></div>
+                <div class="diet-card"><div class="diet-card__label" id="outMeatLabel">鸡胸肉熟重</div><div><span class="diet-card__value" id="outMeat">—</span><span class="diet-card__unit">g</span></div></div>
+                <div class="diet-card"><div class="diet-card__label">水煮鸡蛋</div><div><span class="diet-card__value" id="outEgg">—</span><span class="diet-card__unit">个</span></div></div>
+            </div>
+            <h3 style="color:var(--white);font-size:15px;margin:var(--space-4) 0 8px;">脂肪补充参考</h3>
+            <p class="diet-section__desc" id="fatNote">—</p>
+            <p class="diet-tip">📌 还没计入奶、坚果、蔬果、酱料和做菜的油，因此不能把这个余量全部当成"还要吃的油"。核算全天后仍不足，才考虑补足；已达到参考量则无需额外加。</p>
+            <p class="diet-tip" style="margin-top:var(--space-4);">📌 以上不是完整菜单。加入其他主食、奶、豆类等食物后，米饭和鸡肉份量也要相应调整。鸡肉成分以烤熟、去皮去骨的样本估算，带皮、油炸或不同含水量的做法不直接套用。</p>
+        </section>
+
+        <!-- 模块 5：份量口径与食物成分来源 -->
+        <section class="diet-section">
+            <div class="diet-collapse" data-collapse>
+                <div class="diet-collapse__head" data-toggle><h3>份量口径与食物成分来源</h3><span>▾</span></div>
+                <div class="diet-collapse__body">
+                    <p>USDA FoodData Central 的每 100g 可食部分数据。米饭按熟重、鸡肉按烤熟去皮去骨、鸡蛋按水煮全蛋去壳计算。150g/碗是本页约定，并非统一饭碗标准，你的碗更大或更小，优先称熟板重量。</p>
+                    <table class="diet-table">
+                        <thead><tr><th>食物</th><th>碳水 (g/100g)</th><th>蛋白质 (g/100g)</th><th>脂肪 (g/100g)</th></tr></thead>
+                        <tbody>
+                            <tr><td>熟米饭</td><td>28.2</td><td>2.7</td><td>0.3</td></tr>
+                            <tr><td>鸡胸肉（熟·去皮去骨）</td><td>0</td><td>33.4</td><td>2.7</td></tr>
+                            <tr><td>鸡腿肉（大腿部·熟·去皮去骨）</td><td>0</td><td>28.7</td><td>8.0</td></tr>
+                            <tr><td>水煮鸡蛋（全蛋·去壳）</td><td>1.1</td><td>12.6</td><td>10.6</td></tr>
+                        </tbody>
+                    </table>
+                    <p class="diet-tip">📌 食物换算是本页补充估算，不是谭成义原片的固定菜单。品牌、部位和烹饪方式会产生差异，有包装时优先用实际标签。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块 6：静息代谢 -->
+        <section class="diet-section">
+            <div class="diet-collapse" data-collapse>
+                <div class="diet-collapse__head" data-toggle><h3>补充参考 · 静息代谢估算</h3><span>▾</span></div>
+                <div class="diet-collapse__body">
+                    <p>这是静息状态的能量估算，不能当作一天总消耗或每日应吃的热量。</p>
+                    <div class="diet-energy"><div class="diet-energy__label">Mifflin–St Jeor 公式估算</div><div><span class="diet-energy__value" id="rmrKcal">—</span> kcal/天</div></div>
+                    <p class="diet-tip">Mifflin–St Jeor 公式：<br>男性：10 × 体重(kg) + 6.25 × 身高(cm) − 5 × 年龄 + 5<br>女性：10 × 体重(kg) + 6.25 × 身高(cm) − 5 × 年龄 − 161</p>
+                    <p class="diet-tip">📌 独立于谭成义的饮食系数表。用于参考，不直接当作每日热量目标。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块 7：原理 -->
+        <section class="diet-section">
+            <h2><span class="diet-section__num">02 /</span> 原理 · 谭成义饮食原理</h2>
+            <ol class="diet-list">
+                <li><b>01 起始摄入量：</b>根据当前体重和每周运动时长，分别算出三大营养素。原片把这组数作为开始记录的参考，之后还要看个人反应。</li>
+                <li><b>02 连续变化与身体状态：</b>先执行 7–10 天，记录体重，约每 10 天拍一次对比照。结合体型、训练和精神状态复看，避免因一两天波动马上改餐。</li>
+                <li><b>03 碳水调整与复评：</b>进展满意就保持；下降过快可考虑增加一些碳水，过慢可考虑减少。到复看节点，用当前体重重算。原片没有规定统一的增减克数。</li>
+                <li><b>04 食物组成与日常搭配：</b>原片强调先学会认识食物成分，再逐渐形成日常吃法。主食、蛋白质食物和蔬果按自己的参考量搭配，作者的个人菜单保留其当时的体型与训练背景。</li>
+            </ol>
+            <div class="diet-collapse" data-collapse style="margin-top:var(--space-3);">
+                <div class="diet-collapse__head" data-toggle><h3>回看原片（含时间码）</h3><span>▾</span></div>
+                <div class="diet-collapse__body">
+                    <p>饮食基础：<a href="https://www.bilibili.com/video/BV1cJv6BvEqt/?p=948" target="_blank">计算、三餐与调整 @ 15:48</a></p>
+                    <p>个人饮食调整：<a href="https://www.bilibili.com/video/BV15Di1BkEzE/?p=614" target="_blank">备赛保持实例 @ 10:14</a></p>
+                    <p>一天饮食：<a href="https://www.bilibili.com/video/BV11QLv6EEqd/?p=574" target="_blank">高训练量实例 @ 09:34</a></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块 8：三餐搭配示例 -->
+        <section class="diet-section">
+            <div class="diet-collapse" data-collapse>
+                <div class="diet-collapse__head" data-toggle><h3>三餐搭配示例</h3><span>▾</span></div>
+                <div class="diet-collapse__body">
+                    <p>以下是基础篇的食物结构，份量要按自己的参考量安排。</p>
+                    <div class="diet-meal">
+                        <div class="diet-meal__item"><b>早餐</b>燕麦 + 鸡蛋，搭配水果；坚果或种子计入当天摄入。</div>
+                        <div class="diet-meal__item"><b>午餐</b>米饭 + 鱼、鸡肉或虾仁 + 蔬菜。</div>
+                        <div class="diet-meal__item"><b>晚餐</b>薯类等主食 + 牛肉等蛋白质食物 + 蔬菜。</div>
+                    </div>
+                    <p class="diet-tip">📌 同样 100 克，不同食材的营养量并不相同。精确记录优先看食品标签，区分生重、熟重和可食部分，也算入油与酱料。原片示例有简化计数，未计入的食物不等于没有热量。</p>
+                    <p class="diet-tip">回看：<a href="https://www.bilibili.com/video/BV1E6ZVB1Eta/?p=733" target="_blank">三餐示例 @ 12:13</a></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块 9：原片系数表 -->
+        <section class="diet-section">
+            <div class="diet-collapse" data-collapse>
+                <div class="diet-collapse__head" data-toggle><h3>原片系数表（克 / 公斤体重 / 天）</h3><span>▾</span></div>
+                <div class="diet-collapse__body">
+                    <p>以视频中的最终系数表为准：</p>
+                    <h4 style="color:var(--white);font-size:14px;margin-top:var(--space-3);">男性</h4>
+                    <table class="diet-table">
+                        <thead><tr><th>每周运动时长</th><th>碳水 (×kg)</th><th>蛋白质 (×kg)</th><th>脂肪 (×kg)</th></tr></thead>
+                        <tbody>
+                            <tr><td>0-1 小时</td><td>1.6</td><td>1.2</td><td>0.7</td></tr>
+                            <tr><td>2-3 小时</td><td>2.2</td><td>1.4</td><td>0.8</td></tr>
+                            <tr><td>4-5 小时</td><td>2.6</td><td>1.6</td><td>0.9</td></tr>
+                            <tr><td>6-8 小时</td><td>3.2</td><td>1.8</td><td>1.0</td></tr>
+                            <tr><td>8 小时以上</td><td>3.6</td><td>2.0</td><td>1.0</td></tr>
+                        </tbody>
+                    </table>
+                    <h4 style="color:var(--white);font-size:14px;margin-top:var(--space-3);">女性</h4>
+                    <table class="diet-table">
+                        <thead><tr><th>每周运动时长</th><th>碳水 (×kg)</th><th>蛋白质 (×kg)</th><th>脂肪 (×kg)</th></tr></thead>
+                        <tbody>
+                            <tr><td>0-1 小时</td><td>1.4</td><td>1.0</td><td>0.6</td></tr>
+                            <tr><td>2-3 小时</td><td>1.8</td><td>1.2</td><td>0.7</td></tr>
+                            <tr><td>4-5 小时</td><td>2.2</td><td>1.4</td><td>0.8</td></tr>
+                            <tr><td>6-8 小时</td><td>2.6</td><td>1.6</td><td>0.9</td></tr>
+                            <tr><td>8 小时以上</td><td>3.0</td><td>1.8</td><td>0.9</td></tr>
+                        </tbody>
+                    </table>
+                    <p class="diet-tip">📌 补充：Mifflin-St Jeor 公式 — <br>男性：10 × 体重(kg) + 6.25 × 身高(cm) − 5 × 年龄 + 5<br>女性：10 × 体重(kg) + 6.25 × 身高(cm) − 5 × 年龄 − 161<br>单位 kcal/天。结果是静息能量消耗估算，没有加入日常活动或训练消耗，也不作为热量缺口计算。</p>
+                    <p class="diet-tip">📌 引用：<a href="https://pubmed.ncbi.nlm.nih.gov/2305711/" target="_blank">Mifflin 等，1990 · 原始研究</a> · <a href="https://www.fda.gov/food/nutrition-facts-label/how-understand-and-use-nutrition-facts-label" target="_blank">能量换算·FDA 食品标签指南</a></p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <p class="tan-credit" style="text-align:center;color:var(--muted);font-size:12px;padding:16px;">
+        饮食方法内容 © 谭成义 · 食物数据 USDA FoodData Central
+    </p>
+
+    <script type="module">
+        // 折叠面板
+        document.querySelectorAll('[data-collapse]').forEach(el => {
+            const head = el.querySelector('[data-toggle]');
+            if (head) head.addEventListener('click', () => el.classList.toggle('is-open'));
+        });
+
+        const COEF = {
+            male:   { '0-1':[1.6,1.2,0.7], '2-3':[2.2,1.4,0.8], '4-5':[2.6,1.6,0.9], '6-8':[3.2,1.8,1.0], '8+':[3.6,2.0,1.0] },
+            female: { '0-1':[1.4,1.0,0.6], '2-3':[1.8,1.2,0.7], '4-5':[2.2,1.4,0.8], '6-8':[2.6,1.6,0.9], '8+':[3.0,1.8,0.9] },
+        };
+        const FOOD = {
+            rice: { carb: 28.2, prot: 2.7, fat: 0.3 },
+            breast: { prot: 33.4, fat: 2.7 },
+            thigh: { prot: 28.7, fat: 8.0 },
+            egg: { prot: 12.6, fat: 10.6, per: 50 },
+        };
+        function mifflin(weight, height, age, gender) {
+            return Math.round(10 * weight + 6.25 * height - 5 * age + (gender === 'male' ? 5 : -161));
+        }
+
+        document.getElementById('calcBtn').addEventListener('click', () => {
+            const g = document.getElementById('gender').value;
+            const w = parseFloat(document.getElementById('weight').value) || 0;
+            const a = parseFloat(document.getElementById('age').value) || 0;
+            const h = parseFloat(document.getElementById('height').value) || 0;
+            const hours = document.getElementById('hours').value;
+            if (!w || !a) { alert('请填写体重和年龄'); return; }
+            const [kC, kP, kF] = COEF[g][hours] || COEF[g]['2-3'];
+            const carbG = w * kC, protG = w * kP, fatG = w * kF;
+            const kcalC = carbG * 4, kcalP = protG * 4, kcalF = fatG * 9;
+            const total = kcalC + kcalP + kcalF;
+            document.getElementById('resultParams').textContent = `输入参数 · ${g === 'male' ? '男' : '女'} · ${w} kg · 每周${hours}小时`;
+            document.getElementById('carbG').textContent = Math.round(carbG);
+            document.getElementById('protG').textContent = Math.round(protG);
+            document.getElementById('fatG').textContent = Math.round(fatG);
+            document.getElementById('carbF').textContent = `体重 × ${kC}`;
+            document.getElementById('protF').textContent = `体重 × ${kP}`;
+            document.getElementById('fatF').textContent  = `体重 × ${kF}`;
+            document.getElementById('totalKcal').textContent = Math.round(total);
+            const pCarb = total ? kcalC / total * 100 : 0;
+            const pProt = total ? kcalP / total * 100 : 0;
+            const pFat  = total ? kcalF / total * 100 : 0;
+            const barC = document.getElementById('barCarb');
+            const barP = document.getElementById('barProt');
+            const barF = document.getElementById('barFat');
+            barC.style.width = pCarb + '%'; barC.textContent = `碳水 ${pCarb.toFixed(0)}%`;
+            barP.style.width = pProt + '%'; barP.textContent = `蛋白 ${pProt.toFixed(0)}%`;
+            barF.style.width = pFat  + '%'; barF.textContent = `脂肪 ${pFat.toFixed(0)}%`;
+            document.getElementById('carbG2').textContent = Math.round(carbG);
+            const riceG = carbG / FOOD.rice.carb * 100;
+            document.getElementById('riceG').textContent = Math.round(riceG);
+            const protT = protG;
+            document.getElementById('protRow1T').textContent = Math.round(protT);
+            document.getElementById('protRow1G').textContent = Math.round(protT / FOOD.breast.prot * 100);
+            document.getElementById('protRow2T').textContent = Math.round(protT);
+            document.getElementById('protRow2G').textContent = Math.round(protT / FOOD.thigh.prot * 100);
+            document.getElementById('protRow3T').textContent = Math.round(protT);
+            document.getElementById('protRow3G').textContent = Math.round(protT / FOOD.egg.prot / (FOOD.egg.per / 100));
+            const eggN = parseInt(document.getElementById('eggCount').value) || 0;
+            const meat = document.querySelector('#meatToggle button[aria-pressed="true"]').dataset.meat;
+            const meatFood = meat === 'breast' ? FOOD.breast : FOOD.thigh;
+            const eggProt = eggN * FOOD.egg.per / 100 * FOOD.egg.prot;
+            const riceNeed = Math.round(carbG / FOOD.rice.carb * 100);
+            const remainingProt = Math.max(0, protG - eggProt);
+            const meatNeed = Math.round(remainingProt / meatFood.prot * 100);
+            document.getElementById('outRice').textContent = riceNeed;
+            document.getElementById('outMeat').textContent = meatNeed;
+            document.getElementById('outMeatLabel').textContent = meat === 'breast' ? '鸡胸肉熟重' : '鸡腿肉熟重';
+            document.getElementById('outEgg').textContent = eggN;
+            const riceFat = riceNeed / 100 * FOOD.rice.fat;
+            const meatFat = meatNeed / 100 * meatFood.fat;
+            const eggFat  = eggN * FOOD.egg.per / 100 * FOOD.egg.fat;
+            const comboFat = riceFat + meatFat + eggFat;
+            const fatRemain = Math.max(0, fatG - comboFat);
+            document.getElementById('fatNote').innerHTML =
+                `这个组合自带约 <b>${comboFat.toFixed(1)}g</b> 脂肪。相对全天 <b>${Math.round(fatG)}g</b> 参考，尚余约 <b>${fatRemain.toFixed(1)}g</b>，由其他食物和烹调用油共享。`;
+            const rmrEl = document.getElementById('rmrKcal');
+            if (h) rmrEl.textContent = mifflin(w, h, a, g); else rmrEl.textContent = '请填身高';
+            const rmr = h ? mifflin(w, h, a, g) : 0;
+            document.getElementById('dietWarn').style.display = (rmr && total < rmr) ? 'block' : 'none';
+            document.getElementById('resultSection').classList.add('is-shown');
+            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        document.querySelectorAll('#meatToggle button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#meatToggle button').forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+                document.getElementById('calcBtn').click();
+            });
+        });
+        document.getElementById('eggCount').addEventListener('change', () => document.getElementById('calcBtn').click());
+    </script>
+    <script src="js/auth-nav.js"></script>
+</body>
+</html>
