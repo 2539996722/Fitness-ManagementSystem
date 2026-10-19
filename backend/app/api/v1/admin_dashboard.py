@@ -91,11 +91,11 @@ async def dashboard_overview(
         )
     ).scalar() or 0
 
-    # 人工会话数：conversation_type IN (customer_service, trainer)
+    # 人工会话数：conversation_type='trainer'
     human_total = (
         await session.execute(
             select(func.count(Conversation.id)).where(
-                Conversation.conversation_type.in_(["customer_service", "trainer"])
+                Conversation.conversation_type == "trainer"
             )
         )
     ).scalar() or 0

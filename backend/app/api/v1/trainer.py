@@ -8,10 +8,10 @@
 - DELETE /api/v1/trainer/templates/{id}          删除草稿
 - POST   /api/v1/trainer/templates/{id}/submit   提交审核（draft → pending_review）
 
-会员咨询会话工作台（M8）：
-- GET    /api/v1/trainer/queue                          待处理会员咨询会话
-- POST   /api/v1/trainer/conversations/{id}/claim       教练接入会话
-- POST   /api/v1/trainer/conversations/{id}/messages    教练发消息
+会员咨询会话工作台（M8/M4：教练兼任客服，统一处理 trainer + customer_service 两类会话）：
+- GET    /api/v1/trainer/queue                          待处理队列（trainer + 旧 customer_service 兼容）
+- POST   /api/v1/trainer/conversations/{id}/claim       接入会话
+- POST   /api/v1/trainer/conversations/{id}/messages    发消息
 - GET    /api/v1/trainer/conversations/{id}/messages    会话消息历史
 - GET    /api/v1/trainer/conversations/{id}/stream      SSE 推送
 - POST   /api/v1/trainer/conversations/{id}/close       结束会话，回退 AI
@@ -284,7 +284,11 @@ async def submit_template(
     return _to_out(t)
 
 
-# ============ 教练会话工作台（M8） ============
+# ============ 教练会话工作台（M8 / M4 合并：教练兼任客服） ============
+
+# 教练工作台认领的会话类型（M4 合并后只剩 trainer）
+_HUMAN_CONV_TYPES = ("trainer",)
+
 
 async def _check_trainer_conv(
     conv_id: int,
@@ -296,8 +300,8 @@ async def _check_trainer_conv(
     conv = await session.get(Conversation, conv_id)
     if not conv:
         raise HTTPException(status_code=404, detail="会话不存在")
-    if conv.conversation_type != "trainer":
-        raise HTTPException(status_code=400, detail="该会话不是教练咨询类型")
+    if conv.conversation_type not in _HUMAN_CONV_TYPES:
+        raise HTTPException(status_code=400, detail="该会话不是人工咨询类型")
     if require_claimed and conv.assigned_trainer_id != trainer.id and trainer.role != "admin":
         raise HTTPException(status_code=403, detail="未接入此会话")
     return conv
@@ -305,7 +309,7 @@ async def _check_trainer_conv(
 
 @router.get(
     "/queue",
-    summary="教练：待处理的会员咨询队列",
+    summary="教练：待处理队列",
 )
 async def trainer_queue(
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -316,8 +320,8 @@ async def trainer_queue(
         await session.execute(
             select(Conversation)
             .where(
-                Conversation.conversation_type == "trainer",
-                Conversation.status == "waiting_trainer",
+                Conversation.conversation_type.in_(_HUMAN_CONV_TYPES),
+                Conversation.status.in_(("waiting_trainer", "waiting_human")),
             )
             .order_by(Conversation.updated_at.asc())
             .limit(50)
@@ -357,14 +361,14 @@ async def trainer_history(
     limit: int = 50,
     offset: int = 0,
 ):
-    """assigned_trainer_id = me，排除还在 waiting_trainer 队列里的。"""
+    """assigned_trainer_id = me，排除还在 waiting_* 队列里的。"""
     rows = (
         await session.execute(
             select(Conversation)
             .where(
-                Conversation.conversation_type == "trainer",
+                Conversation.conversation_type.in_(_HUMAN_CONV_TYPES),
                 Conversation.assigned_trainer_id == trainer.id,
-                Conversation.status != "waiting_trainer",
+                Conversation.status.notin_(("waiting_trainer", "waiting_human")),
             )
             .order_by(Conversation.updated_at.desc())
             .limit(limit).offset(offset)
@@ -404,10 +408,10 @@ async def claim_trainer_conversation(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> dict:
     conv = await _check_trainer_conv(conv_id, trainer, session)
-    if conv.status not in ("waiting_trainer", "trainer_active"):
+    if conv.status not in ("waiting_trainer", "waiting_human", "trainer_active", "human_active"):
         raise HTTPException(status_code=400, detail=f"会话状态 {conv.status} 不可接入")
     if conv.assigned_trainer_id and conv.assigned_trainer_id != trainer.id:
-        raise HTTPException(status_code=409, detail="会话已被其他教练接入")
+        raise HTTPException(status_code=409, detail="会话已被其他人接入")
 
     conv.assigned_trainer_id = trainer.id
     conv.status = "trainer_active"
@@ -442,8 +446,8 @@ async def send_trainer_message(
         raise HTTPException(status_code=400, detail="内容过长")
 
     conv = await _check_trainer_conv(conv_id, trainer, session, require_claimed=True)
-    if conv.status != "trainer_active":
-        raise HTTPException(status_code=400, detail="会话不在教练服务状态")
+    if conv.status not in ("trainer_active", "human_active"):
+        raise HTTPException(status_code=400, detail="会话不在服务状态")
 
     msg = Message(
         conversation_id=conv.id,

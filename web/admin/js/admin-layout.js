@@ -2,11 +2,9 @@
 // 由各 admin 页面用 `<script type="module" src="js/admin-layout.js"></script>` 引入
 // 自动在 DOMContentLoaded 后挂载到 #appSidebar / #userName / #userRole / #logoutBtn
 
-const ROLE_LABEL = { admin: '管理员', trainer: '教练', customer_service: '客服' };
+const ROLE_LABEL = { admin: '管理员', trainer: '教练', user: '用户' };
 
 // 侧边栏菜单（统一顺序，data-requires-roles 走这里集中配置）
-// ponytail: customer_service 已从 workbench 入口移除；代码保留在队列渲染、sender_type 等位置，
-//   恢复时把 'customer_service' 加回 workbench.roles 数组即可。
 const MENU_ITEMS = [
     { key: 'dashboard',     href: '/admin/dashboard.html',     icon: '📊', label: '数据看板',     roles: ['admin', 'trainer'] },
     { key: 'users',         href: '/admin/users.html',         icon: '👥', label: '会员管理',     roles: ['admin', 'trainer'] },

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
     <title>FitHub 管理后台</title>
     <link rel="stylesheet" href="css/soft-ui.css">
     <script type="module" src="js/admin-layout.js"></script>
@@ -47,8 +48,7 @@
 
         const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
 
-        // 未登录 OR 角色不对 → 跳登录
-        // ponytail: customer_service 已从 B 端移除（login.html 拦截），这里只允许 admin/trainer
+        // 未登录 OR 角色不对 → 跳登录（只允许 admin / trainer）
         if (!localStorage.getItem(TOKEN_KEY) || !user ||
             !['admin', 'trainer'].includes(user.role)) {
             localStorage.removeItem(TOKEN_KEY);

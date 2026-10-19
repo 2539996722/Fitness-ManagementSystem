@@ -46,7 +46,6 @@ router = APIRouter()
 
 ROLE_LABELS = {
     "user": "普通用户",
-    "customer_service": "客服",
     "trainer": "教练",
     "admin": "管理员",
 }
@@ -93,7 +92,7 @@ async def list_members(
     _user: Annotated[User, Depends(require_role("admin", "trainer"))],
     session: Annotated[AsyncSession, Depends(get_session)],
     keyword: str | None = Query(None, description="用户名/昵称/ID 模糊匹配"),
-    role: str | None = Query(None, description="user / customer_service / trainer / admin"),
+    role: str | None = Query(None, description="user / trainer / admin"),
     status_: int | None = Query(None, alias="status", ge=0, le=1, description="0 正常 1 封禁"),
     include_deleted: bool = Query(False, description="是否包含已软删用户（默认过滤掉）"),
     date_from: datetime | None = Query(None, description="注册起始时间"),
@@ -191,12 +190,15 @@ async def create_member(
     admin: Annotated[User, Depends(require_role("admin", "trainer"))],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> UserCreateOut:
-    """admin 可创建任意角色账号；trainer 仅能创建 user / customer_service（不允许提权）。"""
+    """admin 可创建任意角色账号；trainer 仅能创建 user（防提权）。"""
+    # 角色归一化：customer_service → trainer 迁移已删（M12 #122，DB 字段无此值）
+    # trainer 不能创建 admin / trainer 账号（防提权）
+
     # trainer 不能创建 admin / trainer 账号（防提权）
     if admin.role == "trainer" and body.role in ("admin", "trainer"):
         raise HTTPException(
             status_code=403,
-            detail="教练只能创建普通用户或客服账号",
+            detail="教练只能创建普通用户账号",
         )
     username = body.username.strip()
     if not USERNAME_PATTERN.match(username):

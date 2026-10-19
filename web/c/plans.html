@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
     <title>训练计划 · FitHub</title>
     <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -780,12 +781,12 @@
             color: var(--text-muted, #9ca3af);
             border-bottom-color: rgba(107, 114, 128, 0.3);
         }
-        .msg--customer_service { align-self: flex-start; }
-        .msg--customer_service .msg__avatar {
+        .msg--trainer { align-self: flex-start; }
+        .msg--trainer .msg__avatar {
             background: linear-gradient(135deg, #22c55e, #16a34a);
             box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
         }
-        .msg--customer_service .msg__bubble {
+        .msg--trainer .msg__bubble {
             background: linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(22, 163, 74, 0.10));
             color: var(--text-primary);
             border: 1px solid rgba(34, 197, 94, 0.45);
@@ -1133,6 +1134,7 @@
         </a>
         <nav class="navbar__nav">
             <a href="/c/" class="navbar__link">动作库</a>
+            <a href="/c/tan-library.html" class="navbar__link">谭师库</a>
             <a href="/c/plans.html" class="navbar__link navbar__link--active">训练计划</a>
             <a href="/c/templates.html" class="navbar__link">模板市场</a>
             <a href="/c/profile.html" class="navbar__link" data-requires-auth>个人中心</a>
@@ -1252,7 +1254,7 @@
                         <div class="chat-main__hint">💡 问健身问题、让 AI 帮你调整计划、找动作替代方案</div>
                         <button class="btn-stop" id="btnStop" hidden>停止生成</button>
                         <button class="btn-find-trainer" id="btnFindTrainer" title="找专业教练">🏋️ 找教练</button>
-                        <button class="btn-transfer" id="btnTransfer" title="转人工客服">转人工</button>
+                        <button class="btn-transfer" id="btnTransfer" title="转教练人工（M4 合并：教练兼客服）">转人工</button>
                     </div>
                     <div class="chat-status" id="chatStatus" hidden></div>
 

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
     <title>数据看板 · FitHub 管理后台</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="css/soft-ui.css">
@@ -498,7 +499,6 @@
         }
 
         async function loadAll() {
-            if (user?.role === 'customer_service') return;
             const tasks = [loadOverview(), loadTrend(), loadGoal(), loadBody(), loadIntent(), loadChatMetrics(), loadChatOverview()];
             if (user?.role === 'admin') tasks.push(loadAiCost());
             await Promise.all(tasks);
@@ -661,13 +661,9 @@
         });
 
         document.getElementById('btnRefresh').addEventListener('click', loadAll);
-        if (user?.role === 'customer_service') {
-            const r = document.getElementById('btnRefresh');
-            if (r) r.style.display = 'none';
-        }
         loadAll();
-        // 启动实时指标轮询（仅 admin/trainer 才会真正加载数据）
-        if (user?.role !== 'customer_service') startRtPolling();
+        // 启动实时指标轮询
+        startRtPolling();
     </script>
 </body>
 </html>

@@ -167,7 +167,7 @@ async def send_user_message(
     conv = conv.scalar_one_or_none()
     if not conv:
         raise HTTPException(status_code=404, detail="会话不存在")
-    if conv.status != "human_active":
+    if conv.status not in ("human_active", "trainer_active"):
         raise HTTPException(status_code=400, detail="当前会话由 AI 服务，请直接发送")
 
     msg = Message(
@@ -189,9 +189,10 @@ async def transfer_to_human(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> dict:
-    """把会话状态切到 waiting_human，等待客服接入。
+    """把会话状态切到 waiting_trainer / conversation_type=trainer，由教练接管。
+    （M4 重构：教练兼客服，转人工 = 转教练。）
 
-    幂等：已经是 waiting_human / human_active 时直接返回。
+    幂等：已经是 waiting_* / *_active 时直接返回。
     """
     conv = await session.execute(
         select(Conversation).where(
@@ -203,27 +204,28 @@ async def transfer_to_human(
     if not conv:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在")
 
-    if conv.status in ("waiting_human", "human_active"):
+    if conv.status in ("waiting_trainer", "trainer_active", "waiting_human", "human_active"):
+        msg = "已在排队中" if conv.status in ("waiting_trainer", "waiting_human") else "教练已接入"
         return {
             "conversation_id": conv.id,
             "status": conv.status,
             "conversation_type": conv.conversation_type,
-            "assigned_cs_id": conv.assigned_cs_id,
-            "message": "已在排队中" if conv.status == "waiting_human" else "客服已接入",
+            "assigned_trainer_id": conv.assigned_trainer_id,
+            "message": msg,
         }
 
     if conv.status == "closed":
         raise HTTPException(status_code=400, detail="会话已关闭，无法转人工")
 
-    conv.status = "waiting_human"
-    conv.conversation_type = "customer_service"
+    conv.status = "waiting_trainer"
+    conv.conversation_type = "trainer"
     await session.commit()
     return {
         "conversation_id": conv.id,
         "status": conv.status,
         "conversation_type": conv.conversation_type,
-        "assigned_cs_id": None,
-        "message": "已提交，等待客服接入",
+        "assigned_trainer_id": None,
+        "message": "已提交，等待教练接入",
     }
 
 
@@ -417,7 +419,7 @@ async def _build_history(
 ) -> list[dict[str, str]]:
     """取最近 max_rounds 轮对话（user/assistant）拼成 messages。
 
-    注意：DB 里 sender_type 是 "user" / "ai" / "customer_service" / "trainer"，
+    注意：DB 里 sender_type 是 "user" / "ai" / "trainer"，
     但 OpenAI 兼容协议只接受 "user" / "assistant" / "system"。
     这里把非 user 的消息统一映射为 "assistant"。
     """
@@ -431,7 +433,7 @@ async def _build_history(
     out: list[dict[str, str]] = []
     for r in rows:
         # OpenAI 协议只接受 "user" / "assistant" / "system"
-        # DB 里 ai / customer_service / trainer 都是「非用户」消息，统一映射为 assistant
+        # DB 里 ai / trainer（字段兼容 customer_service）都是「非用户」消息，统一映射为 assistant
         role = "user" if r.sender_type == "user" else "assistant"
         out.append({"role": role, "content": r.content})
     return out
@@ -916,7 +918,13 @@ async def send_message_stream(
     # 计划意图：查真实模板建议（非流式路径走 LLM 工具，流式走关键词兜底——见 SSE done 段）
     template_suggestions: list[dict] = []
 
+    # 提前准备：客户端断连时关闭上游 LLM httpx 连接（避免 token 继续扣费）
+    from app.services.llm_service import load_llm_config, close_http_client
+
     async def event_gen() -> AsyncIterator[dict]:
+        llm_cfg = await load_llm_config()
+        _llm_api_base = llm_cfg.get("api_base", "")
+        _llm_api_key = llm_cfg.get("api_key", "")
         # 先告诉前端 conversation_id（用户消息已存库）
         yield _sse({"type": "meta", "conversation_id": conv_id, "intent": intent, "sources": sources_payload})
 
@@ -929,6 +937,7 @@ async def send_message_stream(
         )
         first_byte_recorded = False
         had_error = False
+        stream_completed = False  # 流正常完成 vs 被取消
 
         # ============ M10+ 6 阶段埋点（流式）============
         # 阶段 5: LLM 流式生成 — 包裹整段 stream
@@ -951,6 +960,7 @@ async def send_message_stream(
                             first_byte_recorded = True
                         yield _sse({"type": "delta", "text": ev["text"]})
                     elif ev["type"] == "done":
+                        stream_completed = True
                         s_llm.tokens = {
                             "prompt": ev["prompt_tokens"],
                             "completion": ev["completion_tokens"],
@@ -1026,6 +1036,28 @@ async def send_message_stream(
                                 for c in kb_chunks
                             ],
                         })
+        except (asyncio.CancelledError, GeneratorExit):
+            # 客户端断连：立刻关闭上游 httpx 连接，避免 LLM 继续流式扣费
+            stream_completed = False
+            had_error = True
+            logger.warning("SSE 客户端断连（conv={}），关闭上游 LLM httpx 连接", conv_id)
+            await close_http_client(_llm_api_base, _llm_api_key)
+            # 持久化已收到的部分（不阻塞断连流程）
+            if full:
+                try:
+                    async with async_session() as s:
+                        partial_msg = Message(
+                            conversation_id=conv_id,
+                            sender_type="ai",
+                            content=full + "\n\n⚠️ 用户已断线，AI 响应被截断",
+                            intent=intent,
+                            extra={"partial": True, "streamed": True, "client_disconnected": True},
+                        )
+                        s.add(partial_msg)
+                        await s.commit()
+                except Exception as e:
+                    logger.warning("持久化截断消息失败（不影响主流程）：{}", e)
+            raise
         except Exception as e:
             logger.exception("流式 LLM 调用失败：{}", e)
             had_error = True

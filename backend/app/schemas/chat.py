@@ -19,7 +19,7 @@ class MessageOut(BaseModel):
 
     id: int
     conversation_id: int
-    sender_type: str = Field(..., description="user / ai / customer_service / trainer")
+    sender_type: str = Field(..., description="user / ai / trainer")
     sender_id: int | None = None
     content: str
     intent: str | None = None

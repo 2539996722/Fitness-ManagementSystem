@@ -18,12 +18,14 @@ from app.api.v1 import (
     admin_trace,
     auth,
     chat,
-    cs,
     exercises,
     health,
     plan_templates,
     plans,
     reviews,
+    tan_actions,
+    tan_diet,
+    tan_plans,
     trainer,
     users,
 )
@@ -69,9 +71,6 @@ api_router.include_router(admin_dashboard.router, prefix="/admin", tags=["数据
 # B 端模板审核（M8）
 api_router.include_router(admin_templates.router, prefix="/admin", tags=["模板审核"])
 
-# B 端客服工作台（M5）
-api_router.include_router(cs.router, prefix="/admin", tags=["客服工作台"])
-
 # B 端操作日志（M9）
 api_router.include_router(admin_log.router, prefix="/admin", tags=["操作日志"])
 
@@ -84,3 +83,12 @@ api_router.include_router(admin_trace.router, prefix="/admin", tags=["链路追�
 
 # B 端知识库（M10+ RAG）
 api_router.include_router(admin_knowledge_base.admin_router, prefix="", tags=["知识库"])
+
+# 谭师动作库（外部内容合集，C 端只读）
+api_router.include_router(tan_actions.router, prefix="", tags=["谭师动作库"])
+
+# 谭师训练计划（三分化 / 四分化）
+api_router.include_router(tan_plans.router, prefix="", tags=["谭师训练计划"])
+
+# 谭师饮食
+api_router.include_router(tan_diet.router, prefix="", tags=["谭师饮食"])

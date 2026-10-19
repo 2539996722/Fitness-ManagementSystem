@@ -1,5 +1,5 @@
 /**
- * 教练工作台模块（M8）。
+ * 教练工作台模块（M8 / M4 合并：教练兼任客服）。
  *
  * 用法：
  *   <section id="trainerPanel"></section>
@@ -8,8 +8,9 @@
  *     mountTrainer('trainerPanel');
  *   </script>
  *
- * 复用 queue.js 的 qp-* CSS 类（队列 + 聊天 + 用户卡 + 提示词）。
- * 与客服的差异：多了"推荐模板"、"定制计划"、"提示词推荐"三块。
+ * qp-* CSS 类定义在 admin/css/queue.css（原 B 端客服台样式，复用）。
+ * 队列：同时显示 waiting_trainer + 旧 waiting_human（customer_service）两路。
+ * 与原客服台的差异：多了"推荐模板"、"定制计划"、"提示词推荐"三块。
  */
 
 const TOKEN_KEY = 'fithub_admin_access';
@@ -106,8 +107,7 @@ function esc(s) {
 export function mountTrainer(rootId) {
     const root = document.getElementById(rootId);
     if (!root) return;
-    // ponytail: 与 queue.js 共享 q- 前缀的 ID/class，必须限定到 root 子树，
-    // 否则 document.getElementById 会取到 csPanel 的元素，导致 trainer 视图永远渲染在不可见区。
+    // ponytail: q- 前缀的 ID/class 必须限定到 root 子树，避免与其他面板冲突
     const $ = (sel) => root.querySelector(sel);
     const $$ = (sel) => root.querySelectorAll(sel);
     root.innerHTML = HTML;
@@ -379,7 +379,7 @@ export function mountTrainer(rootId) {
         const safe = esc(text);
         if (side === 'right') {
             return `
-                <div class="qp-msg qp-msg--customer_service" style="flex-direction: row-reverse;">
+                <div class="qp-msg qp-msg--trainer" style="flex-direction: row-reverse;">
                     <div class="qp-msg__avatar" style="background: linear-gradient(135deg, #4eecc8, #10b981);">${esc(avatar)}</div>
                     <div>
                         <div class="qp-msg__bubble" style="background: #dcfce7;">${safe}</div>
@@ -402,7 +402,7 @@ export function mountTrainer(rootId) {
     function renderTemplateCard(m, time) {
         const t = m.extra.template;
         return `
-            <div class="qp-msg qp-msg--customer_service" style="flex-direction: row-reverse;">
+            <div class="qp-msg qp-msg--trainer" style="flex-direction: row-reverse;">
                 <div class="qp-msg__avatar" style="background: linear-gradient(135deg, #4eecc8, #10b981);">教练</div>
                 <div>
                     <div class="qp-msg__bubble" style="background:#f0fdf4;border:1px solid #86efac;padding:12px;max-width:280px;">
@@ -421,7 +421,7 @@ export function mountTrainer(rootId) {
 
     function renderPlanCard(m, time) {
         return `
-            <div class="qp-msg qp-msg--customer_service" style="flex-direction: row-reverse;">
+            <div class="qp-msg qp-msg--trainer" style="flex-direction: row-reverse;">
                 <div class="qp-msg__avatar" style="background: linear-gradient(135deg, #4eecc8, #10b981);">教练</div>
                 <div>
                     <div class="qp-msg__bubble" style="background:#eff6ff;border:1px solid #93c5fd;padding:12px;max-width:280px;">

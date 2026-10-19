@@ -102,7 +102,7 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=32, description="3-32 字符，字母数字下划线中文")
     password: str | None = Field(None, min_length=8, max_length=20, description="留空则自动生成 10 位随机密码")
     nickname: str | None = Field(None, max_length=32)
-    role: Literal["user", "customer_service", "trainer", "admin"] = Field(
+    role: Literal["user", "trainer", "admin"] = Field(
         "user", description="默认 user，可创建任意角色"
     )
     remark: str | None = Field(None, max_length=255, description="初始备注（可选）")

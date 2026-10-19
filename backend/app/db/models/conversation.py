@@ -23,7 +23,7 @@ class Conversation(Base, TimestampMixin):
     # 会话元数据
     title: Mapped[str] = mapped_column(String(64), default="新会话", comment="会话标题")
     conversation_type: Mapped[str] = mapped_column(
-        String(16), default="ai", comment="ai / customer_service / trainer"
+        String(16), default="ai", comment="ai / trainer"
     )
 
     # 状态
@@ -31,7 +31,7 @@ class Conversation(Base, TimestampMixin):
         String(16), default="ai_active", comment="ai_active / waiting_human / human_active / waiting_trainer / trainer_active / closed"
     )
 
-    # 当前人工客服 ID（如果转客服后被接管）
+    # 当前人工接管者 ID（兼容历史客服接管；统一指向 assigned_trainer_id 字段）
     assigned_cs_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     # 当前教练 ID（如果转教练后被接管）

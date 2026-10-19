@@ -110,7 +110,6 @@ def require_role(*allowed_roles: str):
 # 便捷依赖
 require_admin = require_role("admin")
 require_trainer = require_role("trainer", "admin")
-require_cs_or_above = require_role("customer_service", "trainer", "admin")
 
 
 # ============ slowapi 限流 key 函数 ============

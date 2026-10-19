@@ -145,9 +145,8 @@ function renderMsg(m) {
     const time = new Date(m.created_at || Date.now()).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     const isUser = m.sender_type === 'user';
     const avatarText = isUser ? '我'
-        : (m.sender_type === 'customer_service' ? '客服'
         : (m.sender_type === 'trainer' ? '教练'
-        : (m.sender_type === 'system' ? '·' : 'AI')));
+        : (m.sender_type === 'system' ? '·' : 'AI'));
 
     // 教练推荐的模板卡片（M8）
     if (m.sender_type === 'trainer' && m.extra?.kind === 'recommend_template') {
@@ -282,21 +281,18 @@ function applyConvStatus(status) {
     const btnTrainer = document.getElementById('btnFindTrainer');
     const input = document.getElementById('msgInput');
     const btnSend = document.getElementById('btnSend');
-    // waiting_human / human_active 时禁用转人工；waiting_trainer / trainer_active 时禁用找教练
-    if (btn) btn.disabled = ['waiting_human', 'human_active'].includes(status);
-    if (btnTrainer) btnTrainer.disabled = ['waiting_trainer', 'trainer_active'].includes(status);
+    // ponytail: 教练兼客服（合并），转人工 = 转教练；禁用互斥按钮避免重复触发
+    if (btn) btn.disabled = ['waiting_human', 'human_active', 'waiting_trainer', 'trainer_active'].includes(status);
+    if (btnTrainer) btnTrainer.disabled = ['waiting_human', 'human_active', 'waiting_trainer', 'trainer_active'].includes(status);
     // 输入框策略：
-    //   - ai_active / waiting_human：用户继续和 AI 对话（输入框可用）
-    //   - human_active / waiting_trainer / trainer_active：与人工/教练对话（输入框可用）
+    //   - ai_active：用户继续和 AI 对话
+    //   - waiting_human / waiting_trainer：通知接入中，仍可与 AI 对话
+    //   - human_active / trainer_active：与教练/原 CS 接入者对话
     if (input && btnSend) {
         input.disabled = false;
-        if (status === 'waiting_human') {
-            input.placeholder = '已通知客服接入中，仍可继续与 AI 对话...';
-        } else if (status === 'human_active') {
-            input.placeholder = '客服正在为你服务...';
-        } else if (status === 'waiting_trainer') {
+        if (status === 'waiting_human' || status === 'waiting_trainer') {
             input.placeholder = '已通知教练接入中，仍可继续与 AI 对话...';
-        } else if (status === 'trainer_active') {
+        } else if (status === 'human_active' || status === 'trainer_active') {
             input.placeholder = '教练正在为你服务...';
         } else {
             input.placeholder = '输入消息，Enter 发送，Shift+Enter 换行...';
@@ -314,19 +310,11 @@ function updateStatusBanner() {
         : (['waiting_human', 'human_active', 'waiting_trainer', 'trainer_active'].includes(s))
             ? '<span style="color:#fbbf24;font-size:11px;margin-left:8px;">● 轮询中</span>'
             : '';
-    if (s === 'waiting_human') {
-        banner.hidden = false;
-        banner.className = 'chat-status';
-        banner.innerHTML = `🔔 已通知客服接入中，等待期间仍可继续与 AI 对话${connLabel}`;
-    } else if (s === 'human_active') {
-        banner.hidden = false;
-        banner.className = 'chat-status chat-status--active';
-        banner.innerHTML = `✅ 客服已接入，正在为你服务${connLabel}`;
-    } else if (s === 'waiting_trainer') {
+    if (s === 'waiting_human' || s === 'waiting_trainer') {
         banner.hidden = false;
         banner.className = 'chat-status';
         banner.innerHTML = `🏋️ 已通知教练接入中，等待期间仍可继续与 AI 对话${connLabel}`;
-    } else if (s === 'trainer_active') {
+    } else if (s === 'human_active' || s === 'trainer_active') {
         banner.hidden = false;
         banner.className = 'chat-status chat-status--active';
         banner.innerHTML = `✅ 教练已接入，正在为你服务${connLabel}`;
@@ -522,7 +510,7 @@ function handleSSEEvent(ev) {
             }
         }
 
-        // 严格按 id 去重（用户 / AI / 客服 / 系统）
+        // 严格按 id 去重（用户 / AI / 教练 / 系统）
         if (!chatState.messages.find(x => x.id === m.id)) {
             chatState.messages.push(m);
             const tmp = document.createElement('div');
@@ -530,10 +518,11 @@ function handleSSEEvent(ev) {
             const safe = tmp.innerHTML;
             const time = new Date(m.created_at || Date.now()).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
             const isUser = m.sender_type === 'user';
+            // ponytail: 'customer_service' 视为教练（M12 迁移完成后将不再出现，仅兼容历史会话）
+            const isTrainer = m.sender_type === 'trainer' || m.sender_type === 'customer_service';
             const avatar = isUser ? '我'
-                : (m.sender_type === 'customer_service' ? '客服'
-                : (m.sender_type === 'trainer' ? '教练'
-                : (m.sender_type === 'system' ? '·' : 'AI')));
+                : (isTrainer ? '教练'
+                : (m.sender_type === 'system' ? '·' : 'AI'));
             const empty = wrap.querySelector('.chat-empty');
             if (empty) empty.remove();
             // 教练模板/计划卡片：复用 renderMsg 走整组 DOM
@@ -763,7 +752,7 @@ async function transferToHuman() {
     if (!chatState.currentConvId) {
         // 没选中会话：新建一个再转人工
         try {
-            const conv = await api.post('/conversations', { title: '客服会话' });
+            const conv = await api.post('/conversations', { title: '教练咨询会话' });
             chatState.currentConvId = conv.id;
             chatState.messages = [];
             chatState.currentConvStatus = conv.status;
@@ -777,13 +766,12 @@ async function transferToHuman() {
     try {
         const res = await api.post(`/conversations/${chatState.currentConvId}/transfer`);
         applyConvStatus(res.status);
-        // 后端幂等：若已在 human_active 返回 message="客服已接入"，不要重复提示
-        // 只在真正从 ai_active 转入 waiting_human 时显示
-        if (res.status === 'waiting_human' || (res.message && res.message.includes('排队'))) {
+        // ponytail: 教练兼客服，转人工 = 转教练，统一为"等待教练接入"提示
+        if (res.status === 'waiting_trainer' || (res.message && res.message.includes('排队'))) {
             const sysMsg = {
                 id: null,
                 sender_type: 'system',
-                content: '🔔 已为你转接人工客服，请稍候',
+                content: '🏋️ 已为你转接教练，请稍候',
                 created_at: new Date().toISOString(),
             };
             chatState.messages.push(sysMsg);

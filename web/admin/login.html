@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
     <title>B 端登录 · FitHub 管理后台</title>
     <link rel="stylesheet" href="css/soft-ui.css">
 </head>
@@ -46,7 +47,6 @@
         const submitBtn = document.getElementById('submitBtn');
 
         // 已登录且角色是 admin/trainer → 跳 dashboard.html
-        // ponytail: customer_service 代码保留，恢复时去掉下面一行 customer_service 判定
         (function autoRedirectIfLoggedIn() {
             const token = localStorage.getItem(TOKEN_KEY);
             if (!token) return;
@@ -55,12 +55,8 @@
                 if (user && ['admin', 'trainer'].includes(user.role)) {
                     window.location.href = '/admin/dashboard.html';
                 }
-                // 客服角色：当前 B 端未对客服开放 → 跳回 C 端（保留 localStorage 便于回切）
-                else if (user && user.role === 'customer_service') {
-                    window.location.href = '/c/';
-                }
                 // 角色不对（极少见，比如 token 来自 C 端 user）：留在登录页
-            } catch (_) { /* ponytail: 解析失败就当未登录 */ }
+            } catch (_) { /* 解析失败就当未登录 */ }
         })();
 
         form.addEventListener('submit', async (e) => {
@@ -89,11 +85,7 @@
                 const data = await resp.json();
 
                 // 权限校验：必须是 admin / trainer
-                // ponytail: customer_service 代码保留，恢复时把 customer_service 加回下方数组
                 const role = data.user?.role || 'user';
-                if (role === 'customer_service') {
-                    throw new Error('B 端当前未对客服开放，请联系管理员');
-                }
                 if (!['admin', 'trainer'].includes(role)) {
                     throw new Error('该账号无后台访问权限');
                 }

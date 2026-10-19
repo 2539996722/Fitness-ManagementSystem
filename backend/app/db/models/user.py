@@ -1,9 +1,8 @@
 """用户表（users）。
 
-四种角色（PRD D2）：
+三种活跃角色（PRD D2，M4 合并后）：
 - user：普通 C 端用户
-- customer_service：客服
-- trainer：教练
+- trainer：教练（兼原客服，会话工作台统一处理）
 - admin：管理员
 """
 
@@ -25,7 +24,7 @@ from app.db.base import Base, TimestampMixin
 
 
 class User(Base, TimestampMixin):
-    """用户（含管理员 / 教练 / 客服）。"""
+    """用户（含管理员 / 教练；M4 合并后 trainer 兼原客服）。"""
 
     __tablename__ = "users"
 
@@ -49,7 +48,7 @@ class User(Base, TimestampMixin):
         default="user",
         nullable=False,
         index=True,
-        comment="user / admin / customer_service / trainer",
+        comment="user / admin / trainer",
     )
 
     # 状态
@@ -91,10 +90,6 @@ class User(Base, TimestampMixin):
     @property
     def is_trainer(self) -> bool:
         return self.role == "trainer"
-
-    @property
-    def is_customer_service(self) -> bool:
-        return self.role == "customer_service"
 
     @property
     def is_banned(self) -> bool:

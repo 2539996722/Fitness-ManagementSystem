@@ -22,7 +22,7 @@ class Message(Base, TimestampMixin):
 
     # 谁发的
     sender_type: Mapped[str] = mapped_column(
-        String(16), nullable=False, comment="user / ai / customer_service / trainer"
+        String(16), nullable=False, comment="user / ai / trainer"
     )
     sender_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, comment="发送者 ID（人工时填）")
 

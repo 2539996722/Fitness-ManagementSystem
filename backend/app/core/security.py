@@ -1,31 +1,38 @@
-"""安全模块：JWT 签发/校验、密码哈希。"""
+"""安全模块：JWT 签发/校验、密码哈希。
+
+密码哈希改用 bcrypt 包直接调用，避开 passlib 1.7.4 在 bcrypt 4.x 上的
+"detect_wrap_bug" 探测问题（探测密码 > 72 字节触发 ValueError，
+即便业务侧已截断也救不了 passlib 自身的探测）。
+"""
 
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import bcrypt
 from jose import JWTError, jwt
 from loguru import logger
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-# 密码哈希上下文（bcrypt，cost=12）
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=settings.bcrypt_rounds,
-)
+
+def _truncate(plain: str) -> bytes:
+    """bcrypt 仅接受 ≤72 字节；超长密码在 UTF-8 边界截断。"""
+    b = plain.encode("utf-8")
+    if len(b) <= 72:
+        return b
+    return b[:72].decode("utf-8", errors="ignore").encode("utf-8")
 
 
 def hash_password(plain: str) -> str:
     """对明文密码哈希。"""
-    return pwd_context.hash(plain)
+    salt = bcrypt.gensalt(rounds=settings.bcrypt_rounds)
+    return bcrypt.hashpw(_truncate(plain), salt).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     """校验明文密码与哈希是否匹配。"""
     try:
-        return pwd_context.verify(plain, hashed)
+        return bcrypt.checkpw(_truncate(plain), hashed.encode("utf-8"))
     except Exception as e:
         logger.warning("密码校验异常: {}", e)
         return False

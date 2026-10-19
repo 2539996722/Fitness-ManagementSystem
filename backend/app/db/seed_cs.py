@@ -1,12 +1,12 @@
-"""种子客服账号（customer_service 角色）。
+"""种子教练账号（兼容旧名 seed_cs；M4 合并后 cs1 实际签 trainer 角色）。
 
 执行方式：
     python -m app.db.seed_cs
 
 特性：
-- 幂等：账号已存在则更新角色 + 重置密码；不存在则创建
-- 默认账号：cs1 / cs123（密码重置）
-- 同时支持多账号：传参 --users cs1:cs123,cs2:cs456
+- 兼容：账号已存在（任何角色）则保留并升级为 trainer
+- 幂等：不存在则创建为 trainer
+- ponytail: 历史 CS 角色已彻底清理（M12 #122）；跑这个脚本只会保留/创建 trainer 账号
 """
 
 import asyncio
@@ -21,7 +21,7 @@ from app.db.session import async_session
 
 
 DEFAULT_CS = [
-    {"username": "cs1", "password": "cs123", "nickname": "客服小张"},
+    {"username": "cs1", "password": "cs123", "nickname": "教练小张"},
 ]
 
 
@@ -41,16 +41,17 @@ async def seed_cs(users: list[dict] | None = None) -> None:
                     username=username,
                     password_hash=hash_password(password),
                     nickname=nickname,
-                    role="customer_service",
+                    role="trainer",  # ponytail: 合并后直接签 trainer
                     status=0,
                 )
                 session.add(user)
-                logger.info("✅ 创建客服账号：{} / {}", username, password)
+                logger.info("✅ 创建教练账号（兼原客服）：{} / {}", username, password)
             else:
-                user.role = "customer_service"
+                old_role = user.role
+                user.role = "trainer"  # 历史 customer_service 一并升级
                 user.password_hash = hash_password(password)
                 user.nickname = nickname
-                logger.info("🔄 更新客服账号：{}", username)
+                logger.info("🔄 升级账号：{} {} → trainer", username, old_role)
 
         try:
             await session.commit()
