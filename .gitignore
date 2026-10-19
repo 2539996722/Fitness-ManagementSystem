@@ -107,6 +107,23 @@ chroma/
 chroma-data/
 *.chroma
 backend/data/chroma/
+backend/data/milvus_lite.db
+backend/data/milvus_lite.db.lock
+
+# ---------- 业务数据（不进仓库，重新 seed）----------
+backend/data/tan_actions_full.json
+backend/data/tan_plans.json
+backend/data/uploads/
+backend/data/*.json
+backend/data/*.db
+
+# ---------- 一次性 debug / repro 脚本 ----------
+backend/repro_*.py
+backend/debug_*.py
+
+# ---------- 外部数据集（git clone 进来）----------
+dataset/
+data/exercises-dataset-zh/
 
 # ---------- 用户上传文件（不进仓库）----------
 data/uploads/
